@@ -21,6 +21,20 @@ Nace de las limitaciones del facturador oficial: pantallas poco claras, demasiad
 
 Los motivos de cada decisión están en [docs/adr](docs/adr).
 
+## Primeros pasos
+
+Requisitos: Node 22 (ver `.nvmrc`).
+
+```
+corepack enable pnpm
+pnpm install
+pnpm typecheck
+```
+
+Si `corepack enable` falla por permisos en Windows, usá `corepack enable pnpm --install-directory "%APPDATA%\npm"`.
+
+Por seguridad, pnpm solo instala versiones publicadas hace al menos 14 días (`minimumReleaseAge` en `pnpm-workspace.yaml`).
+
 ## Documentación
 
 * [Arquitectura](docs/arquitectura.md)

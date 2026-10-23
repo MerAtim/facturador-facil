@@ -1,0 +1,19 @@
+{
+  "name": "@facturador/arca",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@facturador/dominio": "workspace:*",
+    "@facturador/aplicacion": "workspace:*"
+  },
+  "devDependencies": {
+    "@facturador/config": "workspace:*"
+  }
+}
