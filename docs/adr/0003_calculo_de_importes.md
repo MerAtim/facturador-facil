@@ -12,7 +12,7 @@ En la factura A hay que informar neto gravado e IVA por alícuota. La mayoría d
 * Cada ítem puede cargarse por precio final o por precio neto. El usuario elige y la app recuerda la preferencia.
 * Desde precio final: `neto = redondear(final / (1 + alicuota), 2)` e `iva = final - neto`. Así el total coincide exactamente con lo que el usuario quiere cobrar.
 * El IVA se agrupa por alícuota (0 %, 2,5 %, 5 %, 10,5 %, 21 %, 27 %) para armar el bloque `Iva` de WSFEv1.
-* Se valida antes de enviar que la diferencia entre `BaseImp × alicuota` e `Importe` esté dentro de la tolerancia que acepta ARCA.
+* La diferencia entre `BaseImp × alicuota` e `Importe` queda acotada a un centavo por construcción: `Comprobante` solo obtiene el IVA de las funciones de cálculo, y un test lo verifica para miles de precios. No hace falta revalidarlo antes de enviar.
 
 ## Consecuencias
 
