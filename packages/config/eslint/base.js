@@ -9,7 +9,7 @@ import tseslint from 'typescript-eslint';
  */
 export function crearConfig({ directorio, importsProhibidos = [] }) {
   return defineConfig(
-    { ignores: ['dist', 'coverage', 'eslint.config.js'] },
+    { ignores: ['dist', 'coverage', '*.config.js'] },
     {
       files: ['**/*.ts', '**/*.tsx'],
       extends: [
