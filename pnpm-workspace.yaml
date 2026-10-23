@@ -8,3 +8,26 @@ minimumReleaseAge: 20160
 
 savePrefix: ''
 engineStrict: true
+
+# Versiones que espera el SDK 57 de Expo y que algunas dependencias resuelven mal.
+overrides:
+  '@react-native/metro-config': 0.86.3
+  react-native-worklets: 0.10.1
+
+# La app no apunta a web, react-dom no es necesario.
+peerDependencyRules:
+  ignoreMissing:
+    - react-dom
+
+# Avisos de seguridad revisados y aceptados. Revisar el 2026-11-23 o cuando se actualice Expo.
+auditConfig:
+  ignoreGhsas:
+    # node-forge en @expo/cli: solo corre en desarrollo, no viaja en la app. Sin parche disponible.
+    - GHSA-86w9-cpqp-85rv
+    # braces en metro: solo corre en desarrollo, no viaja en la app. Sin parche disponible.
+    - GHSA-vfj7-8cjw-p6xm
+    # uuid en xcode: herramienta de build de iOS, no usa la función afectada.
+    - GHSA-w5hq-g745-h8pq
+    # decode-uri-component en expo-router: mitigado por src/app/+native-intent.ts, que descarta
+    # toda URL externa antes de que se decodifique. La versión parcheada es solo ESM e incompatible.
+    - GHSA-vcc3-ghjq-m6fr
