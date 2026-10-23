@@ -23,7 +23,10 @@ Los motivos de cada decisión están en [docs/adr](docs/adr).
 
 ## Primeros pasos
 
-Requisitos: Node 22 (ver `.nvmrc`).
+Requisitos:
+
+* Node 22 (ver `.nvmrc`)
+* [gitleaks](https://github.com/gitleaks/gitleaks), que revisa secretos antes de cada commit. En Windows: `winget install Gitleaks.Gitleaks`
 
 ```
 corepack enable pnpm

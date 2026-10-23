@@ -1,1 +1,6 @@
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner || exit 1
+else
+  echo "Aviso: gitleaks no está instalado, no se revisaron secretos. Ver CONTRIBUTING.md"
+fi
 pnpm exec lint-staged
