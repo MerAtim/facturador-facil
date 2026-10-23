@@ -7,7 +7,7 @@ Usamos GitHub Flow.
 1. `main` siempre está estable y no recibe commits directos.
 2. Cada issue se trabaja en una rama corta que sale de `main`.
 3. Se abre un PR que referencia el issue (`Cierra #12`).
-4. El PR necesita CI en verde y una revisión aprobada.
+4. El PR necesita CI en verde. Cuando el equipo tenga más de una persona, también una revisión aprobada.
 5. Se integra con squash merge y se borra la rama.
 
 ### Nombres de ramas
