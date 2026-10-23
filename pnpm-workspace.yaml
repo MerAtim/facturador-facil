@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Solo se instalan versiones publicadas hace al menos 14 días.
+# Reduce el riesgo de instalar un paquete comprometido antes de que sea detectado.
+minimumReleaseAge: 20160
+
+savePrefix: ''
+engineStrict: true

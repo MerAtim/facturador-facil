@@ -1,0 +1,4 @@
+{
+  "extends": "@facturador/config/typescript/base.json",
+  "include": ["src"]
+}

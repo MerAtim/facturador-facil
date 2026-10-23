@@ -1,0 +1,18 @@
+{
+  "name": "facturador-facil",
+  "private": true,
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "2.11.7",
+    "typescript": "6.0.3"
+  }
+}
