@@ -36,10 +36,26 @@ pnpm typecheck
 
 Si `corepack enable` falla por permisos en Windows, usá `corepack enable pnpm --install-directory "%APPDATA%\npm"`.
 
-La app usa un development build de Expo, no Expo Go, porque necesita módulos nativos de criptografía y almacenamiento seguro. Para compilarla hace falta Android Studio o un build en la nube con EAS.
+### App móvil en Android
+
+La app usa un development build de Expo, no Expo Go, porque necesita módulos nativos de criptografía y almacenamiento seguro.
+
+Requisitos adicionales:
+
+* Android Studio con un emulador creado desde Device Manager. Recomendado: Pixel 8a con API 35.
+* Java 17 (Microsoft OpenJDK 17: `winget install Microsoft.OpenJDK.17`). El Java que trae Android Studio es más nuevo y rompe la compilación del código nativo.
+* Variables de entorno: `JAVA_HOME` apuntando a Java 17, `ANDROID_HOME` a `%LOCALAPPDATA%\Android\Sdk` y `%ANDROID_HOME%\platform-tools` en el `PATH`.
+* En Windows, el repositorio en una ruta corta como `C:\dev\facturador-facil`. Las rutas que arma CMake superan el límite de 260 caracteres si el proyecto está en el Escritorio o en Documentos.
+
+Con el emulador encendido:
 
 ```
 pnpm --filter @facturador/mobile android
+```
+
+La primera vez compila todo y tarda varios minutos. Después, mientras no cambien dependencias nativas, alcanza con levantar Metro y la app se actualiza sola al guardar:
+
+```
 pnpm --filter @facturador/mobile start
 ```
 
