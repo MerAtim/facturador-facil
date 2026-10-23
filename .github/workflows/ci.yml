@@ -56,8 +56,11 @@ jobs:
       - name: Tipos
         run: pnpm typecheck
 
+      # Zona horaria extrema (UTC+14) para detectar fechas que dependan de la zona del dispositivo.
       - name: Tests
         run: pnpm test
+        env:
+          TZ: Pacific/Kiritimati
 
       - name: Auditoría de dependencias
         run: pnpm audit --audit-level high

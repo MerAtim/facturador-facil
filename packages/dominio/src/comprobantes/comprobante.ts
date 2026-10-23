@@ -1,8 +1,10 @@
+import type { FechaCalendario } from '../compartido/fechaCalendario';
 import { exito, fallo, type Resultado } from '../compartido/resultado';
 import type { Cantidad } from '../importes/cantidad';
 import { Dinero } from '../importes/dinero';
 import type { AlicuotaIva } from '../iva/alicuotaIva';
 import { calcularDesdePrecioFinal, calcularDesdePrecioNeto } from '../iva/calculoIva';
+import { incluyeServicios, type Concepto, type PeriodoDeServicio } from './concepto';
 import type { CondicionIvaReceptor } from './condicionIvaReceptor';
 import type { TipoComprobante } from './tipoComprobante';
 
@@ -31,7 +33,7 @@ export interface Totales {
 
 export interface Autorizacion {
   readonly cae: string;
-  readonly vencimiento: Date;
+  readonly vencimiento: FechaCalendario;
 }
 
 export interface DatosComprobante {
@@ -39,6 +41,9 @@ export interface DatosComprobante {
   readonly receptor: CondicionIvaReceptor;
   readonly modoDePrecio: ModoDePrecio;
   readonly items: readonly ItemComprobante[];
+  readonly fechaDeEmision: FechaCalendario;
+  readonly concepto: Concepto;
+  readonly periodoDeServicio?: PeriodoDeServicio;
 }
 
 export type MotivoComprobanteInvalido =
@@ -46,6 +51,10 @@ export type MotivoComprobanteInvalido =
   | 'descripcion_vacia'
   | 'falta_alicuota'
   | 'receptor_no_admite_clase'
+  | 'falta_periodo_de_servicio'
+  | 'periodo_de_servicio_no_corresponde'
+  | 'periodo_de_servicio_invertido'
+  | 'vencimiento_de_pago_anterior_a_emision'
   | 'cae_invalido'
   | 'ya_autorizado';
 
@@ -68,9 +77,13 @@ export class Comprobante {
 
     if (items.length === 0) return invalido('sin_items');
     if (items.some((item) => item.descripcion.trim() === '')) return invalido('descripcion_vacia');
-    if (tipo.informaIva() && items.some((item) => !item.alicuota))
+    if (tipo.informaIva() && items.some((item) => !item.alicuota)) {
       return invalido('falta_alicuota');
+    }
     if (!receptor.admiteClase(tipo.clase)) return invalido('receptor_no_admite_clase');
+
+    const errorDeFechas = validarFechas(datos);
+    if (errorDeFechas) return invalido(errorDeFechas);
 
     return exito(new Comprobante(datos, calcularTotales(datos)));
   }
@@ -80,7 +93,10 @@ export class Comprobante {
   }
 
   /** Registra el CAE que otorgó ARCA. Un comprobante autorizado ya no cambia. */
-  autorizar(cae: string, vencimiento: Date): Resultado<Comprobante, ComprobanteInvalido> {
+  autorizar(
+    cae: string,
+    vencimiento: FechaCalendario,
+  ): Resultado<Comprobante, ComprobanteInvalido> {
     if (this.estaAutorizado()) return invalido('ya_autorizado');
     if (!FORMATO_CAE.test(cae)) return invalido('cae_invalido');
 
@@ -90,6 +106,22 @@ export class Comprobante {
 
 const invalido = (motivo: MotivoComprobanteInvalido) =>
   fallo<ComprobanteInvalido>({ tipo: 'comprobante_invalido', motivo });
+
+function validarFechas({
+  concepto,
+  periodoDeServicio: periodo,
+  fechaDeEmision,
+}: DatosComprobante): MotivoComprobanteInvalido | undefined {
+  if (!incluyeServicios(concepto)) {
+    return periodo ? 'periodo_de_servicio_no_corresponde' : undefined;
+  }
+  if (!periodo) return 'falta_periodo_de_servicio';
+  if (periodo.hasta.esAnteriorA(periodo.desde)) return 'periodo_de_servicio_invertido';
+  if (periodo.vencimientoDePago.esAnteriorA(fechaDeEmision)) {
+    return 'vencimiento_de_pago_anterior_a_emision';
+  }
+  return undefined;
+}
 
 const importeDe = (item: ItemComprobante): Dinero =>
   item.precioUnitario.multiplicarPorFraccion(...item.cantidad.comoFraccion());
