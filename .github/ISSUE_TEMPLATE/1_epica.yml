@@ -1,7 +1,7 @@
 name: Épica
 description: Agrupa varias historias alrededor de un objetivo
-title: "[Épica] "
-labels: ["epica"]
+title: '[Épica] '
+labels: ['epica']
 body:
   - type: textarea
     id: objetivo

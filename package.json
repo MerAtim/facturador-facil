@@ -9,9 +9,13 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "eslint": "10.12.0",
+    "prettier": "3.9.9",
     "turbo": "2.11.7",
     "typescript": "6.0.3"
   }

@@ -1,6 +1,6 @@
 name: Bug
 description: Algo no funciona como debería
-labels: ["bug"]
+labels: ['bug']
 body:
   - type: textarea
     id: pasos
@@ -27,4 +27,4 @@ body:
       description: Versión de la app, sistema operativo, homologación o producción
   - type: markdown
     attributes:
-      value: "No incluyas certificados, claves, tokens ni CUIT reales."
+      value: 'No incluyas certificados, claves, tokens ni CUIT reales.'
