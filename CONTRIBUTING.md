@@ -35,7 +35,7 @@ Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `perf`, `build`, `ci`
 
 Los hooks de git validan el formato al commitear: commitlint revisa el mensaje y lint-staged corre ESLint y Prettier sobre los archivos modificados. También rechazan guiones en el mensaje.
 
-Ámbitos permitidos: `dominio`, `aplicacion`, `arca`, `mobile`, `seguridad`, `ui`, `infra`, `deps`. El ámbito es opcional.
+Ámbitos permitidos: `dominio`, `aplicacion`, `arca`, `mobile`, `seguridad`, `ui`, `infra`, `deps`, `deps-dev`. El ámbito es opcional.
 
 ## Estilo de escritura
 
