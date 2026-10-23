@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
  */
 export function crearConfig({ directorio, importsProhibidos = [] }) {
   return defineConfig(
-    { ignores: ['dist', 'coverage', '*.config.js'] },
+    { ignores: ['dist', 'coverage', '*.config.js', '*.config.mjs'] },
     {
       files: ['**/*.ts', '**/*.tsx'],
       extends: [
@@ -31,6 +31,14 @@ export function crearConfig({ directorio, importsProhibidos = [] }) {
         '@typescript-eslint/consistent-type-imports': 'error',
         '@typescript-eslint/switch-exhaustiveness-check': 'error',
         'no-restricted-imports': ['error', { patterns: importsProhibidos }],
+        // Marca cualquier acceso con corchetes. Con noUncheckedIndexedAccess los tipos ya cubren ese riesgo.
+        'security/detect-object-injection': 'off',
+      },
+    },
+    {
+      files: ['**/*.test.ts', '**/*.test.tsx'],
+      rules: {
+        'no-restricted-imports': 'off',
       },
     },
     prettier,
