@@ -1,0 +1,23 @@
+name: Épica
+description: Agrupa varias historias alrededor de un objetivo
+title: "[Épica] "
+labels: ["epica"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Qué valor entrega esta épica y para quién
+    validations:
+      required: true
+  - type: textarea
+    id: alcance
+    attributes:
+      label: Alcance
+      description: Qué entra y qué queda afuera
+  - type: textarea
+    id: exito
+    attributes:
+      label: Criterio de éxito
+    validations:
+      required: true

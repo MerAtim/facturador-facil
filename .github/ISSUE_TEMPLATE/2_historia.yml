@@ -1,0 +1,23 @@
+name: Historia o tarea
+description: Trabajo concreto que se puede terminar en pocos días
+labels: ["historia"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: Como [rol] quiero [acción] para [beneficio], o la tarea técnica a realizar
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      value: |
+        * [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas técnicas
