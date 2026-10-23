@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { FechaCalendario } from '../compartido/fechaCalendario';
 import { Cantidad } from '../importes/cantidad';
 import { Dinero } from '../importes/dinero';
 import { AlicuotaIva } from '../iva/alicuotaIva';
@@ -19,6 +20,14 @@ const cantidad = (texto: string): Cantidad => {
   return resultado.valor;
 };
 
+const fecha = (anio: number, mes: number, dia: number): FechaCalendario => {
+  const resultado = FechaCalendario.crear(anio, mes, dia);
+  if (!resultado.ok) throw new Error('Fecha de prueba inválida');
+  return resultado.valor;
+};
+
+const hoy = fecha(2026, 10, 23);
+
 const item = (
   precio: string,
   alicuota?: AlicuotaIva,
@@ -36,6 +45,8 @@ const facturaA = (items: readonly ItemComprobante[]): DatosComprobante => ({
   receptor: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
   modoDePrecio: 'final',
   items,
+  fechaDeEmision: hoy,
+  concepto: 'productos',
 });
 
 const crear = (datos: DatosComprobante): Comprobante => {
@@ -101,6 +112,8 @@ describe('Comprobante', () => {
         receptor: CondicionIvaReceptor.CONSUMIDOR_FINAL,
         modoDePrecio: 'final',
         items: [item('100', undefined, '3'), item('50')],
+        fechaDeEmision: hoy,
+        concepto: 'productos',
       });
 
       expect(enPesos(totales.total)).toBe('$ 350,00');
@@ -134,8 +147,56 @@ describe('Comprobante', () => {
     });
   });
 
+  describe('servicios', () => {
+    const periodo = {
+      desde: fecha(2026, 10, 1),
+      hasta: fecha(2026, 10, 31),
+      vencimientoDePago: fecha(2026, 11, 10),
+    };
+    const servicios = (datos: Partial<DatosComprobante>): DatosComprobante => ({
+      ...facturaA([item('100', AlicuotaIva.VEINTIUNO)]),
+      concepto: 'servicios',
+      periodoDeServicio: periodo,
+      ...datos,
+    });
+
+    it('acepta un período válido', () => {
+      expect(Comprobante.crear(servicios({})).ok).toBe(true);
+    });
+
+    it('acepta un vencimiento de pago igual a la fecha de emisión', () => {
+      const datos = servicios({ periodoDeServicio: { ...periodo, vencimientoDePago: hoy } });
+
+      expect(Comprobante.crear(datos).ok).toBe(true);
+    });
+
+    it.each([
+      [
+        'falta_periodo_de_servicio',
+        { concepto: 'productos_y_servicios', periodoDeServicio: undefined },
+      ],
+      ['periodo_de_servicio_no_corresponde', { concepto: 'productos' }],
+      [
+        'periodo_de_servicio_invertido',
+        { periodoDeServicio: { ...periodo, desde: fecha(2026, 11, 1) } },
+      ],
+      [
+        'vencimiento_de_pago_anterior_a_emision',
+        { periodoDeServicio: { ...periodo, vencimientoDePago: fecha(2026, 10, 22) } },
+      ],
+    ] as const)('rechaza por %s', (motivo, cambios) => {
+      const { periodoDeServicio, ...resto } = servicios(cambios as Partial<DatosComprobante>);
+      const datos = periodoDeServicio ? { ...resto, periodoDeServicio } : resto;
+
+      expect(Comprobante.crear(datos)).toEqual({
+        ok: false,
+        error: { tipo: 'comprobante_invalido', motivo },
+      });
+    });
+  });
+
   describe('autorización', () => {
-    const vencimiento = new Date('2026-11-02T00:00:00-03:00');
+    const vencimiento = fecha(2026, 11, 2);
 
     it('registra el CAE sin modificar el comprobante original', () => {
       const borrador = crear(facturaA([item('100', AlicuotaIva.VEINTIUNO)]));
