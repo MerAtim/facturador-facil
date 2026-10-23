@@ -25,7 +25,7 @@ Los motivos de cada decisión están en [docs/adr](docs/adr).
 
 Requisitos:
 
-* Node 22 (ver `.nvmrc`)
+* Node 24 LTS, versión exacta en `.nvmrc`
 * [gitleaks](https://github.com/gitleaks/gitleaks), que revisa secretos antes de cada commit. En Windows: `winget install Gitleaks.Gitleaks`
 
 ```
