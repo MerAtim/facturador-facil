@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { FechaCalendario } from '../compartido/fechaCalendario';
+import { SIN_IDENTIFICAR } from '../contribuyente/identificacionReceptor';
 import { Cantidad } from '../importes/cantidad';
 import { Dinero } from '../importes/dinero';
 import { AlicuotaIva } from '../iva/alicuotaIva';
@@ -43,6 +44,7 @@ const item = (
 const facturaA = (items: readonly ItemComprobante[]): DatosComprobante => ({
   tipo: TipoComprobante.FACTURA_A,
   receptor: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
+  identificacionReceptor: SIN_IDENTIFICAR,
   modoDePrecio: 'final',
   items,
   fechaDeEmision: hoy,
@@ -110,6 +112,7 @@ describe('Comprobante', () => {
       const { totales } = crear({
         tipo: TipoComprobante.FACTURA_C,
         receptor: CondicionIvaReceptor.CONSUMIDOR_FINAL,
+        identificacionReceptor: SIN_IDENTIFICAR,
         modoDePrecio: 'final',
         items: [item('100', undefined, '3'), item('50')],
         fechaDeEmision: hoy,

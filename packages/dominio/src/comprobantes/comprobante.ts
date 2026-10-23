@@ -1,5 +1,6 @@
 import type { FechaCalendario } from '../compartido/fechaCalendario';
 import { exito, fallo, type Resultado } from '../compartido/resultado';
+import type { IdentificacionReceptor } from '../contribuyente/identificacionReceptor';
 import type { Cantidad } from '../importes/cantidad';
 import { Dinero } from '../importes/dinero';
 import type { AlicuotaIva } from '../iva/alicuotaIva';
@@ -39,6 +40,7 @@ export interface Autorizacion {
 export interface DatosComprobante {
   readonly tipo: TipoComprobante;
   readonly receptor: CondicionIvaReceptor;
+  readonly identificacionReceptor: IdentificacionReceptor;
   readonly modoDePrecio: ModoDePrecio;
   readonly items: readonly ItemComprobante[];
   readonly fechaDeEmision: FechaCalendario;
