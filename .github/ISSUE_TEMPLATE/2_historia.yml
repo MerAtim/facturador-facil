@@ -1,6 +1,6 @@
 name: Historia o tarea
 description: Trabajo concreto que se puede terminar en pocos días
-labels: ["historia"]
+labels: ['historia']
 body:
   - type: textarea
     id: descripcion
@@ -14,7 +14,7 @@ body:
     attributes:
       label: Criterios de aceptación
       value: |
-        * [ ] 
+        * [ ]
     validations:
       required: true
   - type: textarea

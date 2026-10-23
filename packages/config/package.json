@@ -3,6 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    "./typescript/*": "./typescript/*"
+    "./typescript/*": "./typescript/*",
+    "./eslint": "./eslint/base.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "typescript-eslint": "8.71.1"
   }
 }
