@@ -36,6 +36,13 @@ pnpm typecheck
 
 Si `corepack enable` falla por permisos en Windows, usá `corepack enable pnpm --install-directory "%APPDATA%\npm"`.
 
+La app usa un development build de Expo, no Expo Go, porque necesita módulos nativos de criptografía y almacenamiento seguro. Para compilarla hace falta Android Studio o un build en la nube con EAS.
+
+```
+pnpm --filter @facturador/mobile android
+pnpm --filter @facturador/mobile start
+```
+
 Por seguridad, pnpm solo instala versiones publicadas hace al menos 14 días (`minimumReleaseAge` en `pnpm-workspace.yaml`).
 
 ## Documentación
