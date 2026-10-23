@@ -33,7 +33,9 @@ chore: actualiza dependencias
 
 Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `perf`, `build`, `ci`, `chore`.
 
-Ámbitos habituales: `dominio`, `arca`, `mobile`, `seguridad`, `ui`, `infra`.
+Los hooks de git validan el formato al commitear: commitlint revisa el mensaje y lint-staged corre ESLint y Prettier sobre los archivos modificados. También rechazan guiones en el mensaje.
+
+Ámbitos permitidos: `dominio`, `aplicacion`, `arca`, `mobile`, `seguridad`, `ui`, `infra`, `deps`. El ámbito es opcional.
 
 ## Estilo de escritura
 
