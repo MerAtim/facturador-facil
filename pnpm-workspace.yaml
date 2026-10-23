@@ -12,6 +12,7 @@ engineStrict: true
 # Versiones que espera el SDK 57 de Expo y que algunas dependencias resuelven mal.
 overrides:
   '@react-native/metro-config': 0.86.3
+  react-native-reanimated: 4.5.1
   react-native-worklets: 0.10.1
 
 # La app no apunta a web, react-dom no es necesario.
