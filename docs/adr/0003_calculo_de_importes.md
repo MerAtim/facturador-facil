@@ -17,4 +17,5 @@ En la factura A hay que informar neto gravado e IVA por alícuota. La mayoría d
 ## Consecuencias
 
 * El cálculo vive solo en `packages/dominio` y se cubre con tests de tabla, incluyendo casos borde de redondeo.
-* Hay que confirmar la tolerancia exacta en homologación antes de pasar a aceptada.
+* Un test recorre miles de precios por cada alícuota y verifica que el IVA calculado por diferencia nunca se aparta más de un centavo de `neto × alicuota`.
+* Hay que confirmar en homologación que ARCA acepta esa diferencia de un centavo antes de pasar a aceptada.
