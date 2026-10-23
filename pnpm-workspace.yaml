@@ -32,6 +32,9 @@ auditConfig:
     # decode-uri-component en expo-router: mitigado por src/app/+native-intent.ts, que descarta
     # toda URL externa antes de que se decodifique. La versión parcheada es solo ESM e incompatible.
     - GHSA-vcc3-ghjq-m6fr
+    # zod 3 en @expo/cli: solo corre en desarrollo, no viaja en la app. El parche existe solo en zod 4,
+    # incompatible con la versión que usa Expo.
+    - GHSA-mrhx-c7xc-m3w5
 
 # React Native compila código nativo con CMake, que en Windows no tolera los enlaces simbólicos
 # del modo aislado de pnpm. Con hoisted, node_modules queda plano como en npm.
