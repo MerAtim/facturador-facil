@@ -2,7 +2,7 @@
 
 ## Por qué
 
-Cierra #
+Closes #
 
 ## Cómo probarlo
 
