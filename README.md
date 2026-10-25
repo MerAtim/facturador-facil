@@ -1,4 +1,4 @@
-# Facturador Fácil
+# Facturador Fácil V1
 
 App móvil para emitir comprobantes electrónicos de ARCA de forma rápida y sin vueltas.
 
