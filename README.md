@@ -70,4 +70,4 @@ Por seguridad, pnpm solo instala versiones publicadas hace al menos 14 días (`m
 
 ## Estado
 
-En etapa inicial. El trabajo está organizado en épicas e issues dentro del tablero del proyecto.
+El trabajo está organizado en épicas e issues dentro del tablero del proyecto.
