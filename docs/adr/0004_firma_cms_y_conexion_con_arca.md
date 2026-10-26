@@ -34,6 +34,7 @@ Opciones evaluadas para la firma CMS:
 
 * El codificador DER cubre solo lo que piden el CSR y el CMS, con tests propios y lectura con control de límites. Si aparece otra estructura ASN.1 conviene evaluar `asn1js` antes de extenderlo.
 * El certificado depende de la clave: si la clave se borra, el certificado emitido por ARCA deja de servir y hay que pedir otro. Durante el spike pasó una vez. Borrar o regenerar la clave tiene que pedir confirmación explícita (#33 y #35).
-* Las respuestas SOAP del spike se leen con expresiones regulares. Los clientes definitivos (#22 y #24) usan un parser XML.
+* Las respuestas SOAP se leen con `txml` (sin dependencias, mantenida, sin avisos de seguridad), importada desde `txml/txml` porque su entrada principal usa `node:stream`. Se descartaron `fast-xml-parser` y `@xmldom/xmldom` por la cantidad de avisos de 2026 en DTD y entidades, y `saxes` por estar sin mantenimiento. Todo documento con DTD se rechaza antes de parsear y solo se decodifican las entidades predefinidas, así que XXE y la expansión de entidades quedan descartados por construcción.
+* En homologación WSAA entregó un ticket nuevo aunque había otro vigente para el mismo servicio. El código `coe.alreadyAuthenticated` se interpreta igual, pero no se pudo observar.
 * `packages/arca` compila con los tipos de Node para tener `fetch`, `TextEncoder`, `btoa` y `atob`, que Hermes también provee. El código fuera de los tests no puede usar otras APIs de Node.
 * **iOS queda sin validar.** El módulo Swift está escrito, pero no se compiló porque el equipo no tiene Mac. Hay que probarlo en un iPhone real o con EAS Build antes de cerrar #33. Allí la clave se guarda en el Keychain con `WhenUnlockedThisDeviceOnly`, porque Secure Enclave no admite RSA.
