@@ -12,10 +12,12 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@facturador/aplicacion": "workspace:*",
     "@facturador/dominio": "workspace:*",
-    "@facturador/aplicacion": "workspace:*"
+    "@noble/hashes": "2.4.0"
   },
   "devDependencies": {
-    "@facturador/config": "workspace:*"
+    "@facturador/config": "workspace:*",
+    "@types/node": "26.6.4"
   }
 }

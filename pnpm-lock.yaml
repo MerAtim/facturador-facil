@@ -46,6 +46,9 @@ importers:
       '@facturador/aplicacion':
         specifier: workspace:*
         version: link:../../packages/aplicacion
+      '@facturador/arca':
+        specifier: workspace:*
+        version: link:../../packages/arca
       '@facturador/dominio':
         specifier: workspace:*
         version: link:../../packages/dominio
@@ -114,10 +117,16 @@ importers:
       '@facturador/dominio':
         specifier: workspace:*
         version: link:../dominio
+      '@noble/hashes':
+        specifier: 2.4.0
+        version: 2.4.0
     devDependencies:
       '@facturador/config':
         specifier: workspace:*
         version: link:../config
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
 
   packages/config:
     dependencies:
@@ -930,6 +939,10 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
+    engines: {node: '>= 20.19.0'}
 
   '@oxc-project/types@0.153.0':
     resolution: {integrity: sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw==}
@@ -4844,6 +4857,8 @@ snapshots:
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
+
+  '@noble/hashes@2.4.0': {}
 
   '@oxc-project/types@0.153.0': {}
 
