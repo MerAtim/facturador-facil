@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@facturador/aplicacion": "workspace:*",
+    "@facturador/arca": "workspace:*",
     "@facturador/dominio": "workspace:*",
     "@facturador/ui": "workspace:*",
     "expo": "~57.0.27",

@@ -46,6 +46,9 @@ importers:
       '@facturador/aplicacion':
         specifier: workspace:*
         version: link:../../packages/aplicacion
+      '@facturador/arca':
+        specifier: workspace:*
+        version: link:../../packages/arca
       '@facturador/dominio':
         specifier: workspace:*
         version: link:../../packages/dominio
