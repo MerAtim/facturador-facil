@@ -6,18 +6,33 @@ import { crearTra, solicitarTicket } from './wsaa';
 
 const ahora = new Date('2026-10-26T12:00:00Z');
 
-const respuestaExitosa =
+const sobre = (cuerpo: string) =>
   '<?xml version="1.0" encoding="utf-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">' +
-  '<soapenv:Body><loginCmsResponse xmlns="http://wsaa.view.sua.dvadac.desein.afip.gov"><loginCmsReturn>' +
-  '&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;loginTicketResponse version="1.0"&gt;&lt;header&gt;' +
-  '&lt;expirationTime&gt;2026-10-27T00:00:00.000-03:00&lt;/expirationTime&gt;&lt;/header&gt;' +
-  '&lt;credentials&gt;&lt;token&gt;TOKEN&lt;/token&gt;&lt;sign&gt;FIRMA&lt;/sign&gt;&lt;/credentials&gt;' +
-  '&lt;/loginTicketResponse&gt;</loginCmsReturn></loginCmsResponse></soapenv:Body></soapenv:Envelope>';
+  `<soapenv:Body>${cuerpo}</soapenv:Body></soapenv:Envelope>`;
 
-const fallaCms =
-  '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault>' +
-  '<faultcode xmlns:ns1="http://xml.apache.org/axis/">ns1:cms.cert.untrusted</faultcode>' +
-  '<faultstring>Certificado no emitido por AC de confianza</faultstring></soapenv:Fault></soapenv:Body></soapenv:Envelope>';
+const conTicket = (ticket: string) =>
+  sobre(
+    '<loginCmsResponse xmlns="http://wsaa.view.sua.dvadac.desein.afip.gov">' +
+      `<loginCmsReturn>${ticket}</loginCmsReturn></loginCmsResponse>`,
+  );
+
+const respuestaExitosa = conTicket(
+  '&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;' +
+    '&lt;loginTicketResponse version="1.0"&gt;&lt;header&gt;' +
+    '&lt;source&gt;CN=wsaahomo, O=AFIP, C=AR, SERIALNUMBER=CUIT 33693450239&lt;/source&gt;' +
+    '&lt;destination&gt;SERIALNUMBER=CUIT 20123456786, CN=facturadorfacil&lt;/destination&gt;' +
+    '&lt;uniqueId&gt;123&lt;/uniqueId&gt;' +
+    '&lt;generationTime&gt;2026-10-26T08:50:00.000-03:00&lt;/generationTime&gt;' +
+    '&lt;expirationTime&gt;2026-10-26T21:00:00.000-03:00&lt;/expirationTime&gt;&lt;/header&gt;' +
+    '&lt;credentials&gt;&lt;token&gt;VE9LRU4=&lt;/token&gt;&lt;sign&gt;RklSTUE=&lt;/sign&gt;&lt;/credentials&gt;' +
+    '&lt;/loginTicketResponse&gt;',
+);
+
+const falla = (codigo: string, mensaje: string) =>
+  sobre(
+    '<soapenv:Fault><faultcode xmlns:ns1="http://xml.apache.org/axis/">' +
+      `ns1:${codigo}</faultcode><faultstring>${mensaje}</faultstring></soapenv:Fault>`,
+  );
 
 async function pedir(transporte: Transporte) {
   const { firmador } = crearFirmadorDePrueba();
@@ -31,12 +46,18 @@ async function pedir(transporte: Transporte) {
 }
 
 describe('crearTra', () => {
-  it('pide el servicio con una ventana de diez minutos alrededor de ahora', () => {
+  it('pide el servicio con una ventana de diez minutos en hora argentina', () => {
     expect(crearTra('wsfe', ahora)).toBe(
       '<?xml version="1.0" encoding="UTF-8"?><loginTicketRequest version="1.0"><header>' +
-        '<uniqueId>1793016000</uniqueId><generationTime>2026-10-26T11:50:00Z</generationTime>' +
-        '<expirationTime>2026-10-26T12:10:00Z</expirationTime></header><service>wsfe</service>' +
+        '<uniqueId>1793016000</uniqueId><generationTime>2026-10-26T08:50:00-03:00</generationTime>' +
+        '<expirationTime>2026-10-26T09:10:00-03:00</expirationTime></header><service>wsfe</service>' +
         '</loginTicketRequest>',
+    );
+  });
+
+  it('cambia de día según la hora argentina y no la UTC', () => {
+    expect(crearTra('wsfe', new Date('2026-10-27T02:00:00Z'))).toContain(
+      '<generationTime>2026-10-26T22:50:00-03:00</generationTime>',
     );
   });
 });
@@ -52,31 +73,59 @@ describe('solicitarTicket', () => {
     expect(cuerpoEnviado).toMatch(/<in0>MI[A-Za-z0-9+/=]+<\/in0>/);
     expect(resultado).toEqual({
       ok: true,
-      valor: { token: 'TOKEN', firma: 'FIRMA', vencimiento: new Date('2026-10-27T03:00:00Z') },
-    });
-  });
-
-  it('devuelve la falla que informa WSAA', async () => {
-    const resultado = await pedir(() => Promise.resolve({ estado: 500, cuerpo: fallaCms }));
-
-    expect(resultado).toEqual({
-      ok: false,
-      error: {
-        tipo: 'falla_soap',
-        codigo: 'cms.cert.untrusted',
-        mensaje: 'Certificado no emitido por AC de confianza',
+      valor: {
+        token: 'VE9LRU4=',
+        firma: 'RklSTUE=',
+        vencimiento: new Date('2026-10-27T00:00:00Z'),
       },
     });
   });
 
-  it('detecta una respuesta sin ticket', async () => {
+  it.each([
+    ['coe.alreadyAuthenticated', 'ticket_vigente'],
+    ['coe.notAuthorized', 'no_autorizado'],
+    ['cms.cert.expired', 'certificado_vencido'],
+    ['cms.cert.untrusted', 'certificado_no_confiable'],
+    ['cms.sign.invalid', 'firma_invalida'],
+    ['xml.generationTime.invalid', 'reloj_desfasado'],
+    ['wsaa.unavailable', 'no_disponible'],
+    ['algo.nuevo', 'desconocido'],
+  ])('traduce la falla %s a %s', async (codigo, motivo) => {
     const resultado = await pedir(() =>
-      Promise.resolve({
-        estado: 200,
-        cuerpo: '<loginCmsReturn></loginCmsReturn>',
-      }),
+      Promise.resolve({ estado: 500, cuerpo: falla(codigo, 'mensaje de ARCA') }),
     );
 
-    expect(resultado).toEqual({ ok: false, error: { tipo: 'ticket_incompleto' } });
+    expect(resultado).toEqual({
+      ok: false,
+      error: { tipo: 'rechazo_wsaa', motivo, codigo, mensaje: 'mensaje de ARCA' },
+    });
+  });
+
+  it('propaga la falta de conexión', async () => {
+    const resultado = await pedir(() => Promise.reject(new Error('sin red')));
+
+    expect(resultado).toEqual({ ok: false, error: { tipo: 'sin_conexion' } });
+  });
+
+  it.each([
+    ['sin loginCmsReturn', sobre('<loginCmsResponse/>')],
+    ['con un ticket que no es XML', conTicket('no es xml')],
+    [
+      'sin token',
+      conTicket(
+        '&lt;r&gt;&lt;header&gt;&lt;expirationTime&gt;2026-10-26T21:00:00-03:00&lt;/expirationTime&gt;&lt;/header&gt;&lt;/r&gt;',
+      ),
+    ],
+    [
+      'con un vencimiento inválido',
+      conTicket(
+        '&lt;r&gt;&lt;header&gt;&lt;expirationTime&gt;mañana&lt;/expirationTime&gt;&lt;/header&gt;' +
+          '&lt;credentials&gt;&lt;token&gt;T&lt;/token&gt;&lt;sign&gt;S&lt;/sign&gt;&lt;/credentials&gt;&lt;/r&gt;',
+      ),
+    ],
+  ])('detecta una respuesta %s', async (_, cuerpo) => {
+    const resultado = await pedir(() => Promise.resolve({ estado: 200, cuerpo }));
+
+    expect(resultado).toEqual({ ok: false, error: { tipo: 'ticket_ilegible' } });
   });
 });

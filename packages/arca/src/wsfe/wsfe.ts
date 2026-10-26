@@ -1,7 +1,8 @@
 import { exito, type Resultado } from '@facturador/dominio';
 
-import { extraer, llamarSoap, type ErrorSoap } from '../soap/soap';
+import { llamarSoap, type ErrorSoap } from '../soap/soap';
 import type { Transporte } from '../soap/transporte';
+import { buscar } from '../soap/xml';
 
 const ESPACIO_DE_NOMBRES = 'http://ar.gov.afip.dif.FEV1/';
 
@@ -24,9 +25,10 @@ export async function consultarEstadoDeServidores(
   );
   if (!respuesta.ok) return respuesta;
 
+  const texto = (nombre: string) => buscar(respuesta.valor, 'FEDummyResult', nombre)?.texto ?? '';
   return exito({
-    aplicacion: extraer(respuesta.valor, 'AppServer') ?? '',
-    baseDeDatos: extraer(respuesta.valor, 'DbServer') ?? '',
-    autenticacion: extraer(respuesta.valor, 'AuthServer') ?? '',
+    aplicacion: texto('AppServer'),
+    baseDeDatos: texto('DbServer'),
+    autenticacion: texto('AuthServer'),
   });
 }

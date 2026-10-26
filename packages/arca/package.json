@@ -14,7 +14,8 @@
   "dependencies": {
     "@facturador/aplicacion": "workspace:*",
     "@facturador/dominio": "workspace:*",
-    "@noble/hashes": "2.4.0"
+    "@noble/hashes": "2.4.0",
+    "txml": "6.0.3"
   },
   "devDependencies": {
     "@facturador/config": "workspace:*",

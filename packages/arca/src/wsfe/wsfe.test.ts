@@ -34,7 +34,13 @@ describe('consultarEstadoDeServidores', () => {
 
   it('deja vacíos los campos que no vienen', async () => {
     const resultado = await consultarEstadoDeServidores(
-      () => Promise.resolve({ estado: 200, cuerpo: '' }),
+      () =>
+        Promise.resolve({
+          estado: 200,
+          cuerpo:
+            '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>' +
+            '<FEDummyResponse/></soap:Body></soap:Envelope>',
+        }),
       'https://wsfe',
     );
 
