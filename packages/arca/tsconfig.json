@@ -1,4 +1,8 @@
 {
   "extends": "@facturador/config/typescript/base.json",
+  "compilerOptions": {
+    // Solo por fetch, TextEncoder, btoa y atob, que Hermes también provee. Node queda para los tests.
+    "types": ["node"]
+  },
   "include": ["src"]
 }
