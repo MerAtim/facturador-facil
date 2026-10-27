@@ -11,6 +11,15 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    # El SDK de Expo fija versiones compatibles entre sí de estos paquetes. Se actualizan
+    # juntos con `expo install --fix` al cambiar de SDK, nunca de a uno.
+    ignore:
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@types/react'
     groups:
       dependencias:
         patterns: ['*']
