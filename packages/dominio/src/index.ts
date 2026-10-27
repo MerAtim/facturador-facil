@@ -5,6 +5,7 @@ export * from './iva/alicuotaIva';
 export * from './iva/calculoIva';
 export * from './comprobantes/tipoComprobante';
 export * from './comprobantes/condicionIvaReceptor';
+export * from './comprobantes/receptor';
 export * from './importes/cantidad';
 export * from './comprobantes/comprobante';
 export * from './compartido/fechaCalendario';
