@@ -23,11 +23,12 @@ import {
   type LineaDeTotal,
   type Opcion,
 } from '@facturador/ui';
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { CONDICION_DEL_EMISOR } from '../configuracion/emisorProvisorio';
+import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
+import { useConfiguracion } from '../configuracion/configuracion';
 import { EditorDeItem } from '../emision/EditorDeItem';
 import { EleccionDeReceptor } from '../emision/EleccionDeReceptor';
 import { almacenLocalDelDispositivo } from '../infraestructura/almacenLocalDelDispositivo';
@@ -53,6 +54,7 @@ interface ItemEnPantalla {
 
 export default function NuevaFactura() {
   const { espacio } = useTema();
+  const configuracion = useConfiguracion();
   const [receptor, setReceptor] = useState(CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
   const [modo, setModo] = useState<ModoDePrecio>();
   const ultimaClave = useRef(0);
@@ -67,9 +69,12 @@ export default function NuevaFactura() {
     });
   }, []);
 
+  const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
+  // Mientras se lee la configuración se calcula como monotributo; la pantalla todavía no se muestra.
+  const condicionDelEmisor = configurada?.emisor.datos.condicion ?? 'monotributo';
   const modoDePrecio = modo ?? 'final';
   const tipo = TipoComprobante.de(
-    claseParaEmitir(CONDICION_DEL_EMISOR, receptor.condicion),
+    claseParaEmitir(condicionDelEmisor, receptor.condicion),
     'factura',
   );
   const totales = totalesDelBorrador(
@@ -103,59 +108,64 @@ export default function NuevaFactura() {
     setItems((actuales) => actuales.filter((item) => item.clave !== clave));
   };
 
+  if (configuracion.estado === 'lista' && !configurada) return <Redirect href="/configuracion" />;
+
   return (
     <Pantalla conEncabezado>
       <Stack.Screen options={{ title: 'Nueva factura' }} />
-      <ScrollView
-        contentContainerStyle={[
-          estilos.contenido,
-          { padding: espacio.normal, gap: espacio.grande },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-      >
-        <View style={{ gap: espacio.chico }}>
-          <EleccionDeReceptor receptor={receptor} onCambiar={setReceptor} />
-          <View accessible>
-            <Texto variante="subtitulo">Factura {tipo.clase}</Texto>
-            <Texto variante="detalle">{EXPLICACION_DE_LA_CLASE[tipo.clase]}</Texto>
+      {configurada && (
+        <ScrollView
+          contentContainerStyle={[
+            estilos.contenido,
+            { padding: espacio.normal, gap: espacio.grande },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
+          <AvisoDeAmbiente ambiente={configurada.ambiente} />
+          <View style={{ gap: espacio.chico }}>
+            <EleccionDeReceptor receptor={receptor} onCambiar={setReceptor} />
+            <View accessible>
+              <Texto variante="subtitulo">Factura {tipo.clase}</Texto>
+              <Texto variante="detalle">{EXPLICACION_DE_LA_CLASE[tipo.clase]}</Texto>
+            </View>
           </View>
-        </View>
 
-        <View style={{ gap: espacio.medio }}>
-          {tipo.informaIva() && (
-            <SelectorSegmentado opciones={MODOS} valor={modoDePrecio} onCambiar={elegirModo} />
-          )}
-          {items.map((item, indice) => (
-            <EditorDeItem
-              key={item.clave}
-              numero={indice + 1}
-              borrador={item.borrador}
-              onCambiar={(borrador) => {
-                cambiarItem(item.clave, borrador);
-              }}
-              onQuitar={
-                items.length > 1
-                  ? () => {
-                      quitarItem(item.clave);
-                    }
-                  : undefined
-              }
-              conAlicuota={tipo.informaIva()}
-              etiquetaDelPrecio={etiquetaDelPrecio(tipo, modoDePrecio)}
-              enfocarAlAbrir={item.clave === 0 ? 'precio' : 'descripcion'}
-            />
-          ))}
-          <Boton variante="texto" icon="plus" onPress={agregarItem}>
-            Agregar ítem
-          </Boton>
-        </View>
+          <View style={{ gap: espacio.medio }}>
+            {tipo.informaIva() && (
+              <SelectorSegmentado opciones={MODOS} valor={modoDePrecio} onCambiar={elegirModo} />
+            )}
+            {items.map((item, indice) => (
+              <EditorDeItem
+                key={item.clave}
+                numero={indice + 1}
+                borrador={item.borrador}
+                onCambiar={(borrador) => {
+                  cambiarItem(item.clave, borrador);
+                }}
+                onQuitar={
+                  items.length > 1
+                    ? () => {
+                        quitarItem(item.clave);
+                      }
+                    : undefined
+                }
+                conAlicuota={tipo.informaIva()}
+                etiquetaDelPrecio={etiquetaDelPrecio(tipo, modoDePrecio)}
+                enfocarAlAbrir={item.clave === 0 ? 'precio' : 'descripcion'}
+              />
+            ))}
+            <Boton variante="texto" icon="plus" onPress={agregarItem}>
+              Agregar ítem
+            </Boton>
+          </View>
 
-        <ResumenDeTotales
-          lineas={lineasDelResumen(tipo, totales)}
-          total={totales.total.formatear()}
-        />
-      </ScrollView>
+          <ResumenDeTotales
+            lineas={lineasDelResumen(tipo, totales)}
+            total={totales.total.formatear()}
+          />
+        </ScrollView>
+      )}
     </Pantalla>
   );
 }

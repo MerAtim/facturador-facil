@@ -4,3 +4,4 @@ export * from './puertos/almacenSeguro';
 export * from './preferencias/preferencias';
 export * from './receptores/receptoresFrecuentes';
 export * from './emision/borradorDeFactura';
+export * from './configuracion/configuracion';

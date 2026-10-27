@@ -1,4 +1,6 @@
-export type Ambiente = 'homologacion' | 'produccion';
+import type { Ambiente } from '@facturador/aplicacion';
+
+export type { Ambiente };
 
 export const URLS: Readonly<Record<Ambiente, { readonly wsaa: string; readonly wsfe: string }>> = {
   homologacion: {

@@ -3,7 +3,6 @@ import {
   CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
   CondicionIvaReceptor,
   Cuit,
-  type MotivoCuitInvalido,
   type Receptor,
 } from '@facturador/dominio';
 import {
@@ -21,6 +20,7 @@ import {
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { MENSAJE_DE_CUIT } from '../contribuyente/mensajesDeCuit';
 import { almacenSeguroDelDispositivo } from '../infraestructura/almacenSeguroDelDispositivo';
 
 const frecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
@@ -32,13 +32,6 @@ const CONDICIONES: readonly Opcion<string>[] = CondicionIvaReceptor.TODAS.map((c
   valor: String(condicion.codigoArca),
   etiqueta: condicion.descripcion,
 }));
-
-const MENSAJE_DE_CUIT: Readonly<Record<MotivoCuitInvalido, string>> = {
-  caracteres_invalidos: 'El CUIT solo lleva números.',
-  longitud_invalida: 'El CUIT tiene 11 dígitos.',
-  prefijo_invalido: 'Un CUIT empieza con 20, 23, 24, 25, 26, 27, 30, 33 o 34.',
-  digito_verificador_invalido: 'El último dígito no coincide. Revisá que esté bien escrito.',
-};
 
 const conCuit = ({ cuit, condicion, nombre }: ReceptorConCuit): Receptor => ({
   identificacion: { tipo: 'cuit', cuit },
