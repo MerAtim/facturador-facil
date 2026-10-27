@@ -11,6 +11,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
     "@facturador/aplicacion": "workspace:*",
     "@facturador/arca": "workspace:*",
     "@facturador/dominio": "workspace:*",
