@@ -13,6 +13,7 @@ import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 
 import { emisionPara } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
+import { compartirFactura } from '../emision/compartirFactura';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
 
 /** Acciones de un error que se resuelven pidiendo de nuevo la autorización del mismo comprobante. */
@@ -28,6 +29,8 @@ export default function Resultado() {
   const configuracion = useConfiguracion();
   const [, setVersion] = useState(0);
   const [reintentando, setReintentando] = useState(false);
+  const [compartiendo, setCompartiendo] = useState(false);
+  const [noSeCompartio, setNoSeCompartio] = useState(false);
   const enviado = useRef(false);
 
   useEffect(() => {
@@ -50,6 +53,27 @@ export default function Resultado() {
     facturaEnCurso.terminar();
     router.dismissAll();
     router.push('/nueva-factura');
+  };
+
+  const compartir = async (otorgado: CaeOtorgado) => {
+    const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
+    if (!configurada) return;
+    setNoSeCompartio(false);
+    setCompartiendo(true);
+    try {
+      await compartirFactura({
+        comprobante: otorgado.comprobante,
+        emisor: configurada.emisor,
+        receptor,
+        puntoDeVenta: otorgado.puntoDeVenta,
+        numero: otorgado.numero,
+        deHomologacion: configurada.ambiente === 'homologacion',
+      });
+    } catch {
+      setNoSeCompartio(true);
+    } finally {
+      setCompartiendo(false);
+    }
   };
 
   /** El mismo comprobante otra vez: el autorizador averigua qué pasó con un envío incierto. */
@@ -86,7 +110,26 @@ export default function Resultado() {
         )}
 
         <View style={{ gap: espacio.chico, marginTop: espacio.normal }}>
-          {resultado.ok && <Boton onPress={emitirOtra}>Emitir otra factura</Boton>}
+          {resultado.ok && (
+            <Boton
+              icon="share-variant"
+              onPress={() => void compartir(resultado.valor)}
+              loading={compartiendo}
+              disabled={compartiendo}
+            >
+              Compartir factura
+            </Boton>
+          )}
+          {noSeCompartio && (
+            <Aviso icono="alert-circle-outline" tono="error">
+              No se pudo generar el PDF. Probá de nuevo.
+            </Aviso>
+          )}
+          {resultado.ok && (
+            <Boton variante="secundario" onPress={emitirOtra}>
+              Emitir otra factura
+            </Boton>
+          )}
           {!resultado.ok && (
             <AccionesDelError
               error={resultado.error}
