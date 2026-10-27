@@ -2,7 +2,8 @@ import { validarClaveDeAlmacen, type AlmacenLocal } from '@facturador/aplicacion
 import { Directory, File, Paths } from 'expo-file-system';
 
 // La caché del sistema no entra en los respaldos y Android o iOS pueden vaciarla si falta espacio.
-// Eso está bien: acá solo se guardan datos que se pueden volver a consultar.
+// Eso está bien: acá solo se guardan datos que se pueden volver a consultar y preferencias
+// cuya pérdida no hace daño.
 const carpeta = new Directory(Paths.cache, 'almacen-local');
 
 function archivo(clave: string): File {

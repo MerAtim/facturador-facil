@@ -24,7 +24,10 @@ function Navegacion() {
     <>
       <Stack
         screenOptions={{
-          headerShown: false,
+          // Encabezado nativo de cada plataforma, con los colores del tema.
+          headerStyle: { backgroundColor: colores.background },
+          headerTintColor: colores.onSurface,
+          headerShadowVisible: false,
           contentStyle: { backgroundColor: colores.background },
         }}
       />

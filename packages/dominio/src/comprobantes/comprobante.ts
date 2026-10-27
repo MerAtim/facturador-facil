@@ -134,8 +134,15 @@ const sumar = (importes: readonly Dinero[]): Dinero =>
 /**
  * Agrupa por alícuota y calcula neto e IVA una sola vez por grupo: un único redondeo por alícuota,
  * que coincide con el bloque Iva que se informa a ARCA.
+ *
+ * Es el mismo cálculo que hace `Comprobante.crear`. Las pantallas lo usan para mostrar los totales
+ * mientras se carga el comprobante, así lo que se ve coincide con lo que se informa.
  */
-function calcularTotales({ tipo, modoDePrecio, items }: DatosComprobante): Totales {
+export function calcularTotales({
+  tipo,
+  modoDePrecio,
+  items,
+}: Pick<DatosComprobante, 'tipo' | 'modoDePrecio' | 'items'>): Totales {
   if (!tipo.informaIva()) {
     const total = sumar(items.map(importeDe));
     return { neto: total, iva: Dinero.CERO, total, porAlicuota: [] };

@@ -5,7 +5,12 @@ import { SIN_IDENTIFICAR } from '../contribuyente/identificacionReceptor';
 import { Cantidad } from '../importes/cantidad';
 import { Dinero } from '../importes/dinero';
 import { AlicuotaIva } from '../iva/alicuotaIva';
-import { Comprobante, type DatosComprobante, type ItemComprobante } from './comprobante';
+import {
+  calcularTotales,
+  Comprobante,
+  type DatosComprobante,
+  type ItemComprobante,
+} from './comprobante';
 import { CondicionIvaReceptor } from './condicionIvaReceptor';
 import { TipoComprobante } from './tipoComprobante';
 
@@ -123,6 +128,26 @@ describe('Comprobante', () => {
       expect(enPesos(totales.neto)).toBe('$ 350,00');
       expect(totales.iva.esCero()).toBe(true);
       expect(totales.porAlicuota).toEqual([]);
+    });
+
+    it('calcularTotales da lo mismo que el comprobante creado', () => {
+      const datos = facturaA([
+        item('1.355', AlicuotaIva.VEINTIUNO),
+        item('99,99', AlicuotaIva.CINCO),
+      ]);
+
+      expect(calcularTotales(datos)).toEqual(crear(datos).totales);
+    });
+
+    it('calcularTotales funciona mientras el comprobante todavía está incompleto', () => {
+      const totales = calcularTotales({
+        tipo: TipoComprobante.FACTURA_B,
+        modoDePrecio: 'final',
+        items: [item('0', AlicuotaIva.VEINTIUNO, '1', '')],
+      });
+
+      expect(totales.total.esCero()).toBe(true);
+      expect(totales.iva.esCero()).toBe(true);
     });
   });
 
