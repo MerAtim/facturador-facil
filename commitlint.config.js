@@ -1,5 +1,7 @@
 export default {
   extends: ['@commitlint/config-conventional'],
+  // Dependabot arma los títulos solo y en grupos pueden pasar los 72 caracteres.
+  ignores: [(mensaje) => /^build\(deps(-dev)?\): bump /.test(mensaje)],
   plugins: [
     {
       rules: {
