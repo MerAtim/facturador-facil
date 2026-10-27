@@ -1,7 +1,6 @@
 import type { Ambiente } from '@facturador/aplicacion';
 import {
   aliasDeClave,
-  crearAlmacenDeCertificados,
   crearPedidoDeCertificado,
   nombreDelArchivoDePedido,
   TAMANIO_MAXIMO_DEL_CERTIFICADO,
@@ -23,9 +22,7 @@ import { ScrollView, View } from 'react-native';
 import { almacenDeClavesDelDispositivo } from '../arca/almacenDeClavesDelDispositivo';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
-import { almacenSeguroDelDispositivo } from '../infraestructura/almacenSeguroDelDispositivo';
-
-const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
+import { almacenDeCertificados, olvidarEmisiones } from '../composicion';
 
 const DONDE_SUBIRLO: Readonly<Record<Ambiente, string>> = {
   homologacion:
@@ -153,6 +150,7 @@ export default function Certificado() {
         return;
       }
       await almacenDeCertificados.guardar(datos, resultado.valor.der);
+      olvidarEmisiones();
       setCertificado(resultado.valor);
     } catch {
       setRechazo('No se pudo leer el archivo. Probá de nuevo.');

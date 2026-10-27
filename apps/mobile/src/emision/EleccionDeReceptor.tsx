@@ -1,4 +1,4 @@
-import { crearReceptoresFrecuentes, type ReceptorConCuit } from '@facturador/aplicacion';
+import type { ReceptorConCuit } from '@facturador/aplicacion';
 import {
   CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
   CondicionIvaReceptor,
@@ -20,10 +20,8 @@ import {
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { receptoresFrecuentes } from '../composicion';
 import { MENSAJE_DE_CUIT } from '../contribuyente/mensajesDeCuit';
-import { almacenSeguroDelDispositivo } from '../infraestructura/almacenSeguroDelDispositivo';
-
-const frecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
 
 const CONSUMIDOR_FINAL = 'consumidor_final';
 const OTRO_CUIT = 'otro_cuit';
@@ -58,7 +56,7 @@ export function EleccionDeReceptor({
   const [cargandoOtro, setCargandoOtro] = useState(false);
 
   useEffect(() => {
-    void frecuentes.listar().then(setRecordados);
+    void receptoresFrecuentes.listar().then(setRecordados);
   }, []);
 
   const cuitElegido = cuitDe(receptor);
@@ -81,12 +79,10 @@ export function EleccionDeReceptor({
     if (recordado) onCambiar(conCuit(recordado));
   };
 
-  const usarNuevo = async (nuevo: ReceptorConCuit) => {
+  // Un CUIT nuevo pasa a los frecuentes recién cuando ARCA autoriza una factura para él.
+  const usarNuevo = (nuevo: ReceptorConCuit) => {
     onCambiar(conCuit(nuevo));
     setCargandoOtro(false);
-    // Por ahora cuenta como uso elegirlo; cuando se emita desde acá, contará al obtener el CAE.
-    await frecuentes.registrarUso(nuevo);
-    setRecordados(await frecuentes.listar());
   };
 
   return (
@@ -98,7 +94,7 @@ export function EleccionDeReceptor({
         onCambiar={elegir}
       />
       {cargandoOtro ? (
-        <FormularioDeCuit onListo={(nuevo) => void usarNuevo(nuevo)} />
+        <FormularioDeCuit onListo={usarNuevo} />
       ) : (
         cuitElegido && (
           <Texto variante="detalle">

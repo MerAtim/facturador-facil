@@ -5,3 +5,5 @@ export * from './preferencias/preferencias';
 export * from './receptores/receptoresFrecuentes';
 export * from './emision/borradorDeFactura';
 export * from './configuracion/configuracion';
+export * from './emision/emision';
+export * from './emision/prepararFactura';

@@ -239,7 +239,7 @@ function sinTraza(texto: string): string {
 }
 
 /** Formato de los comprobantes impresos: punto de venta de 5 dígitos y número de 8. */
-const numeroCompleto = (puntoDeVenta: number, numero: number) =>
+export const numeroCompleto = (puntoDeVenta: number, numero: number) =>
   `${String(puntoDeVenta).padStart(5, '0')}-${String(numero).padStart(8, '0')}`;
 
 function mensaje(
