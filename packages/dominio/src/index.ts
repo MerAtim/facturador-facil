@@ -11,5 +11,6 @@ export * from './comprobantes/comprobante';
 export * from './compartido/fechaCalendario';
 export * from './comprobantes/concepto';
 export * from './contribuyente/dni';
+export * from './contribuyente/emisor';
 export * from './contribuyente/identificacionReceptor';
 export * from './comprobantes/validacionesDeEnvio';

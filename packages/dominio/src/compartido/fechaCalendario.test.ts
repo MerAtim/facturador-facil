@@ -27,7 +27,7 @@ describe('FechaCalendario', () => {
     [2026, 13, 1],
     [2026, 4, 31],
     [2026, 0, 10],
-    [1999, 12, 31],
+    [1899, 12, 31],
     [2026.5, 1, 1],
   ])('rechaza %i/%i/%i', (anio, mes, dia) => {
     expect(FechaCalendario.crear(anio, mes, dia).ok).toBe(false);

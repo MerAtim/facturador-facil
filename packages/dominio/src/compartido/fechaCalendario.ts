@@ -28,7 +28,7 @@ export class FechaCalendario {
     const fecha = new Date(Date.UTC(anio, mes - 1, dia));
     const existe =
       Number.isInteger(anio) &&
-      anio >= 2000 &&
+      anio >= 1900 &&
       anio <= 9999 &&
       fecha.getUTCFullYear() === anio &&
       fecha.getUTCMonth() === mes - 1 &&
