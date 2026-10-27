@@ -1,21 +1,22 @@
-import { crearPreferencias } from '@facturador/aplicacion';
+import {
+  crearPreferencias,
+  itemVacio,
+  totalesDelBorrador,
+  type BorradorDeItem,
+} from '@facturador/aplicacion';
 import {
   AlicuotaIva,
-  calcularTotales,
-  Cantidad,
   claseParaEmitir,
   CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
-  Dinero,
   TipoComprobante,
   type ClaseComprobante,
   type ModoDePrecio,
+  type Totales,
 } from '@facturador/dominio';
 import {
-  CampoDeImporte,
-  importeEscrito,
+  Boton,
   Pantalla,
   ResumenDeTotales,
-  Selector,
   SelectorSegmentado,
   Texto,
   useTema,
@@ -23,10 +24,11 @@ import {
   type Opcion,
 } from '@facturador/ui';
 import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CONDICION_DEL_EMISOR } from '../configuracion/emisorProvisorio';
+import { EditorDeItem } from '../emision/EditorDeItem';
 import { EleccionDeReceptor } from '../emision/EleccionDeReceptor';
 import { almacenLocalDelDispositivo } from '../infraestructura/almacenLocalDelDispositivo';
 
@@ -37,23 +39,26 @@ const MODOS: readonly Opcion<ModoDePrecio>[] = [
   { valor: 'neto', etiqueta: 'Precio neto' },
 ];
 
-const ALICUOTAS: readonly Opcion<string>[] = AlicuotaIva.TODAS.map((alicuota) => ({
-  valor: String(alicuota.codigoArca),
-  etiqueta: alicuota.formatear(),
-}));
-
 const EXPLICACION_DE_LA_CLASE: Readonly<Record<ClaseComprobante, string>> = {
   A: 'Discrimina el IVA: el receptor puede computarlo como crédito fiscal.',
   B: 'El IVA va incluido en el precio y el cliente no lo ve discriminado.',
   C: 'No lleva IVA.',
 };
 
+interface ItemEnPantalla {
+  /** Identifica al ítem aunque cambie de lugar al quitar otro. */
+  readonly clave: number;
+  readonly borrador: BorradorDeItem;
+}
+
 export default function NuevaFactura() {
   const { espacio } = useTema();
   const [receptor, setReceptor] = useState(CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
-  const [alicuota, setAlicuota] = useState(AlicuotaIva.VEINTIUNO);
-  const [importe, setImporte] = useState('');
   const [modo, setModo] = useState<ModoDePrecio>();
+  const ultimaClave = useRef(0);
+  const [items, setItems] = useState<readonly ItemEnPantalla[]>([
+    { clave: 0, borrador: itemVacio(AlicuotaIva.VEINTIUNO) },
+  ]);
 
   useEffect(() => {
     void preferencias.modoDePrecio().then((recordado) => {
@@ -67,24 +72,35 @@ export default function NuevaFactura() {
     claseParaEmitir(CONDICION_DEL_EMISOR, receptor.condicion),
     'factura',
   );
-  const totales = calcularTotales({
+  const totales = totalesDelBorrador(
     tipo,
     modoDePrecio,
-    items: [
-      { descripcion: '', cantidad: Cantidad.UNO, precioUnitario: leerImporte(importe), alicuota },
-    ],
-  });
-
-  const lineas: readonly LineaDeTotal[] = tipo.informaIva()
-    ? [
-        { etiqueta: 'Neto', importe: totales.neto.formatear() },
-        { etiqueta: `IVA ${alicuota.formatear()}`, importe: totales.iva.formatear() },
-      ]
-    : [];
+    items.map((item) => item.borrador),
+  );
 
   const elegirModo = (elegido: ModoDePrecio) => {
     setModo(elegido);
     void preferencias.recordarModoDePrecio(elegido);
+  };
+
+  const cambiarItem = (clave: number, borrador: BorradorDeItem) => {
+    setItems((actuales) =>
+      actuales.map((item) => (item.clave === clave ? { clave, borrador } : item)),
+    );
+  };
+
+  const agregarItem = () => {
+    ultimaClave.current += 1;
+    const clave = ultimaClave.current;
+    // El nuevo ítem hereda la alícuota del anterior: lo habitual es repetirla.
+    setItems((actuales) => [
+      ...actuales,
+      { clave, borrador: itemVacio(actuales.at(-1)?.borrador.alicuota ?? AlicuotaIva.VEINTIUNO) },
+    ]);
+  };
+
+  const quitarItem = (clave: number) => {
+    setItems((actuales) => actuales.filter((item) => item.clave !== clave));
   };
 
   return (
@@ -110,39 +126,64 @@ export default function NuevaFactura() {
           {tipo.informaIva() && (
             <SelectorSegmentado opciones={MODOS} valor={modoDePrecio} onCambiar={elegirModo} />
           )}
-          <CampoDeImporte
-            etiqueta={etiquetaDelImporte(tipo, modoDePrecio)}
-            valor={importe}
-            onCambiar={setImporte}
-            autoFocus
-          />
-          {tipo.informaIva() && (
-            <Selector
-              etiqueta="Alícuota de IVA"
-              opciones={ALICUOTAS}
-              valor={String(alicuota.codigoArca)}
-              onCambiar={(codigo) => {
-                setAlicuota(AlicuotaIva.desdeCodigoArca(Number(codigo)) ?? alicuota);
+          {items.map((item, indice) => (
+            <EditorDeItem
+              key={item.clave}
+              numero={indice + 1}
+              borrador={item.borrador}
+              onCambiar={(borrador) => {
+                cambiarItem(item.clave, borrador);
               }}
+              onQuitar={
+                items.length > 1
+                  ? () => {
+                      quitarItem(item.clave);
+                    }
+                  : undefined
+              }
+              conAlicuota={tipo.informaIva()}
+              etiquetaDelPrecio={etiquetaDelPrecio(tipo, modoDePrecio)}
+              enfocarAlAbrir={item.clave === 0 ? 'precio' : 'descripcion'}
             />
-          )}
+          ))}
+          <Boton variante="texto" icon="plus" onPress={agregarItem}>
+            Agregar ítem
+          </Boton>
         </View>
 
-        <ResumenDeTotales lineas={lineas} total={totales.total.formatear()} />
+        <ResumenDeTotales
+          lineas={lineasDelResumen(tipo, totales)}
+          total={totales.total.formatear()}
+        />
       </ScrollView>
     </Pantalla>
   );
 }
 
-/** Mientras el importe está vacío o a medio escribir, los totales muestran cero. */
-function leerImporte(texto: string): Dinero {
-  const resultado = Dinero.desdeTexto(importeEscrito(texto));
-  return resultado.ok ? resultado.valor : Dinero.CERO;
+function etiquetaDelPrecio(tipo: TipoComprobante, modo: ModoDePrecio): string {
+  if (!tipo.informaIva()) return 'Precio';
+  return modo === 'final' ? 'Precio final' : 'Precio neto';
 }
 
-function etiquetaDelImporte(tipo: TipoComprobante, modo: ModoDePrecio): string {
-  if (!tipo.informaIva()) return 'Importe';
-  return modo === 'final' ? 'Precio final, con IVA' : 'Precio neto, sin IVA';
+/** Neto e IVA; con más de una alícuota, separados por alícuota. */
+function lineasDelResumen(tipo: TipoComprobante, totales: Totales): readonly LineaDeTotal[] {
+  if (!tipo.informaIva()) return [];
+
+  const [unica, ...otras] = totales.porAlicuota;
+  if (!unica || otras.length === 0) {
+    return [
+      { etiqueta: 'Neto', importe: totales.neto.formatear() },
+      {
+        etiqueta: unica ? `IVA ${unica.alicuota.formatear()}` : 'IVA',
+        importe: totales.iva.formatear(),
+      },
+    ];
+  }
+
+  return totales.porAlicuota.flatMap(({ alicuota, neto, iva }) => [
+    { etiqueta: `Neto al ${alicuota.formatear()}`, importe: neto.formatear() },
+    { etiqueta: `IVA ${alicuota.formatear()}`, importe: iva.formatear() },
+  ]);
 }
 
 const estilos = StyleSheet.create({

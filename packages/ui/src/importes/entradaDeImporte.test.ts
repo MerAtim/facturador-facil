@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatearEntradaDeImporte, importeEscrito } from './entradaDeImporte';
+import { formatearEntradaDeCantidad, formatearEntradaDeImporte } from './entradaDeImporte';
 
 describe('formatearEntradaDeImporte', () => {
   it.each([
@@ -49,13 +49,17 @@ describe('formatearEntradaDeImporte', () => {
   });
 });
 
-describe('importeEscrito', () => {
-  it('quita la coma final', () => {
-    expect(importeEscrito('1.234,')).toBe('1.234');
-  });
-
-  it('deja igual un importe completo', () => {
-    expect(importeEscrito('1.234,5')).toBe('1.234,5');
-    expect(importeEscrito('')).toBe('');
+describe('formatearEntradaDeCantidad', () => {
+  it.each([
+    ['', ''],
+    ['2', '2'],
+    ['1500', '1500'],
+    ['2,5', '2,5'],
+    ['2.', '2,'],
+    ['0,125', '0,125'],
+    ['0,1255', '0,125'],
+    [',5', '0,5'],
+  ])('"%s" se muestra "%s"', (escrito, mostrado) => {
+    expect(formatearEntradaDeCantidad(escrito)).toBe(mostrado);
   });
 });

@@ -6,11 +6,13 @@ export function CampoDeTexto({
   valor,
   onCambiar,
   maximo,
+  autoFocus = false,
 }: {
   readonly etiqueta: string;
   readonly valor: string;
   readonly onCambiar: (valor: string) => void;
   readonly maximo?: number;
+  readonly autoFocus?: boolean;
 }) {
   return (
     <TextInput
@@ -18,6 +20,7 @@ export function CampoDeTexto({
       label={etiqueta}
       value={valor}
       onChangeText={onCambiar}
+      autoFocus={autoFocus}
       {...(maximo === undefined ? {} : { maxLength: maximo })}
     />
   );
