@@ -1,11 +1,18 @@
-import { exito, fallo, type Cuit, type Resultado } from '@facturador/dominio';
+import { exito, fallo, type Resultado } from '@facturador/dominio';
 
 import { llamarSoap, type ErrorSoap } from '../soap/soap';
 import type { Transporte } from '../soap/transporte';
-import { buscar, escaparXml, type ElementoXml } from '../soap/xml';
-import type { TicketDeAcceso } from '../wsaa/wsaa';
+import { buscar, type ElementoXml } from '../soap/xml';
+import {
+  ESPACIO_DE_NOMBRES,
+  leerMensajes,
+  llamarWsfe,
+  texto,
+  type Autorizacion,
+  type ErrorWsfe,
+} from './comun';
 
-const ESPACIO_DE_NOMBRES = 'http://ar.gov.afip.dif.FEV1/';
+export type { Autorizacion, ErrorDeArca, ErrorWsfe, RechazoWsfe } from './comun';
 
 /** WSFEv1 responde con este código cuando una consulta no tiene resultados. */
 const SIN_RESULTADOS = 602;
@@ -36,24 +43,6 @@ export async function consultarEstadoDeServidores(
     autenticacion: texto('AuthServer'),
   });
 }
-
-export interface Autorizacion {
-  readonly ticket: TicketDeAcceso;
-  readonly cuit: Cuit;
-}
-
-export interface ErrorDeArca {
-  readonly codigo: number;
-  readonly mensaje: string;
-}
-
-/** WSFEv1 informa los errores de negocio dentro de una respuesta exitosa, no como falla SOAP. */
-export interface RechazoWsfe {
-  readonly tipo: 'rechazo_wsfe';
-  readonly errores: readonly ErrorDeArca[];
-}
-
-export type ErrorWsfe = ErrorSoap | RechazoWsfe;
 
 /** Entrada de las tablas de parámetros: tipos de comprobante, alícuotas, monedas. */
 export interface ParametroWsfe {
@@ -124,19 +113,11 @@ async function consultarTabla<T>(
   url: string,
   leer: (elemento: ElementoXml) => T,
 ): Promise<Resultado<readonly T[], ErrorWsfe>> {
-  const respuesta = await llamarSoap(
-    transporte,
-    url,
-    `${ESPACIO_DE_NOMBRES}${metodo}`,
-    `<${metodo} xmlns="${ESPACIO_DE_NOMBRES}">${auth(autorizacion)}</${metodo}>`,
-  );
+  const respuesta = await llamarWsfe(metodo, autorizacion, '', transporte, url);
   if (!respuesta.ok) return respuesta;
 
-  // Sin el elemento de resultado no hay forma de distinguir una tabla vacía de una respuesta rota.
-  const resultado = buscar(respuesta.valor, `${metodo}Result`);
-  if (!resultado) return fallo({ tipo: 'respuesta_inesperada', estado: 200 });
-
-  const errores = leerErrores(resultado);
+  const resultado = respuesta.valor;
+  const errores = leerMensajes(buscar(resultado, 'Errors'));
   if (errores.length > 0) {
     if (errores.every((error) => error.codigo === SIN_RESULTADOS)) return exito([]);
     return fallo({ tipo: 'rechazo_wsfe', errores });
@@ -144,23 +125,6 @@ async function consultarTabla<T>(
 
   return exito(buscar(resultado, 'ResultGet')?.hijos.map(leer) ?? []);
 }
-
-function auth({ ticket, cuit }: Autorizacion): string {
-  return (
-    `<Auth><Token>${escaparXml(ticket.token)}</Token><Sign>${escaparXml(ticket.firma)}</Sign>` +
-    `<Cuit>${escaparXml(cuit.valor)}</Cuit></Auth>`
-  );
-}
-
-function leerErrores(resultado: ElementoXml): ErrorDeArca[] {
-  return (buscar(resultado, 'Errors')?.hijos ?? []).map((error) => ({
-    codigo: Number(texto(error, 'Code')),
-    mensaje: texto(error, 'Msg'),
-  }));
-}
-
-const texto = (elemento: ElementoXml, nombre: string) =>
-  buscar(elemento, nombre)?.texto.trim() ?? '';
 
 /** WSFEv1 usa el texto `NULL` para las fechas vacías. */
 function fecha(elemento: ElementoXml, nombre: string): string | undefined {

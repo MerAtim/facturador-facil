@@ -7,5 +7,7 @@ export * from './soap/transporte';
 export type { XmlInvalido } from './soap/xml';
 export * from './wsaa/proveedorDeTickets';
 export * from './wsaa/wsaa';
+export * from './wsfe/autorizadorWsfe';
+export * from './wsfe/cae';
 export * from './wsfe/parametrosWsfe';
 export * from './wsfe/wsfe';

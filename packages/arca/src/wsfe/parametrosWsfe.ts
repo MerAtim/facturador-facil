@@ -5,6 +5,7 @@ import { URLS, type Ambiente } from '../ambiente';
 import type { Transporte } from '../soap/transporte';
 import type { ProveedorDeTickets } from '../wsaa/proveedorDeTickets';
 import type { ErrorWsaa } from '../wsaa/wsaa';
+import { conTicket } from './comun';
 import {
   consultarAlicuotasDeIva,
   consultarCondicionesIvaReceptor,
@@ -20,9 +21,6 @@ import {
 
 /** Las tablas de ARCA cambian muy de vez en cuando: alcanza con consultarlas una vez por día. */
 const DURACION_MS = 24 * 60 * 60 * 1000;
-
-/** WSFEv1 rechaza así un token vencido o que no reconoce. */
-const TOKEN_INVALIDO = 600;
 
 /** Se cambia si cambia la forma de lo guardado, para no leer datos con el formato viejo. */
 const VERSION = 'v1';
@@ -72,23 +70,6 @@ export function crearParametrosWsfe(config: ConfiguracionDeParametros): Parametr
     return edad >= 0 && edad < DURACION_MS;
   };
 
-  async function conTicket<T>(
-    consulta: (autorizacion: Autorizacion, transporte: Transporte, url: string) => Consulta<T>,
-  ): Consulta<T> {
-    const intentar = async (): Consulta<T> => {
-      const ticket = await config.tickets.obtener();
-      if (!ticket.ok) return ticket;
-      return consulta({ ticket: ticket.valor, cuit: config.cuit }, config.transporte, url);
-    };
-
-    const resultado = await intentar();
-    if (resultado.ok || !rechazaElTicket(resultado.error)) return resultado;
-
-    // ARCA puede invalidar un ticket antes de su vencimiento: se pide otro una sola vez.
-    await config.tickets.invalidar();
-    return intentar();
-  }
-
   function enCache<T>(
     nombre: string,
     consulta: (autorizacion: Autorizacion, transporte: Transporte, url: string) => Consulta<T>,
@@ -105,7 +86,9 @@ export function crearParametrosWsfe(config: ConfiguracionDeParametros): Parametr
         return exito(valorGuardado ?? []);
       }
 
-      const resultado = await conTicket(consulta);
+      const resultado = await conTicket(config.tickets, config.cuit, (autorizacion) =>
+        consulta(autorizacion, config.transporte, url),
+      );
       if (!resultado.ok) return valorGuardado ? exito(valorGuardado) : resultado;
 
       const nuevo: Guardado = { consultado: reloj().toISOString(), valor: resultado.valor };
@@ -128,9 +111,6 @@ export function crearParametrosWsfe(config: ConfiguracionDeParametros): Parametr
     },
   };
 }
-
-const rechazaElTicket = (error: ErrorParametros) =>
-  error.tipo === 'rechazo_wsfe' && error.errores.some(({ codigo }) => codigo === TOKEN_INVALIDO);
 
 /** Un dato ilegible o un almacén que falla equivalen a no tener nada guardado. */
 async function leer(almacen: AlmacenLocal, clave: string): Promise<Guardado | undefined> {
