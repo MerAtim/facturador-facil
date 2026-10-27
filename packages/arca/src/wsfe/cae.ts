@@ -28,6 +28,11 @@ import {
 const MAXIMO_PUNTO_DE_VENTA = 99_999;
 const MAXIMO_NUMERO = 99_999_999;
 
+/** WSFEv1 responde con este código cuando no tiene el comprobante consultado. */
+const SIN_RESULTADOS = 602;
+
+const FORMATO_CAE = /^\d{14}$/;
+
 /** La app solo factura en pesos, sin conceptos no gravados, exentos ni tributos. */
 const CERO = '0.00';
 
@@ -178,7 +183,8 @@ function detalle({ datos, totales }: Comprobante, numero: number): string {
   ].join('');
 }
 
-function numeroDeDocumento(identificacion: IdentificacionReceptor): string {
+/** Número que se informa en DocNro: el CUIT, el DNI o 0 si el receptor no se identifica. */
+export function numeroDeDocumento(identificacion: IdentificacionReceptor): string {
   switch (identificacion.tipo) {
     case 'cuit':
       return identificacion.cuit.valor;
@@ -234,4 +240,107 @@ function verificarRango(nombre: string, valor: number, maximo: number) {
   if (!Number.isSafeInteger(valor) || valor < 1 || valor > maximo) {
     throw new RangeError(`El ${nombre} debe ser un entero entre 1 y ${String(maximo)}`);
   }
+}
+
+/** Lo que ARCA registró de un comprobante autorizado. */
+export interface ComprobanteEnArca {
+  readonly puntoDeVenta: number;
+  readonly codigoDeTipo: number;
+  readonly numero: number;
+  readonly fechaDeEmision: FechaCalendario;
+  readonly totalEnCentavos: number;
+  readonly codigoDeDocumento: number;
+  readonly numeroDeDocumento: string;
+  readonly cae: string;
+  readonly vencimiento: FechaCalendario;
+  readonly observaciones: readonly ErrorDeArca[];
+}
+
+/**
+ * FECompConsultar: el comprobante autorizado con ese número, o `undefined` si ARCA no lo tiene.
+ * Es la única forma de saber si una solicitud que se cortó llegó a autorizarse.
+ */
+export async function consultarComprobante(
+  autorizacion: Autorizacion,
+  puntoDeVenta: number,
+  tipo: TipoComprobante,
+  numero: number,
+  transporte: Transporte,
+  url: string,
+): Promise<Resultado<ComprobanteEnArca | undefined, ErrorWsfe>> {
+  verificarRango('punto de venta', puntoDeVenta, MAXIMO_PUNTO_DE_VENTA);
+  verificarRango('número', numero, MAXIMO_NUMERO);
+
+  const respuesta = await llamarWsfe(
+    'FECompConsultar',
+    autorizacion,
+    `<FeCompConsReq>${campo('CbteTipo', tipo.codigoArca)}${campo('CbteNro', numero)}` +
+      `${campo('PtoVta', puntoDeVenta)}</FeCompConsReq>`,
+    transporte,
+    url,
+  );
+  if (!respuesta.ok) return respuesta;
+
+  const errores = leerMensajes(buscar(respuesta.valor, 'Errors'));
+  if (errores.length > 0) {
+    return errores.every((error) => error.codigo === SIN_RESULTADOS)
+      ? exito(undefined)
+      : fallo({ tipo: 'rechazo_wsfe', errores });
+  }
+
+  const comprobante = buscar(respuesta.valor, 'ResultGet');
+  if (!comprobante) return inesperada;
+  const leido = leerComprobanteEnArca(comprobante);
+  const esElPedido =
+    leido?.puntoDeVenta === puntoDeVenta &&
+    leido.codigoDeTipo === tipo.codigoArca &&
+    leido.numero === numero;
+  return leido && esElPedido ? exito(leido) : inesperada;
+}
+
+function leerComprobanteEnArca(elemento: ElementoXml): ComprobanteEnArca | undefined {
+  const puntoDeVenta = entero(elemento, 'PtoVta');
+  const codigoDeTipo = entero(elemento, 'CbteTipo');
+  const numero = entero(elemento, 'CbteDesde');
+  const codigoDeDocumento = entero(elemento, 'DocTipo');
+  const fechaDeEmision = FechaCalendario.desdeTextoArca(texto(elemento, 'CbteFch'));
+  const vencimiento = FechaCalendario.desdeTextoArca(texto(elemento, 'FchVto'));
+  const totalEnCentavos = centavos(texto(elemento, 'ImpTotal'));
+  const cae = texto(elemento, 'CodAutorizacion');
+
+  if (
+    texto(elemento, 'Resultado') !== 'A' ||
+    !FORMATO_CAE.test(cae) ||
+    puntoDeVenta === undefined ||
+    codigoDeTipo === undefined ||
+    numero === undefined ||
+    codigoDeDocumento === undefined ||
+    totalEnCentavos === undefined ||
+    !fechaDeEmision.ok ||
+    !vencimiento.ok
+  ) {
+    return undefined;
+  }
+  return {
+    puntoDeVenta,
+    codigoDeTipo,
+    numero,
+    fechaDeEmision: fechaDeEmision.valor,
+    totalEnCentavos,
+    codigoDeDocumento,
+    numeroDeDocumento: texto(elemento, 'DocNro'),
+    cae,
+    vencimiento: vencimiento.valor,
+    observaciones: leerMensajes(buscar(elemento, 'Observaciones')),
+  };
+}
+
+/** WSFEv1 devuelve los importes como `double`: `1000`, `2972.5`. */
+function centavos(importe: string): number | undefined {
+  const [enteros = '', decimales, ...resto] = importe.split('.');
+  const valido =
+    resto.length === 0 &&
+    /^\d{1,13}$/.test(enteros) &&
+    (decimales === undefined || /^\d{1,2}$/.test(decimales));
+  return valido ? Number(enteros) * 100 + Number((decimales ?? '').padEnd(2, '0')) : undefined;
 }
