@@ -133,6 +133,18 @@ describe('explicarError', () => {
     expect(mensaje.detalles[0]).toMatch(/… \(código 1\)$/);
   });
 
+  it('procesa rápido un mensaje armado para trabar expresiones regulares', () => {
+    const inicio = performance.now();
+
+    const mensaje = explicarError({
+      tipo: 'rechazo_wsfe',
+      errores: [{ codigo: 1, mensaje: `Error${'\t'.repeat(100_000)}x` }],
+    });
+
+    expect(performance.now() - inicio).toBeLessThan(100);
+    expect(mensaje.detalles).toEqual(['Error. (código 1)']);
+  });
+
   it('muestra solo el código si ARCA no dio un texto útil', () => {
     const mensaje = explicarError({
       tipo: 'comprobante_rechazado',

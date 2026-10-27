@@ -215,14 +215,22 @@ function explicarCodigo({ codigo, mensaje: texto }: ErrorDeArca): string {
 }
 
 const LONGITUD_MAXIMA = 200;
+const LONGITUD_LEIDA = 1000;
+
+const SIGNOS_DE_CIERRE = new Set([' ', '.', ':', ',', ';', '-']);
+
+/** Quita espacios y signos sueltos del final, donde quedó cortada la traza. */
+function sinCierre(texto: string): string {
+  let fin = texto.length;
+  while (fin > 0 && SIGNOS_DE_CIERRE.has(texto.charAt(fin - 1))) fin--;
+  return texto.slice(0, fin).trim();
+}
 
 /** ARCA a veces agrega la excepción interna al mensaje: se corta ahí. */
 function sinTraza(texto: string): string {
-  const [antes = ''] = texto.split(/excepci[oó]n|exception|\bat\s+\w+\./i);
-  const limpio = antes
-    .replace(/\s+/g, ' ')
-    .replace(/[\s.:,;-]+$/, '')
-    .trim();
+  // El texto viene de afuera: se acota antes de pasarlo por expresiones regulares.
+  const [antes = ''] = texto.slice(0, LONGITUD_LEIDA).split(/excepci[oó]n|exception/i);
+  const limpio = sinCierre(antes.replace(/\s+/g, ' '));
   if (limpio === '') return '';
   const conPunto = /[.!?)]$/.test(limpio) ? limpio : `${limpio}.`;
   return conPunto.length > LONGITUD_MAXIMA
