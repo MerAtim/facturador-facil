@@ -5,5 +5,6 @@ export * from './criptografia/firmador';
 export type { ErrorSoap, FallaSoap, RespuestaInesperada, SinConexion } from './soap/soap';
 export * from './soap/transporte';
 export type { XmlInvalido } from './soap/xml';
+export * from './wsaa/proveedorDeTickets';
 export * from './wsaa/wsaa';
 export * from './wsfe/wsfe';
