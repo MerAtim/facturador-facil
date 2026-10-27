@@ -1,29 +1,31 @@
 import {
   crearPreferencias,
   itemVacio,
+  prepararFactura,
   totalesDelBorrador,
+  type ProblemaDeLaFactura,
   type BorradorDeItem,
 } from '@facturador/aplicacion';
 import {
   AlicuotaIva,
   claseParaEmitir,
   CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
+  FechaCalendario,
   TipoComprobante,
   type ClaseComprobante,
   type ModoDePrecio,
-  type Totales,
 } from '@facturador/dominio';
 import {
+  Aviso,
   Boton,
   Pantalla,
   ResumenDeTotales,
   SelectorSegmentado,
   Texto,
   useTema,
-  type LineaDeTotal,
   type Opcion,
 } from '@facturador/ui';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -31,6 +33,8 @@ import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { EditorDeItem } from '../emision/EditorDeItem';
 import { EleccionDeReceptor } from '../emision/EleccionDeReceptor';
+import { facturaEnCurso } from '../emision/facturaEnCurso';
+import { explicarProblema, lineasDelResumen } from '../emision/resumen';
 import { almacenLocalDelDispositivo } from '../infraestructura/almacenLocalDelDispositivo';
 
 const preferencias = crearPreferencias(almacenLocalDelDispositivo);
@@ -54,6 +58,7 @@ interface ItemEnPantalla {
 
 export default function NuevaFactura() {
   const { espacio } = useTema();
+  const router = useRouter();
   const configuracion = useConfiguracion();
   const [receptor, setReceptor] = useState(CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
   const [modo, setModo] = useState<ModoDePrecio>();
@@ -61,6 +66,7 @@ export default function NuevaFactura() {
   const [items, setItems] = useState<readonly ItemEnPantalla[]>([
     { clave: 0, borrador: itemVacio(AlicuotaIva.VEINTIUNO) },
   ]);
+  const [problemas, setProblemas] = useState<readonly ProblemaDeLaFactura[]>([]);
 
   useEffect(() => {
     void preferencias.modoDePrecio().then((recordado) => {
@@ -106,6 +112,23 @@ export default function NuevaFactura() {
 
   const quitarItem = (clave: number) => {
     setItems((actuales) => actuales.filter((item) => item.clave !== clave));
+  };
+
+  const revisar = () => {
+    const preparada = prepararFactura({
+      tipo,
+      receptor,
+      modoDePrecio,
+      items: items.map((item) => item.borrador),
+      hoy: FechaCalendario.enArgentina(new Date()),
+    });
+    if (!preparada.ok) {
+      setProblemas(preparada.error);
+      return;
+    }
+    setProblemas([]);
+    facturaEnCurso.preparar(preparada.valor, receptor);
+    router.push('/confirmar-factura');
   };
 
   if (configuracion.estado === 'lista' && !configurada) return <Redirect href="/configuracion" />;
@@ -164,6 +187,15 @@ export default function NuevaFactura() {
             lineas={lineasDelResumen(tipo, totales)}
             total={totales.total.formatear()}
           />
+
+          {problemas.length > 0 && (
+            <Aviso icono="alert-circle-outline" tono="error">
+              {problemas.map(explicarProblema).join('\n')}
+            </Aviso>
+          )}
+          <Boton icon="file-document-check-outline" onPress={revisar}>
+            Revisar factura
+          </Boton>
         </ScrollView>
       )}
     </Pantalla>
@@ -173,27 +205,6 @@ export default function NuevaFactura() {
 function etiquetaDelPrecio(tipo: TipoComprobante, modo: ModoDePrecio): string {
   if (!tipo.informaIva()) return 'Precio';
   return modo === 'final' ? 'Precio final' : 'Precio neto';
-}
-
-/** Neto e IVA; con más de una alícuota, separados por alícuota. */
-function lineasDelResumen(tipo: TipoComprobante, totales: Totales): readonly LineaDeTotal[] {
-  if (!tipo.informaIva()) return [];
-
-  const [unica, ...otras] = totales.porAlicuota;
-  if (!unica || otras.length === 0) {
-    return [
-      { etiqueta: 'Neto', importe: totales.neto.formatear() },
-      {
-        etiqueta: unica ? `IVA ${unica.alicuota.formatear()}` : 'IVA',
-        importe: totales.iva.formatear(),
-      },
-    ];
-  }
-
-  return totales.porAlicuota.flatMap(({ alicuota, neto, iva }) => [
-    { etiqueta: `Neto al ${alicuota.formatear()}`, importe: neto.formatear() },
-    { etiqueta: `IVA ${alicuota.formatear()}`, importe: iva.formatear() },
-  ]);
 }
 
 const estilos = StyleSheet.create({
