@@ -4,7 +4,7 @@ import {
   calcularTotales,
   Cantidad,
   claseParaEmitir,
-  CondicionIvaReceptor,
+  CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
   Dinero,
   TipoComprobante,
   type ClaseComprobante,
@@ -27,6 +27,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CONDICION_DEL_EMISOR } from '../configuracion/emisorProvisorio';
+import { EleccionDeReceptor } from '../emision/EleccionDeReceptor';
 import { almacenLocalDelDispositivo } from '../infraestructura/almacenLocalDelDispositivo';
 
 const preferencias = crearPreferencias(almacenLocalDelDispositivo);
@@ -35,11 +36,6 @@ const MODOS: readonly Opcion<ModoDePrecio>[] = [
   { valor: 'final', etiqueta: 'Precio final' },
   { valor: 'neto', etiqueta: 'Precio neto' },
 ];
-
-const CONDICIONES: readonly Opcion<string>[] = CondicionIvaReceptor.TODAS.map((condicion) => ({
-  valor: String(condicion.codigoArca),
-  etiqueta: condicion.descripcion,
-}));
 
 const ALICUOTAS: readonly Opcion<string>[] = AlicuotaIva.TODAS.map((alicuota) => ({
   valor: String(alicuota.codigoArca),
@@ -54,7 +50,7 @@ const EXPLICACION_DE_LA_CLASE: Readonly<Record<ClaseComprobante, string>> = {
 
 export default function NuevaFactura() {
   const { espacio } = useTema();
-  const [receptor, setReceptor] = useState(CondicionIvaReceptor.CONSUMIDOR_FINAL);
+  const [receptor, setReceptor] = useState(CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
   const [alicuota, setAlicuota] = useState(AlicuotaIva.VEINTIUNO);
   const [importe, setImporte] = useState('');
   const [modo, setModo] = useState<ModoDePrecio>();
@@ -67,7 +63,10 @@ export default function NuevaFactura() {
   }, []);
 
   const modoDePrecio = modo ?? 'final';
-  const tipo = TipoComprobante.de(claseParaEmitir(CONDICION_DEL_EMISOR, receptor), 'factura');
+  const tipo = TipoComprobante.de(
+    claseParaEmitir(CONDICION_DEL_EMISOR, receptor.condicion),
+    'factura',
+  );
   const totales = calcularTotales({
     tipo,
     modoDePrecio,
@@ -100,14 +99,7 @@ export default function NuevaFactura() {
         automaticallyAdjustKeyboardInsets
       >
         <View style={{ gap: espacio.chico }}>
-          <Selector
-            etiqueta="Condición frente al IVA del receptor"
-            opciones={CONDICIONES}
-            valor={String(receptor.codigoArca)}
-            onCambiar={(codigo) => {
-              setReceptor(CondicionIvaReceptor.desdeCodigoArca(Number(codigo)) ?? receptor);
-            }}
-          />
+          <EleccionDeReceptor receptor={receptor} onCambiar={setReceptor} />
           <View accessible>
             <Texto variante="subtitulo">Factura {tipo.clase}</Texto>
             <Texto variante="detalle">{EXPLICACION_DE_LA_CLASE[tipo.clase]}</Texto>
