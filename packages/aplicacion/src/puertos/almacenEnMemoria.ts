@@ -1,7 +1,8 @@
+import type { AlmacenLocal } from './almacenLocal';
 import { validarClaveDeAlmacen, type AlmacenSeguro } from './almacenSeguro';
 
-/** Doble para tests. Aplica las mismas reglas de claves que el almacén real. */
-export class AlmacenSeguroEnMemoria implements AlmacenSeguro {
+/** Doble para tests de ambos almacenes. Aplica las mismas reglas de claves que los reales. */
+export class AlmacenEnMemoria implements AlmacenSeguro, AlmacenLocal {
   private readonly valores = new Map<string, string>();
 
   leer(clave: string): Promise<string | undefined> {

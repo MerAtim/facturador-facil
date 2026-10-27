@@ -1,4 +1,4 @@
-import { AlmacenSeguroEnMemoria, type AlmacenSeguro } from '@facturador/aplicacion';
+import { AlmacenEnMemoria, type AlmacenSeguro } from '@facturador/aplicacion';
 import { Cuit } from '@facturador/dominio';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -47,7 +47,7 @@ beforeAll(async () => {
   certificado = await crearCertificadoDePrueba(firmador);
 });
 
-function preparar(almacen: AlmacenSeguro = new AlmacenSeguroEnMemoria()) {
+function preparar(almacen: AlmacenSeguro = new AlmacenEnMemoria()) {
   const reloj = { ahora: new Date('2026-10-26T12:00:00Z') };
   const wsaa = crearWsaaFalso(reloj);
   const crear = () =>

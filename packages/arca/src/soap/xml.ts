@@ -68,3 +68,13 @@ function decodificar(texto: string): string {
     return codigo <= 0x10ffff ? String.fromCodePoint(codigo) : entidad;
   });
 }
+
+/** Para insertar texto en un XML armado a mano. Se aplica a todo valor, aunque parezca inofensivo. */
+export function escaparXml(texto: string): string {
+  return texto
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
