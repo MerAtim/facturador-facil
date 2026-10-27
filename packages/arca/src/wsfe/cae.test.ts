@@ -17,7 +17,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import type { Transporte } from '../soap/transporte';
-import { consultarUltimoAutorizado, solicitarCae } from './cae';
+import { consultarComprobante, consultarUltimoAutorizado, solicitarCae } from './cae';
 
 const grabacion = (nombre: string) =>
   readFileSync(new URL(`./grabaciones/${nombre}.xml`, import.meta.url), 'utf8');
@@ -383,5 +383,107 @@ describe('solicitarCae', () => {
     await expect(solicitar(facturaC, grabacion('caeFacturaC'), numero).resultado).rejects.toThrow(
       RangeError,
     );
+  });
+});
+
+describe('consultarComprobante', () => {
+  const consultar = (cuerpo: string, numero = 1, tipo = TipoComprobante.FACTURA_B) => {
+    const { transporte, enviado } = responder(cuerpo);
+    const resultado = consultarComprobante(
+      autorizacion,
+      1,
+      tipo,
+      numero,
+      transporte,
+      'https://wsfe',
+    );
+    return { resultado, enviado };
+  };
+
+  it('pide el comprobante por tipo, número y punto de venta', async () => {
+    const { resultado, enviado } = consultar(grabacion('consultaFacturaB'));
+    await resultado;
+
+    expect(enviado.accion).toBe('"http://ar.gov.afip.dif.FEV1/FECompConsultar"');
+    expect(enviado.cuerpo).toContain(
+      '</Auth><FeCompConsReq><CbteTipo>6</CbteTipo><CbteNro>1</CbteNro><PtoVta>1</PtoVta>' +
+        '</FeCompConsReq></FECompConsultar>',
+    );
+  });
+
+  it('lee lo que ARCA registró, con los importes en formato double', async () => {
+    const resultado = await consultar(grabacion('consultaFacturaB')).resultado;
+
+    if (!resultado.ok || !resultado.valor) throw new Error('se esperaba el comprobante');
+    const { fechaDeEmision, vencimiento, ...resto } = resultado.valor;
+    expect(resto).toEqual({
+      puntoDeVenta: 1,
+      codigoDeTipo: 6,
+      numero: 1,
+      totalEnCentavos: 297_250,
+      codigoDeDocumento: 96,
+      numeroDeDocumento: '30123456',
+      cae: '86431024057719',
+      observaciones: [],
+    });
+    expect(fechaDeEmision.aTextoArca()).toBe('20261027');
+    expect(vencimiento.aTextoArca()).toBe('20261106');
+  });
+
+  it('lee las observaciones', async () => {
+    const resultado = await consultar(
+      grabacion('consultaConObservaciones'),
+      1,
+      TipoComprobante.FACTURA_A,
+    ).resultado;
+
+    expect(resultado.ok && resultado.valor?.observaciones.map(({ codigo }) => codigo)).toEqual([
+      10017,
+    ]);
+  });
+
+  it('devuelve undefined si ARCA no tiene el comprobante', async () => {
+    const resultado = await consultar(grabacion('consultaSinResultados'), 999).resultado;
+
+    expect(resultado).toEqual({ ok: true, valor: undefined });
+  });
+
+  it('informa los demás errores de ARCA', async () => {
+    const resultado = await consultar(
+      grabacion('consultaSinResultados').replace('<Code>602<', '<Code>600<'),
+    ).resultado;
+
+    expect(resultado.ok || resultado.error.tipo).toBe('rechazo_wsfe');
+  });
+
+  it.each([
+    ['otro número', (xml: string) => xml.replace('<CbteDesde>1<', '<CbteDesde>2<')],
+    ['otro tipo', (xml: string) => xml.replace('<CbteTipo>6<', '<CbteTipo>11<')],
+    [
+      'un resultado que no es aprobado',
+      (xml: string) => xml.replace('<Resultado>A<', '<Resultado>R<'),
+    ],
+    ['un importe ilegible', (xml: string) => xml.replace('<ImpTotal>2972.5<', '<ImpTotal>2972,5<')],
+    ['un importe con tres decimales', (xml: string) => xml.replace('2972.5<', '2972.505<')],
+    ['un CAE inválido', (xml: string) => xml.replace('86431024057719', 'NULL')],
+    ['una fecha inválida', (xml: string) => xml.replace('<CbteFch>20261027<', '<CbteFch>NULL<')],
+    ['ningún comprobante', (xml: string) => xml.replace(/<ResultGet>.*<\/ResultGet>/, '')],
+  ])('rechaza una respuesta con %s', async (_, cambiar) => {
+    const resultado = await consultar(cambiar(grabacion('consultaFacturaB'))).resultado;
+
+    expect(resultado).toEqual({ ok: false, error: { tipo: 'respuesta_inesperada', estado: 200 } });
+  });
+
+  it('propaga los errores de transporte', async () => {
+    const resultado = await consultarComprobante(
+      autorizacion,
+      1,
+      TipoComprobante.FACTURA_B,
+      1,
+      () => Promise.reject(new Error('sin red')),
+      'https://wsfe',
+    );
+
+    expect(resultado).toEqual({ ok: false, error: { tipo: 'sin_conexion' } });
   });
 });
