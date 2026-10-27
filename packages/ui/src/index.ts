@@ -1,4 +1,6 @@
 export * from './componentes/Boton';
+export * from './componentes/BotonDeIcono';
+export * from './componentes/CampoDeCantidad';
 export * from './componentes/CampoDeCuit';
 export * from './componentes/CampoDeImporte';
 export * from './componentes/CampoDeTexto';
@@ -7,6 +9,7 @@ export * from './componentes/Pantalla';
 export * from './componentes/ResumenDeTotales';
 export * from './componentes/Selector';
 export * from './componentes/SelectorSegmentado';
+export * from './componentes/Tarjeta';
 export * from './componentes/Texto';
 export * from './cuit/entradaDeCuit';
 export * from './importes/entradaDeImporte';

@@ -1,6 +1,5 @@
 /** Hasta 999.999.999.999,99: cabe holgado en centavos enteros sin perder precisión. */
 const MAXIMO_DE_ENTEROS = 12;
-const MAXIMO_DE_DECIMALES = 2;
 
 /**
  * Da formato argentino a lo que el usuario escribe en un campo de importe, a medida que lo escribe:
@@ -11,20 +10,28 @@ const MAXIMO_DE_DECIMALES = 2;
  * igual que los decimales de más.
  */
 export function formatearEntradaDeImporte(texto: string): string {
+  return formatearDecimal(texto, { enteros: MAXIMO_DE_ENTEROS, decimales: 2, agruparMiles: true });
+}
+
+/** Lo mismo para una cantidad: hasta tres decimales y sin separador de miles. `2,5` horas. */
+export function formatearEntradaDeCantidad(texto: string): string {
+  return formatearDecimal(texto, { enteros: 9, decimales: 3, agruparMiles: false });
+}
+
+function formatearDecimal(
+  texto: string,
+  limites: { readonly enteros: number; readonly decimales: number; readonly agruparMiles: boolean },
+): string {
   const conComa = !texto.includes(',') && texto.endsWith('.') ? `${texto.slice(0, -1)},` : texto;
   const [enteros = '', ...resto] = conComa.replace(/[^\d,]/g, '').split(',');
 
   const tieneComa = resto.length > 0;
-  const decimales = resto.join('').slice(0, MAXIMO_DE_DECIMALES);
-  const sinCeros = enteros.replace(/^0+/, '').slice(0, MAXIMO_DE_ENTEROS);
+  const decimales = resto.join('').slice(0, limites.decimales);
+  const sinCeros = enteros.replace(/^0+/, '').slice(0, limites.enteros);
+  const parteEntera = sinCeros === '' && (tieneComa || enteros !== '') ? '0' : sinCeros;
+  const agrupada = limites.agruparMiles ? agruparMiles(parteEntera) : parteEntera;
 
-  if (!tieneComa) return agruparMiles(sinCeros === '' && enteros !== '' ? '0' : sinCeros);
-  return `${agruparMiles(sinCeros === '' ? '0' : sinCeros)},${decimales}`;
-}
-
-/** El texto del campo listo para interpretarlo como importe: sin la coma final de `1.234,`. */
-export function importeEscrito(texto: string): string {
-  return texto.endsWith(',') ? texto.slice(0, -1) : texto;
+  return tieneComa ? `${agrupada},${decimales}` : agrupada;
 }
 
 function agruparMiles(digitos: string): string {

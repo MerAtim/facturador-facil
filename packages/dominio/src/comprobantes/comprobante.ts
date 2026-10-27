@@ -125,7 +125,8 @@ function validarFechas({
   return undefined;
 }
 
-const importeDe = (item: ItemComprobante): Dinero =>
+/** Precio unitario por cantidad, redondeado al centavo. En el modo de precio del comprobante. */
+export const importeDe = (item: ItemComprobante): Dinero =>
   item.precioUnitario.multiplicarPorFraccion(...item.cantidad.comoFraccion());
 
 const sumar = (importes: readonly Dinero[]): Dinero =>
