@@ -9,7 +9,7 @@ packages/
   dominio/         Entidades, value objects y reglas fiscales. TypeScript puro, sin dependencias externas
   aplicacion/      Casos de uso y puertos (interfaces)
   arca/            Adaptadores de WSAA, WSFEv1 y padrón. Implementan puertos de aplicacion
-  ui/              Componentes y tokens del design system
+  ui/              Tema, tokens y componentes sobre Material 3 (ADR 0005). La app no usa Paper directo
   config/          Configuraciones compartidas de TypeScript, ESLint y Vitest
 ```
 
