@@ -12,3 +12,4 @@ export * from './wsfe/autorizadorWsfe';
 export * from './wsfe/cae';
 export * from './wsfe/parametrosWsfe';
 export * from './wsfe/wsfe';
+export * from './certificados/pedidoDeCertificado';

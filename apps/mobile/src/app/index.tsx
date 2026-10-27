@@ -51,6 +51,14 @@ export default function Inicio() {
           <Boton variante="texto" onPress={irAConfiguracion}>
             Datos del emisor
           </Boton>
+          <Boton
+            variante="texto"
+            onPress={() => {
+              router.push('/certificado');
+            }}
+          >
+            Certificado
+          </Boton>
         </View>
       )}
     </Pantalla>
