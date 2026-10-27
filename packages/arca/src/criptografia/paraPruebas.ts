@@ -2,6 +2,7 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { cadenaBits, conjunto, contexto, entero, nulo, oid, secuencia, utcTime, utf8 } from './der';
+import type { AlmacenDeClaves } from '../certificados/pedidoDeCertificado';
 import type { Firmador } from './firmador';
 import { OID } from './oids';
 
@@ -33,4 +34,30 @@ export async function crearCertificadoDePrueba(firmador: Firmador): Promise<Uint
   );
 
   return secuencia(tbs, algoritmo, cadenaBits(await firmador.firmar(tbs)));
+}
+
+/** Almacén de claves en memoria con claves RSA reales, como el del dispositivo. */
+export function crearAlmacenDeClavesDePrueba() {
+  const claves = new Map<string, ReturnType<typeof crearFirmadorDePrueba>>();
+  const generadas: string[] = [];
+
+  const almacen: AlmacenDeClaves = {
+    existeClave: (alias) => claves.has(alias),
+    generarClave: (alias) => {
+      if (claves.has(alias)) return Promise.reject(new Error('CLAVE_EXISTENTE'));
+      generadas.push(alias);
+      claves.set(alias, crearFirmadorDePrueba());
+      return Promise.resolve();
+    },
+    clavePublica: (alias) => conClave(alias, (firmador) => firmador.clavePublica()),
+    firmar: (alias, datos) => conClave(alias, (firmador) => firmador.firmar(datos)),
+  };
+
+  /** Como el módulo nativo, usar un alias sin clave rechaza la promesa. */
+  const conClave = (alias: string, usar: (firmador: Firmador) => Promise<Uint8Array>) => {
+    const encontrada = claves.get(alias);
+    return encontrada ? usar(encontrada.firmador) : Promise.reject(new Error('SIN_CLAVE'));
+  };
+
+  return { almacen, generadas, clave: (alias: string) => claves.get(alias) };
 }
