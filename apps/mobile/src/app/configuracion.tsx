@@ -190,7 +190,11 @@ export default function Configuracion() {
         <SelectorSegmentado opciones={AMBIENTES} valor={ambiente} onCambiar={elegirAmbiente} />
         <AvisoDeAmbiente ambiente={ambiente} />
 
-        {fallo && <Aviso icono="alert-circle-outline">No se pudo guardar. Probá de nuevo.</Aviso>}
+        {fallo && (
+          <Aviso icono="alert-circle-outline" tono="error">
+            No se pudo guardar. Probá de nuevo.
+          </Aviso>
+        )}
         <Boton
           onPress={() => void guardar()}
           disabled={guardando}
