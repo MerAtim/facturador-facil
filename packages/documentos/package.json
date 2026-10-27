@@ -1,0 +1,23 @@
+{
+  "name": "@facturador/documentos",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "lint": "eslint .",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@facturador/dominio": "workspace:*",
+    "qrcode-generator": "2.0.4"
+  },
+  "devDependencies": {
+    "@facturador/config": "workspace:*",
+    "@types/node": "26.6.5",
+    "jsqr": "1.4.0"
+  }
+}

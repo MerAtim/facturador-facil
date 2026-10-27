@@ -20,7 +20,18 @@ export default {
     'scope-enum': [
       2,
       'always',
-      ['dominio', 'aplicacion', 'arca', 'mobile', 'seguridad', 'ui', 'infra', 'deps', 'deps-dev'],
+      [
+        'dominio',
+        'aplicacion',
+        'arca',
+        'documentos',
+        'mobile',
+        'seguridad',
+        'ui',
+        'infra',
+        'deps',
+        'deps-dev',
+      ],
     ],
   },
 };
