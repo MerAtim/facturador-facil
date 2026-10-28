@@ -7,6 +7,7 @@ import {
 } from '@facturador/dominio';
 
 import { svgDelQr, urlDelQr } from './qrDeArca';
+import { numeroDeComprobante } from './numeroDeComprobante';
 
 export interface DatosDelDocumento {
   readonly comprobante: Comprobante;
@@ -40,7 +41,7 @@ export function htmlDelComprobante(documento: DatosDelDocumento): string {
   const { autorizacion } = comprobante;
   if (!autorizacion) throw new Error('El documento solo se arma para un comprobante autorizado');
 
-  const numeroCompleto = `${String(puntoDeVenta).padStart(5, '0')}-${String(numero).padStart(8, '0')}`;
+  const numeroCompleto = numeroDeComprobante(puntoDeVenta, numero);
   const qr = svgDelQr(
     urlDelQr({ comprobante, cuitEmisor: emisor.datos.cuit, puntoDeVenta, numero }),
     120,

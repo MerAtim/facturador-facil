@@ -1,5 +1,7 @@
 import type { ClaseComprobante } from '@facturador/dominio';
 
+import { numeroDeComprobante } from './numeroDeComprobante';
+
 const LARGO_MAXIMO_DEL_NOMBRE = 40;
 
 /**
@@ -13,7 +15,7 @@ export function nombreDelArchivo(datos: {
   readonly numero: number;
   readonly receptor?: string | undefined;
 }): string {
-  const numero = `${String(datos.puntoDeVenta).padStart(5, '0')}-${String(datos.numero).padStart(8, '0')}`;
+  const numero = numeroDeComprobante(datos.puntoDeVenta, datos.numero);
   const receptor = datos.receptor ? sanear(datos.receptor) : '';
   return `factura-${datos.clase}-${numero}${receptor ? `-${receptor}` : ''}.pdf`;
 }

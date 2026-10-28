@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- Expone solo la carpeta de la caché donde la app deja lo que el usuario decide compartir. -->
+    <provider
+      android:name=".CompartirFileProvider"
+      android:authorities="${applicationId}.compartir"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/compartir_rutas" />
+    </provider>
+  </application>
+</manifest>
