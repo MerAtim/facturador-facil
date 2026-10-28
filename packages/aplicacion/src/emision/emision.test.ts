@@ -3,6 +3,7 @@ import {
   CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
   CondicionIvaReceptor,
   Cuit,
+  Emisor,
   exito,
   fallo,
   FechaCalendario,
@@ -58,7 +59,16 @@ const comprobante = valor(
   }),
 );
 
-const emisor = valor(Cuit.crear('20111111112'));
+const emisor = valor(
+  Emisor.crear({
+    razonSocial: 'Juana Pérez',
+    cuit: valor(Cuit.crear('20111111112')),
+    condicion: 'responsable_inscripto',
+    domicilio: 'Mitre 100, Rosario',
+    inicioDeActividades: valor(FechaCalendario.crear(2020, 1, 1)),
+    puntoDeVenta: 3,
+  }),
+);
 const autorizado: ComprobanteNumerado = {
   comprobante: valor(
     comprobante.autorizar('76431234567890', valor(FechaCalendario.crear(2026, 11, 6))),
@@ -109,7 +119,7 @@ async function emisionCon(
     receptoresFrecuentes: crearReceptoresFrecuentes(new AlmacenEnMemoria()),
     registro,
     ambiente: 'homologacion',
-    cuitEmisor: emisor,
+    emisor,
     puntoDeVenta: 3,
     ...cambios,
   };
@@ -117,7 +127,7 @@ async function emisionCon(
 }
 
 const listarGuardados = (comprobantes: RepositorioDeComprobantes) =>
-  comprobantes.listar({ ambiente: 'homologacion', cuitEmisor: emisor, limite: 10 });
+  comprobantes.listar({ ambiente: 'homologacion', emisor, limite: 10 });
 
 describe('crearEmision', () => {
   it('pide la autorización con el punto de venta configurado y devuelve el resultado', async () => {
@@ -133,7 +143,7 @@ describe('crearEmision', () => {
     await emision.emitir(comprobante, conCuit);
 
     expect(await listarGuardados(dependencias.comprobantes)).toEqual([
-      { ambiente: 'homologacion', cuitEmisor: emisor, ...autorizado, receptor: conCuit },
+      { ambiente: 'homologacion', emisor, ...autorizado, receptor: conCuit },
     ]);
   });
 
@@ -141,6 +151,7 @@ describe('crearEmision', () => {
     const roto: RepositorioDeComprobantes = {
       guardar: () => Promise.reject(new Error('base bloqueada')),
       listar: () => Promise.resolve([]),
+      leer: () => Promise.resolve(undefined),
     };
     const { emision, errores } = await emisionCon(exito(autorizado), { comprobantes: roto });
 

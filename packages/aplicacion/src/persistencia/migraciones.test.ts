@@ -56,4 +56,36 @@ describe('migrar', () => {
 
     await expect(migrar(base, ['SELECT 1'])).rejects.toBeInstanceOf(BaseMasNueva);
   });
+
+  it('la versión 2 completa el documento del receptor en lo ya guardado', async () => {
+    const base = crearBaseSqliteDePrueba();
+    const [version1] = MIGRACIONES;
+    await migrar(base, version1 === undefined ? [] : [version1]);
+    const insertar = `
+      INSERT INTO comprobantes (ambiente, cuit_emisor, tipo, punto_de_venta, numero, fecha,
+        total_en_centavos, receptor, cae, datos, guardado_en)
+      VALUES ('homologacion', '20111111112', 6, 1, ?, '20261027', 100, ?, 'x', ?, 0)
+    `;
+    await base.ejecutar(insertar, [
+      1,
+      'Ferretería Sur',
+      JSON.stringify({ receptor: { cuit: '30712345671', nombre: 'Ferretería Sur' } }),
+    ]);
+    await base.ejecutar(insertar, [
+      2,
+      '30123456',
+      JSON.stringify({ receptor: { dni: '30123456' } }),
+    ]);
+    await base.ejecutar(insertar, [3, null, JSON.stringify({ receptor: { condicion: 5 } })]);
+
+    await migrar(base);
+
+    expect(
+      await base.consultar('SELECT numero, receptor, receptor_documento FROM comprobantes'),
+    ).toEqual([
+      { numero: 1, receptor: 'Ferretería Sur', receptor_documento: '30712345671' },
+      { numero: 2, receptor: null, receptor_documento: '30123456' },
+      { numero: 3, receptor: null, receptor_documento: null },
+    ]);
+  });
 });

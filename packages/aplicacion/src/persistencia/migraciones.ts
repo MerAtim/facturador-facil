@@ -25,6 +25,17 @@ export const MIGRACIONES: readonly string[] = [
   );
   CREATE INDEX comprobantes_por_fecha ON comprobantes (ambiente, cuit_emisor, fecha DESC, id DESC);
   `,
+  // 2: el CUIT o DNI del receptor en su propia columna, para buscarlo aunque el receptor tenga
+  // nombre. Se completa con lo ya guardado, y `receptor` queda solo para el nombre.
+  `
+  ALTER TABLE comprobantes ADD COLUMN receptor_documento TEXT;
+  UPDATE comprobantes SET
+    receptor_documento = COALESCE(
+      json_extract(datos, '$.receptor.cuit'),
+      json_extract(datos, '$.receptor.dni')
+    ),
+    receptor = json_extract(datos, '$.receptor.nombre');
+  `,
 ];
 
 export class BaseMasNueva extends Error {

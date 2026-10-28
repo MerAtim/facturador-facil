@@ -4,6 +4,7 @@ export * from './puertos/almacenSeguro';
 export * from './puertos/baseDeDatos';
 export * from './persistencia/migraciones';
 export * from './comprobantes/comprobantesEmitidos';
+export * from './comprobantes/busquedaDeComprobantes';
 export * from './preferencias/preferencias';
 export * from './receptores/receptoresFrecuentes';
 export * from './emision/borradorDeFactura';

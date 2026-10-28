@@ -1,4 +1,4 @@
-import type { Comprobante, Cuit, Receptor, Resultado } from '@facturador/dominio';
+import type { Comprobante, Emisor, Receptor, Resultado } from '@facturador/dominio';
 
 import type { RepositorioDeComprobantes } from '../comprobantes/comprobantesEmitidos';
 import type { Ambiente } from '../configuracion/configuracion';
@@ -31,7 +31,8 @@ export interface DependenciasDeEmision<Autorizado extends ComprobanteNumerado, E
   readonly receptoresFrecuentes: ReceptoresFrecuentes;
   readonly registro: Registro;
   readonly ambiente: Ambiente;
-  readonly cuitEmisor: Cuit;
+  /** Sus datos se guardan con cada comprobante, tal como estaban al emitirlo. */
+  readonly emisor: Emisor;
   readonly puntoDeVenta: number;
 }
 
@@ -44,7 +45,7 @@ export function crearEmision<Autorizado extends ComprobanteNumerado, Error>({
   receptoresFrecuentes,
   registro,
   ambiente,
-  cuitEmisor,
+  emisor,
   puntoDeVenta,
 }: DependenciasDeEmision<Autorizado, Error>): Emision<Autorizado, Error> {
   return {
@@ -57,7 +58,7 @@ export function crearEmision<Autorizado extends ComprobanteNumerado, Error>({
         await comprobantes
           .guardar({
             ambiente,
-            cuitEmisor,
+            emisor,
             puntoDeVenta: valor.puntoDeVenta,
             numero: valor.numero,
             comprobante: valor.comprobante,

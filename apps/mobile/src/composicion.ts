@@ -103,7 +103,7 @@ export async function emisionPara({
     receptoresFrecuentes,
     registro,
     ambiente,
-    cuitEmisor: cuit,
+    emisor,
     puntoDeVenta,
   });
   emisiones.set(clave, emision);

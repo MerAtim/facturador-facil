@@ -6,24 +6,15 @@ import {
   type CaeOtorgado,
   type ErrorAutorizacion,
 } from '@facturador/arca';
-import { mensajeSugerido } from '@facturador/documentos';
 import type { Receptor } from '@facturador/dominio';
-import {
-  Aviso,
-  Boton,
-  CampoDeTexto,
-  Pantalla,
-  TarjetaDeComprobante,
-  Texto,
-  useTema,
-} from '@facturador/ui';
+import { Aviso, Boton, Pantalla, TarjetaDeComprobante, Texto, useTema } from '@facturador/ui';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, View } from 'react-native';
 
-import { emisionPara, registro } from '../composicion';
+import { emisionPara } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
-import { compartirFactura } from '../emision/compartirFactura';
+import { CompartirComprobante } from '../emision/CompartirComprobante';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
 
 /** Acciones de un error que se resuelven pidiendo de nuevo la autorización del mismo comprobante. */
@@ -39,10 +30,6 @@ export default function Resultado() {
   const configuracion = useConfiguracion();
   const [, setVersion] = useState(0);
   const [reintentando, setReintentando] = useState(false);
-  const [compartiendo, setCompartiendo] = useState(false);
-  const [noSeCompartio, setNoSeCompartio] = useState(false);
-  // Sin escribir nada, se usa el mensaje sugerido.
-  const [mensaje, setMensaje] = useState<string>();
   const enviado = useRef(false);
 
   useEffect(() => {
@@ -56,17 +43,6 @@ export default function Resultado() {
   if (!enCurso?.resultado) return <Redirect href="/" />;
   const { comprobante, receptor, resultado } = enCurso;
   const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
-  const sugerido =
-    resultado.ok && configurada
-      ? mensajeSugerido({
-          clase: resultado.valor.comprobante.datos.tipo.clase,
-          puntoDeVenta: resultado.valor.puntoDeVenta,
-          numero: resultado.valor.numero,
-          total: resultado.valor.comprobante.totales.total.formatear(),
-          emisor: configurada.emisor.datos.razonSocial,
-        })
-      : '';
-
   const volverAlInicio = () => {
     facturaEnCurso.terminar();
     router.dismissAll();
@@ -76,30 +52,6 @@ export default function Resultado() {
     facturaEnCurso.terminar();
     router.dismissAll();
     router.push('/nueva-factura');
-  };
-
-  const compartir = async (otorgado: CaeOtorgado) => {
-    if (!configurada) return;
-    setNoSeCompartio(false);
-    setCompartiendo(true);
-    try {
-      await compartirFactura(
-        {
-          comprobante: otorgado.comprobante,
-          emisor: configurada.emisor,
-          receptor,
-          puntoDeVenta: otorgado.puntoDeVenta,
-          numero: otorgado.numero,
-          deHomologacion: configurada.ambiente === 'homologacion',
-        },
-        mensaje ?? sugerido,
-      );
-    } catch (error) {
-      registro.error('no se pudo generar o compartir el pdf', error);
-      setNoSeCompartio(true);
-    } finally {
-      setCompartiendo(false);
-    }
   };
 
   /** El mismo comprobante otra vez: el autorizador averigua qué pasó con un envío incierto. */
@@ -135,29 +87,17 @@ export default function Resultado() {
         )}
 
         <View style={{ gap: espacio.chico, marginTop: espacio.normal }}>
-          {resultado.ok && (
-            <CampoDeTexto
-              etiqueta="Mensaje para el cliente"
-              valor={mensaje ?? sugerido}
-              onCambiar={setMensaje}
-              multilinea
-              maximo={500}
+          {resultado.ok && configurada && (
+            <CompartirComprobante
+              documento={{
+                comprobante: resultado.valor.comprobante,
+                emisor: configurada.emisor,
+                receptor,
+                puntoDeVenta: resultado.valor.puntoDeVenta,
+                numero: resultado.valor.numero,
+                deHomologacion: configurada.ambiente === 'homologacion',
+              }}
             />
-          )}
-          {resultado.ok && (
-            <Boton
-              icon="share-variant"
-              onPress={() => void compartir(resultado.valor)}
-              loading={compartiendo}
-              disabled={compartiendo}
-            >
-              Compartir factura
-            </Boton>
-          )}
-          {noSeCompartio && (
-            <Aviso icono="alert-circle-outline" tono="error">
-              No se pudo generar el PDF. Probá de nuevo.
-            </Aviso>
           )}
           {resultado.ok && (
             <Boton variante="secundario" onPress={emitirOtra}>

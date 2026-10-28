@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useTema } from '../tema/ProveedorDeTema';
 import { espacio, radio } from '../tema/tokens';
@@ -21,6 +21,7 @@ export function TarjetaDeComprobante({
   receptor,
   fecha,
   autorizacion,
+  onPress,
 }: {
   /** El tipo y la clase, `Factura B`. */
   readonly titulo: string;
@@ -30,17 +31,18 @@ export function TarjetaDeComprobante({
   readonly receptor?: string;
   readonly fecha?: string;
   readonly autorizacion?: AutorizacionMostrada;
+  /** Si se puede tocar, por ejemplo para ver el detalle desde un listado. */
+  readonly onPress?: () => void;
 }) {
   const { colores } = useTema();
   const contexto = [receptor, fecha].filter(Boolean).join(' · ');
 
-  return (
-    <View
-      style={[
-        estilos.tarjeta,
-        { borderColor: colores.outlineVariant, backgroundColor: colores.surface },
-      ]}
-    >
+  const estilo = [
+    estilos.tarjeta,
+    { borderColor: colores.outlineVariant, backgroundColor: colores.surface },
+  ];
+  const contenido = (
+    <>
       <View style={estilos.resumen} accessible>
         <View style={estilos.encabezado}>
           <View style={estilos.identificacion}>
@@ -66,7 +68,20 @@ export function TarjetaDeComprobante({
           <Dato etiqueta="Vencimiento del CAE">{autorizacion.vencimiento}</Dato>
         </View>
       )}
-    </View>
+    </>
+  );
+
+  if (!onPress) return <View style={estilo}>{contenido}</View>;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [estilo, pressed && { backgroundColor: colores.surfaceVariant }]}
+      accessibilityRole="button"
+      accessibilityLabel={[titulo, numero, contexto, total].filter(Boolean).join(', ')}
+      accessibilityHint="Abre el detalle"
+    >
+      {contenido}
+    </Pressable>
   );
 }
 

@@ -1,33 +1,50 @@
 import {
-  AlicuotaIva,
-  Cantidad,
-  Comprobante,
-  CondicionIvaReceptor,
-  Cuit,
-  Dinero,
-  Dni,
-  FechaCalendario,
   TipoComprobante,
-  type Concepto,
+  type ClaseComprobante,
+  type Comprobante,
+  type Emisor,
+  type FechaCalendario,
   type IdentificacionReceptor,
-  type ItemComprobante,
-  type ModoDePrecio,
-  type PeriodoDeServicio,
   type Receptor,
 } from '@facturador/dominio';
 
 import type { Ambiente } from '../configuracion/configuracion';
-import type { BaseDeDatos, FilaSql } from '../puertos/baseDeDatos';
+import type { BaseDeDatos, FilaSql, ValorSql } from '../puertos/baseDeDatos';
+import { interpretarBusqueda } from './busquedaDeComprobantes';
+import { aTextoGuardado, desdeTextoGuardado } from './formatoGuardado';
 
 /** Un comprobante que ARCA autorizó, con lo necesario para mostrarlo o rehacer su PDF. */
 export interface ComprobanteEmitido {
   readonly ambiente: Ambiente;
-  readonly cuitEmisor: Cuit;
+  /** Los datos del emisor al momento de emitir: el PDF sale igual aunque después cambien. */
+  readonly emisor: Emisor;
   readonly puntoDeVenta: number;
   readonly numero: number;
   /** Ya autorizado: tiene el CAE. */
   readonly comprobante: Comprobante;
   readonly receptor: Receptor;
+}
+
+export interface FiltroDeComprobantes {
+  readonly ambiente: Ambiente;
+  /** El emisor actual: se listan sus comprobantes, y sus datos completan los más viejos. */
+  readonly emisor: Emisor;
+  readonly limite: number;
+  /** Parte del nombre, CUIT o DNI del receptor, el número o el importe total. */
+  readonly busqueda?: string;
+  /** Inclusive. */
+  readonly desde?: FechaCalendario;
+  /** Inclusive. */
+  readonly hasta?: FechaCalendario;
+  readonly clase?: ClaseComprobante;
+}
+
+export interface ClaveDeComprobante {
+  readonly ambiente: Ambiente;
+  readonly emisor: Emisor;
+  readonly tipo: TipoComprobante;
+  readonly puntoDeVenta: number;
+  readonly numero: number;
 }
 
 /**
@@ -37,67 +54,57 @@ export interface ComprobanteEmitido {
 export interface RepositorioDeComprobantes {
   /** Guardar dos veces el mismo comprobante no lo duplica: el reintento de una emisión es seguro. */
   guardar(emitido: ComprobanteEmitido): Promise<void>;
-  /** Los más recientes primero, del emisor y ambiente indicados. */
-  listar(filtro: {
-    readonly ambiente: Ambiente;
-    readonly cuitEmisor: Cuit;
-    readonly limite: number;
-  }): Promise<readonly ComprobanteEmitido[]>;
+  /** Los más recientes primero. */
+  listar(filtro: FiltroDeComprobantes): Promise<readonly ComprobanteEmitido[]>;
+  leer(clave: ClaveDeComprobante): Promise<ComprobanteEmitido | undefined>;
 }
-
-const VERSION = 1;
-const MODOS_DE_PRECIO: readonly ModoDePrecio[] = ['final', 'neto'];
-const CONCEPTOS: readonly Concepto[] = ['productos', 'servicios', 'productos_y_servicios'];
 
 const GUARDAR = `
   INSERT INTO comprobantes (
-    ambiente, cuit_emisor, tipo, punto_de_venta, numero, fecha, total_en_centavos, receptor, cae,
-    datos, guardado_en
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ambiente, cuit_emisor, tipo, punto_de_venta, numero, fecha, total_en_centavos, receptor,
+    receptor_documento, cae, datos, guardado_en
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (ambiente, cuit_emisor, tipo, punto_de_venta, numero) DO NOTHING
 `;
 
+// Cada filtro opcional es `? IS NULL OR ...`: sin ese filtro se pasa null y la condición no cuenta.
+// Así la consulta es siempre el mismo texto y los datos van solo como parámetros.
 const LISTAR = `
   SELECT punto_de_venta, numero, datos
   FROM comprobantes
   WHERE ambiente = ? AND cuit_emisor = ?
+    AND (? IS NULL OR fecha >= ?)
+    AND (? IS NULL OR fecha <= ?)
+    AND (? IS NULL OR tipo IN (?, ?, ?))
+    AND (
+      ? IS NULL
+      OR receptor LIKE ? ESCAPE '\\'
+      OR receptor_documento LIKE ? ESCAPE '\\'
+      OR numero = ?
+      OR (punto_de_venta = ? AND numero = ?)
+      OR total_en_centavos = ?
+    )
   ORDER BY fecha DESC, id DESC
   LIMIT ?
 `;
 
-/** Lo que va en la columna `datos`. Solo tipos simples, para que un cambio de clase no lo rompa. */
-interface Guardado {
-  readonly version: number;
-  readonly tipo: number;
-  readonly modoDePrecio: string;
-  readonly concepto: string;
-  readonly fechaDeEmision: string;
-  readonly periodoDeServicio?: {
-    readonly desde: string;
-    readonly hasta: string;
-    readonly vencimientoDePago: string;
-  };
-  readonly items: readonly {
-    readonly descripcion: string;
-    readonly cantidadEnMilesimas: number;
-    readonly precioUnitarioEnCentavos: number;
-    readonly alicuota?: number;
-  }[];
-  readonly receptor: {
-    readonly condicion: number;
-    readonly cuit?: string;
-    readonly dni?: string;
-    readonly nombre?: string;
-    readonly domicilio?: string;
-  };
-  readonly cae: string;
-  readonly vencimientoDelCae: string;
-}
+const LEER = `
+  SELECT punto_de_venta, numero, datos
+  FROM comprobantes
+  WHERE ambiente = ? AND cuit_emisor = ? AND tipo = ? AND punto_de_venta = ? AND numero = ?
+`;
 
 export function crearRepositorioDeComprobantes(
   base: BaseDeDatos,
   ahora: () => number = Date.now,
 ): RepositorioDeComprobantes {
+  const rearmar = (filas: readonly FilaSql[], ambiente: Ambiente, emisorActual: Emisor) =>
+    // Una fila que no se puede leer no tapa a las demás.
+    filas.flatMap((fila) => {
+      const emitido = desdeFila(fila, ambiente, emisorActual);
+      return emitido ? [emitido] : [];
+    });
+
   return {
     async guardar(emitido) {
       const { comprobante, receptor } = emitido;
@@ -106,28 +113,79 @@ export function crearRepositorioDeComprobantes(
 
       await base.ejecutar(GUARDAR, [
         emitido.ambiente,
-        emitido.cuitEmisor.valor,
+        emitido.emisor.datos.cuit.valor,
         comprobante.datos.tipo.codigoArca,
         emitido.puntoDeVenta,
         emitido.numero,
         comprobante.datos.fechaDeEmision.aTextoArca(),
         comprobante.totales.total.centavos,
-        receptor.nombre ?? documentoDe(receptor.identificacion) ?? null,
+        receptor.nombre ?? null,
+        documentoDe(receptor.identificacion) ?? null,
         autorizacion.cae,
-        JSON.stringify(aGuardado(comprobante, receptor)),
+        aTextoGuardado(emitido),
         ahora(),
       ]);
     },
 
-    async listar({ ambiente, cuitEmisor, limite }) {
-      const filas = await base.consultar(LISTAR, [ambiente, cuitEmisor.valor, limite]);
-      // Una fila que no se puede leer no tapa a las demás.
-      return filas.flatMap((fila) => {
-        const rearmado = desdeFila(fila);
-        return rearmado ? [{ ambiente, cuitEmisor, ...rearmado }] : [];
-      });
+    async listar(filtro) {
+      const { ambiente, emisor } = filtro;
+      return rearmar(await base.consultar(LISTAR, parametrosDeListar(filtro)), ambiente, emisor);
+    },
+
+    async leer({ ambiente, emisor, tipo, puntoDeVenta, numero }) {
+      const filas = await base.consultar(LEER, [
+        ambiente,
+        emisor.datos.cuit.valor,
+        tipo.codigoArca,
+        puntoDeVenta,
+        numero,
+      ]);
+      return rearmar(filas, ambiente, emisor)[0];
     },
   };
+}
+
+function parametrosDeListar(filtro: FiltroDeComprobantes): ValorSql[] {
+  const desde = filtro.desde?.aTextoArca() ?? null;
+  const hasta = filtro.hasta?.aTextoArca() ?? null;
+  const tipos = filtro.clase
+    ? TipoComprobante.TODOS.filter((tipo) => tipo.clase === filtro.clase).map(
+        (tipo) => tipo.codigoArca,
+      )
+    : [];
+  const busqueda = filtro.busqueda === undefined ? undefined : interpretarBusqueda(filtro.busqueda);
+  const conNumero = busqueda?.puntoDeVentaYNumero;
+  return [
+    filtro.ambiente,
+    filtro.emisor.datos.cuit.valor,
+    desde,
+    desde,
+    hasta,
+    hasta,
+    filtro.clase ?? null,
+    tipos[0] ?? null,
+    tipos[1] ?? null,
+    tipos[2] ?? null,
+    busqueda ? 1 : null,
+    busqueda?.nombre ?? null,
+    busqueda?.documento ?? null,
+    busqueda?.numero ?? null,
+    conNumero?.puntoDeVenta ?? null,
+    conNumero?.numero ?? null,
+    busqueda?.totalEnCentavos ?? null,
+    filtro.limite,
+  ];
+}
+
+function desdeFila(
+  fila: FilaSql,
+  ambiente: Ambiente,
+  emisorActual: Emisor,
+): ComprobanteEmitido | undefined {
+  const { punto_de_venta, numero, datos } = fila;
+  if (typeof punto_de_venta !== 'number' || typeof numero !== 'number') return undefined;
+  const rearmado = typeof datos === 'string' ? desdeTextoGuardado(datos, emisorActual) : undefined;
+  return rearmado && { ambiente, puntoDeVenta: punto_de_venta, numero, ...rearmado };
 }
 
 function documentoDe(identificacion: IdentificacionReceptor): string | undefined {
@@ -139,170 +197,4 @@ function documentoDe(identificacion: IdentificacionReceptor): string | undefined
     case 'sin_identificar':
       return undefined;
   }
-}
-
-function aGuardado(comprobante: Comprobante, receptor: Receptor): Guardado {
-  const { datos, autorizacion } = comprobante;
-  const { identificacion, nombre, domicilio } = receptor;
-  const periodo = datos.periodoDeServicio;
-  return {
-    version: VERSION,
-    tipo: datos.tipo.codigoArca,
-    modoDePrecio: datos.modoDePrecio,
-    concepto: datos.concepto,
-    fechaDeEmision: datos.fechaDeEmision.aTextoArca(),
-    ...(periodo && {
-      periodoDeServicio: {
-        desde: periodo.desde.aTextoArca(),
-        hasta: periodo.hasta.aTextoArca(),
-        vencimientoDePago: periodo.vencimientoDePago.aTextoArca(),
-      },
-    }),
-    items: datos.items.map((item) => ({
-      descripcion: item.descripcion,
-      cantidadEnMilesimas: item.cantidad.milesimas,
-      precioUnitarioEnCentavos: item.precioUnitario.centavos,
-      ...(item.alicuota && { alicuota: item.alicuota.codigoArca }),
-    })),
-    receptor: {
-      condicion: receptor.condicion.codigoArca,
-      ...(identificacion.tipo === 'cuit' && { cuit: identificacion.cuit.valor }),
-      ...(identificacion.tipo === 'dni' && { dni: identificacion.dni.valor }),
-      ...(nombre !== undefined && { nombre }),
-      ...(domicilio !== undefined && { domicilio }),
-    },
-    cae: autorizacion?.cae ?? '',
-    vencimientoDelCae: autorizacion?.vencimiento.aTextoArca() ?? '',
-  };
-}
-
-/**
- * Rearma el comprobante con las mismas validaciones del dominio que al emitirlo. Los totales se
- * recalculan con las mismas reglas, así que coinciden con lo que se autorizó.
- */
-function desdeFila(fila: FilaSql): Omit<ComprobanteEmitido, 'ambiente' | 'cuitEmisor'> | undefined {
-  const { punto_de_venta, numero, datos } = fila;
-  if (typeof punto_de_venta !== 'number' || typeof numero !== 'number') return undefined;
-  const rearmado = typeof datos === 'string' ? rearmarTexto(datos) : undefined;
-  return rearmado && { puntoDeVenta: punto_de_venta, numero, ...rearmado };
-}
-
-/** Lo guardado se trata como cualquier entrada: un dato dañado descarta el comprobante, no la lista. */
-function rearmarTexto(
-  texto: string,
-): Pick<ComprobanteEmitido, 'comprobante' | 'receptor'> | undefined {
-  try {
-    const datos: unknown = JSON.parse(texto);
-    return esGuardado(datos) ? rearmar(datos) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function esGuardado(valor: unknown): valor is Guardado {
-  if (typeof valor !== 'object' || valor === null) return false;
-  const { version, items, receptor } = valor as Record<string, unknown>;
-  return (
-    version === VERSION && Array.isArray(items) && typeof receptor === 'object' && receptor !== null
-  );
-}
-
-/** Cada dato se vuelve a validar: lo que no tiene sentido descarta el comprobante entero. */
-function rearmar(
-  guardado: Guardado,
-): Pick<ComprobanteEmitido, 'comprobante' | 'receptor'> | undefined {
-  const tipo = TipoComprobante.desdeCodigoArca(guardado.tipo);
-  const modoDePrecio = MODOS_DE_PRECIO.find((modo) => modo === guardado.modoDePrecio);
-  const concepto = CONCEPTOS.find((c) => c === guardado.concepto);
-  const fechaDeEmision = fecha(guardado.fechaDeEmision);
-  const vencimientoDelCae = fecha(guardado.vencimientoDelCae);
-  const receptor = rearmarReceptor(guardado.receptor);
-  const items = guardado.items.map(rearmarItem);
-  const periodo = guardado.periodoDeServicio;
-  const periodoDeServicio = periodo && rearmarPeriodo(periodo);
-
-  if (
-    !tipo ||
-    !modoDePrecio ||
-    !concepto ||
-    !fechaDeEmision ||
-    !vencimientoDelCae ||
-    !receptor ||
-    !items.every((item) => item !== undefined) ||
-    (periodo && !periodoDeServicio)
-  ) {
-    return undefined;
-  }
-
-  const creado = Comprobante.crear({
-    tipo,
-    receptor: receptor.condicion,
-    identificacionReceptor: receptor.identificacion,
-    modoDePrecio,
-    items,
-    fechaDeEmision,
-    concepto,
-    ...(periodoDeServicio && { periodoDeServicio }),
-  });
-  const autorizado = creado.ok ? creado.valor.autorizar(guardado.cae, vencimientoDelCae) : creado;
-  return autorizado.ok ? { comprobante: autorizado.valor, receptor } : undefined;
-}
-
-function rearmarPeriodo(
-  guardado: NonNullable<Guardado['periodoDeServicio']>,
-): PeriodoDeServicio | undefined {
-  const desde = fecha(guardado.desde);
-  const hasta = fecha(guardado.hasta);
-  const vencimientoDePago = fecha(guardado.vencimientoDePago);
-  return desde && hasta && vencimientoDePago ? { desde, hasta, vencimientoDePago } : undefined;
-}
-
-function rearmarItem(item: Guardado['items'][number]): ItemComprobante | undefined {
-  const cantidad = Cantidad.desdeMilesimas(item.cantidadEnMilesimas);
-  const precio = Dinero.desdeCentavos(item.precioUnitarioEnCentavos);
-  const alicuota =
-    item.alicuota === undefined ? undefined : AlicuotaIva.desdeCodigoArca(item.alicuota);
-  if (
-    typeof item.descripcion !== 'string' ||
-    !cantidad.ok ||
-    !precio.ok ||
-    (item.alicuota !== undefined && !alicuota)
-  ) {
-    return undefined;
-  }
-  return {
-    descripcion: item.descripcion,
-    cantidad: cantidad.valor,
-    precioUnitario: precio.valor,
-    ...(alicuota && { alicuota }),
-  };
-}
-
-function rearmarReceptor(guardado: Guardado['receptor']): Receptor | undefined {
-  const condicion = CondicionIvaReceptor.desdeCodigoArca(guardado.condicion);
-  const identificacion = rearmarIdentificacion(guardado);
-  if (!condicion || !identificacion) return undefined;
-  return {
-    identificacion,
-    condicion,
-    ...(typeof guardado.nombre === 'string' && { nombre: guardado.nombre }),
-    ...(typeof guardado.domicilio === 'string' && { domicilio: guardado.domicilio }),
-  };
-}
-
-function rearmarIdentificacion(guardado: Guardado['receptor']): IdentificacionReceptor | undefined {
-  if (guardado.cuit !== undefined) {
-    const cuit = Cuit.crear(guardado.cuit);
-    return cuit.ok ? { tipo: 'cuit', cuit: cuit.valor } : undefined;
-  }
-  if (guardado.dni !== undefined) {
-    const dni = Dni.crear(guardado.dni);
-    return dni.ok ? { tipo: 'dni', dni: dni.valor } : undefined;
-  }
-  return { tipo: 'sin_identificar' };
-}
-
-function fecha(texto: string): FechaCalendario | undefined {
-  const resultado = FechaCalendario.desdeTextoArca(texto);
-  return resultado.ok ? resultado.valor : undefined;
 }
