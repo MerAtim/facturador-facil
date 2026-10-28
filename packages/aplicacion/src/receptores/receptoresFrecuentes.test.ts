@@ -112,6 +112,26 @@ describe('ReceptoresFrecuentes', () => {
     expect(await frecuentes.listar()).toHaveLength(2);
   });
 
+  it('recuerda el domicilio y lo actualiza', async () => {
+    const frecuentes = crearReceptoresFrecuentes(new AlmacenEnMemoria(), reloj());
+
+    await frecuentes.registrarUso({ ...receptor('20111111112'), domicilio: 'Belgrano 1' });
+    await frecuentes.registrarUso({ ...receptor('20111111112'), domicilio: ' Mitre 2\n' });
+
+    const [recordado] = await frecuentes.listar();
+    expect(recordado?.domicilio).toBe('Mitre 2');
+  });
+
+  it('descarta un registro con un domicilio que no es texto', async () => {
+    const almacen = new AlmacenEnMemoria();
+    await almacen.guardar(
+      'receptores.frecuentes',
+      JSON.stringify([{ cuit: '20111111112', condicion: 1, domicilio: 5, usos: 1, ultimoUso: 1 }]),
+    );
+
+    expect(await crearReceptoresFrecuentes(almacen).listar()).toEqual([]);
+  });
+
   it('limpia el nombre y no guarda uno vacío', async () => {
     const frecuentes = crearReceptoresFrecuentes(new AlmacenEnMemoria(), reloj());
 

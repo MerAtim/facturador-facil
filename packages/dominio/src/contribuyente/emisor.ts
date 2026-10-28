@@ -11,6 +11,12 @@ export interface DatosEmisor {
   readonly inicioDeActividades: FechaCalendario;
   /** El que se usa salvo que se elija otro. Se habilita en ARCA para facturar por web service. */
   readonly puntoDeVenta: number;
+  /**
+   * Inscripción en Ingresos Brutos, como la escribe el emisor: un número, "Exento" o
+   * "Convenio Multilateral 901-123456-7". La exigen las provincias, no ARCA; es opcional para que
+   * una configuración guardada antes de pedirla siga siendo válida.
+   */
+  readonly ingresosBrutos?: string;
 }
 
 export type MotivoEmisorInvalido =
@@ -18,7 +24,8 @@ export type MotivoEmisorInvalido =
   | 'razon_social_larga'
   | 'domicilio_vacio'
   | 'domicilio_largo'
-  | 'punto_de_venta_invalido';
+  | 'punto_de_venta_invalido'
+  | 'ingresos_brutos_invalido';
 
 export interface EmisorInvalido {
   readonly tipo: 'emisor_invalido';
@@ -27,6 +34,8 @@ export interface EmisorInvalido {
 
 export const LARGO_MAXIMO_RAZON_SOCIAL = 100;
 export const LARGO_MAXIMO_DOMICILIO = 150;
+export const LARGO_MAXIMO_INGRESOS_BRUTOS = 40;
+const FORMATO_INGRESOS_BRUTOS = /^[\p{L}\d .\-/]+$/u;
 const PUNTO_DE_VENTA_MAXIMO = 99_999;
 
 /** Quien emite los comprobantes. Sus datos se imprimen en cada uno. */
@@ -42,6 +51,9 @@ export class Emisor {
         ...datos,
         razonSocial: limpiar(datos.razonSocial),
         domicilio: limpiar(datos.domicilio),
+        ...(datos.ingresosBrutos === undefined
+          ? {}
+          : { ingresosBrutos: limpiar(datos.ingresosBrutos) }),
       }),
     );
   }
@@ -52,7 +64,7 @@ export class Emisor {
  * fecha todavía no sean válidos.
  */
 export function validarDatosDelEmisor(
-  datos: Pick<DatosEmisor, 'razonSocial' | 'domicilio' | 'puntoDeVenta'>,
+  datos: Pick<DatosEmisor, 'razonSocial' | 'domicilio' | 'puntoDeVenta' | 'ingresosBrutos'>,
 ): readonly MotivoEmisorInvalido[] {
   const razonSocial = limpiar(datos.razonSocial);
   const domicilio = limpiar(datos.domicilio);
@@ -68,6 +80,15 @@ export function validarDatosDelEmisor(
     datos.puntoDeVenta > PUNTO_DE_VENTA_MAXIMO
   ) {
     motivos.push('punto_de_venta_invalido');
+  }
+  if (datos.ingresosBrutos !== undefined) {
+    const ingresosBrutos = limpiar(datos.ingresosBrutos);
+    if (
+      ingresosBrutos.length > LARGO_MAXIMO_INGRESOS_BRUTOS ||
+      !FORMATO_INGRESOS_BRUTOS.test(ingresosBrutos)
+    ) {
+      motivos.push('ingresos_brutos_invalido');
+    }
   }
   return motivos;
 }

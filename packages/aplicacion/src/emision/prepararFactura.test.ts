@@ -70,9 +70,26 @@ describe('prepararFactura', () => {
         receptor: {
           identificacion: { tipo: 'sin_identificar' },
           condicion: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
+          domicilio: 'Belgrano 123',
         },
       }),
     ).toEqual([{ tipo: 'envio', problema: 'falta_cuit_del_receptor' }]);
+  });
+
+  it('una factura A exige el domicilio del receptor, porque lo imprime', () => {
+    const facturaA = {
+      ...facturaB([item('100')]),
+      tipo: TipoComprobante.FACTURA_A,
+      receptor: responsableInscripto,
+    };
+
+    expect(problemas(facturaA)).toEqual([{ tipo: 'receptor_sin_domicilio' }]);
+    expect(
+      problemas({ ...facturaA, receptor: { ...responsableInscripto, domicilio: '  ' } }),
+    ).toEqual([{ tipo: 'receptor_sin_domicilio' }]);
+    expect(
+      problemas({ ...facturaA, receptor: { ...responsableInscripto, domicilio: 'Belgrano 123' } }),
+    ).toEqual([]);
   });
 
   it('desde $ 10.000.000 hay que identificar al consumidor final', () => {

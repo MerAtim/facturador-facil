@@ -32,6 +32,8 @@ export function explicarProblema(problema: ProblemaDeLaFactura): string {
       return `Ítem ${String(problema.item)}: falta el precio.`;
     case 'item_con_cantidad_invalida':
       return `Ítem ${String(problema.item)}: revisá la cantidad.`;
+    case 'receptor_sin_domicilio':
+      return 'La factura A lleva el domicilio del receptor. Cargalo con "Otro CUIT".';
     case 'envio':
       return explicarProblemaDeEnvio(problema.problema);
     case 'comprobante':

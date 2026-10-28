@@ -58,7 +58,7 @@ describe('RepositorioDeConfiguracion', () => {
   it.each([
     ['no es JSON', '{roto'],
     ['no es un objeto', '"texto"'],
-    ['es de otra versión', JSON.stringify({ ...guardadoValido, version: 2 })],
+    ['es de otra versión', JSON.stringify({ ...guardadoValido, version: 3 })],
     ['le falta un campo', JSON.stringify({ ...guardadoValido, domicilio: undefined })],
     ['tiene un ambiente desconocido', JSON.stringify({ ...guardadoValido, ambiente: 'pruebas' })],
     ['tiene una condición desconocida', JSON.stringify({ ...guardadoValido, condicion: 'otra' })],
@@ -71,6 +71,41 @@ describe('RepositorioDeConfiguracion', () => {
   ])('si lo guardado %s, no hay configuración', async (_, texto) => {
     const almacen = new AlmacenEnMemoria();
     await almacen.guardar('configuracion.emisor', texto);
+
+    await expect(crearRepositorioDeConfiguracion(almacen).leer()).resolves.toBeUndefined();
+  });
+
+  it('guarda y lee Ingresos Brutos', async () => {
+    const almacen = new AlmacenEnMemoria();
+    const conIngresosBrutos = valor(
+      Emisor.crear({ ...configuracion.emisor.datos, ingresosBrutos: '901-123456-7' }),
+    );
+    await crearRepositorioDeConfiguracion(almacen).guardar({
+      ...configuracion,
+      emisor: conIngresosBrutos,
+    });
+
+    const leida = await crearRepositorioDeConfiguracion(almacen).leer();
+
+    expect(leida?.emisor.datos.ingresosBrutos).toBe('901-123456-7');
+  });
+
+  it('sigue leyendo una configuración guardada antes de pedir Ingresos Brutos', async () => {
+    const almacen = new AlmacenEnMemoria();
+    await almacen.guardar('configuracion.emisor', JSON.stringify(guardadoValido));
+
+    const leida = await crearRepositorioDeConfiguracion(almacen).leer();
+
+    expect(leida?.emisor.datos.razonSocial).toBe('Juana Pérez');
+    expect(leida?.emisor.datos).not.toHaveProperty('ingresosBrutos');
+  });
+
+  it('si Ingresos Brutos guardado no es texto, no hay configuración', async () => {
+    const almacen = new AlmacenEnMemoria();
+    await almacen.guardar(
+      'configuracion.emisor',
+      JSON.stringify({ ...guardadoValido, version: 2, ingresosBrutos: 5 }),
+    );
 
     await expect(crearRepositorioDeConfiguracion(almacen).leer()).resolves.toBeUndefined();
   });

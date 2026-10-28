@@ -10,6 +10,8 @@ export interface Receptor {
   readonly condicion: CondicionIvaReceptor;
   /** Cómo lo reconoce el emisor. Es opcional hasta completarlo desde el padrón de ARCA. */
   readonly nombre?: string;
+  /** Se imprime en el comprobante; la factura A lo exige. */
+  readonly domicilio?: string;
 }
 
 /** El receptor más común: un consumidor final que no se identifica. */

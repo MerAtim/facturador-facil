@@ -73,4 +73,25 @@ describe('Emisor', () => {
       validarDatosDelEmisor({ razonSocial: 'Juana', domicilio: ' ', puntoDeVenta: 3 }),
     ).toEqual(['domicilio_vacio']);
   });
+
+  describe('Ingresos Brutos', () => {
+    it.each(['901-123456-7', 'Exento', 'Convenio Multilateral 901-123456-7', '20123456786'])(
+      'acepta "%s"',
+      (ingresosBrutos) => {
+        expect(valor(Emisor.crear({ ...datos, ingresosBrutos })).datos.ingresosBrutos).toBe(
+          ingresosBrutos,
+        );
+      },
+    );
+
+    it('es opcional, para las configuraciones guardadas antes de pedirlo', () => {
+      expect(valor(Emisor.crear(datos)).datos).not.toHaveProperty('ingresosBrutos');
+    });
+
+    it.each(['', '   ', '<script>', 'x'.repeat(41)])('rechaza "%s"', (ingresosBrutos) => {
+      expect(validarDatosDelEmisor({ ...datos, ingresosBrutos })).toEqual([
+        'ingresos_brutos_invalido',
+      ]);
+    });
+  });
 });

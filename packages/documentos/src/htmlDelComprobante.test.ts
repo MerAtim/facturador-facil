@@ -4,6 +4,7 @@ import {
   CondicionIvaReceptor,
   Cuit,
   Dni,
+  Emisor,
   TipoComprobante,
   type Receptor,
 } from '@facturador/dominio';
@@ -16,6 +17,7 @@ const conCuit: Receptor = {
   identificacion: { tipo: 'cuit', cuit: valor(Cuit.crear('30712345671')) },
   condicion: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
   nombre: 'Ferretería Sur',
+  domicilio: 'Belgrano 123, Rosario',
 };
 
 const documento = (cambios: Partial<DatosDelDocumento> = {}): DatosDelDocumento => ({
@@ -65,7 +67,19 @@ describe('htmlDelComprobante', () => {
 
     expect(html).toContain('Razón social: Ferretería Sur');
     expect(html).toContain('CUIT: 30-71234567-1');
+    expect(html).toContain('Domicilio: Belgrano 123, Rosario');
     expect(html).toContain('Condición frente al IVA: IVA Responsable Inscripto');
+  });
+
+  it('muestra Ingresos Brutos del emisor si lo cargó', () => {
+    const conIngresosBrutos = valor(
+      Emisor.crear({ ...emisor.datos, ingresosBrutos: 'Convenio Multilateral 901-1' }),
+    );
+
+    expect(htmlDelComprobante(documento({ emisor: conIngresosBrutos }))).toContain(
+      'Ingresos Brutos: Convenio Multilateral 901-1',
+    );
+    expect(htmlDelComprobante(documento())).not.toContain('Ingresos Brutos');
   });
 
   it('muestra el DNI de un consumidor final identificado', () => {
@@ -118,7 +132,7 @@ describe('htmlDelComprobante', () => {
     const html = htmlDelComprobante(
       documento({
         comprobante: autorizado({ items: [item(malicioso, '100')] }),
-        receptor: { ...conCuit, nombre: malicioso },
+        receptor: { ...conCuit, nombre: malicioso, domicilio: malicioso },
       }),
     );
 

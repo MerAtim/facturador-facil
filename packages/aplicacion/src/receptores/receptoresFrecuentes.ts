@@ -1,4 +1,4 @@
-import { CondicionIvaReceptor, Cuit } from '@facturador/dominio';
+import { CondicionIvaReceptor, Cuit, LARGO_MAXIMO_DOMICILIO } from '@facturador/dominio';
 
 import type { AlmacenSeguro } from '../puertos/almacenSeguro';
 
@@ -7,6 +7,7 @@ export interface ReceptorConCuit {
   readonly cuit: Cuit;
   readonly condicion: CondicionIvaReceptor;
   readonly nombre?: string;
+  readonly domicilio?: string;
 }
 
 /**
@@ -18,7 +19,7 @@ export interface ReceptorConCuit {
 export interface ReceptoresFrecuentes {
   /** Primero los más usados; entre los que se usaron igual, el más reciente. */
   listar(): Promise<readonly ReceptorConCuit[]>;
-  /** Suma un uso. Actualiza la condición y el nombre si cambiaron. */
+  /** Suma un uso. Actualiza la condición, el nombre y el domicilio si cambiaron. */
   registrarUso(receptor: ReceptorConCuit): Promise<void>;
 }
 
@@ -30,6 +31,7 @@ interface Registro {
   readonly cuit: string;
   readonly condicion: number;
   readonly nombre?: string;
+  readonly domicilio?: string;
   readonly usos: number;
   readonly ultimoUso: number;
 }
@@ -61,11 +63,10 @@ export function crearReceptoresFrecuentes(
       const tarea = fila.then(async () => {
         const registros = await leer();
         const anterior = registros.find((registro) => registro.cuit === receptor.cuit.valor);
-        const nombre = limpiarNombre(receptor.nombre);
         const actualizado: Registro = {
           cuit: receptor.cuit.valor,
           condicion: receptor.condicion.codigoArca,
-          ...(nombre ? { nombre } : {}),
+          ...textosLimpios(receptor),
           usos: (anterior?.usos ?? 0) + 1,
           ultimoUso: ahora(),
         };
@@ -83,13 +84,19 @@ export function crearReceptoresFrecuentes(
   };
 }
 
-function limpiarNombre(nombre: string | undefined): string | undefined {
-  // Sin caracteres de control: el nombre se muestra en pantalla y en el PDF.
-  const limpio = nombre
+/** Sin caracteres de control: el nombre y el domicilio se muestran en pantalla y en el PDF. */
+function limpiar(texto: string | undefined, largo: number): string | undefined {
+  const limpio = texto
     ?.replace(/\p{Cc}/gu, ' ')
     .trim()
-    .slice(0, LARGO_MAXIMO_DEL_NOMBRE);
+    .slice(0, largo);
   return limpio === '' ? undefined : limpio;
+}
+
+function textosLimpios(datos: { readonly nombre?: string; readonly domicilio?: string }) {
+  const nombre = limpiar(datos.nombre, LARGO_MAXIMO_DEL_NOMBRE);
+  const domicilio = limpiar(datos.domicilio, LARGO_MAXIMO_DOMICILIO);
+  return { ...(nombre ? { nombre } : {}), ...(domicilio ? { domicilio } : {}) };
 }
 
 /** Lo guardado se valida como cualquier entrada: un registro dañado se descarta, no rompe la lista. */
@@ -106,11 +113,12 @@ function interpretar(texto: string): readonly Registro[] {
 
 function esRegistro(valor: unknown): valor is Registro {
   if (typeof valor !== 'object' || valor === null) return false;
-  const { cuit, condicion, nombre, usos, ultimoUso } = valor as Record<string, unknown>;
+  const { cuit, condicion, nombre, domicilio, usos, ultimoUso } = valor as Record<string, unknown>;
   return (
     typeof cuit === 'string' &&
     typeof condicion === 'number' &&
     (nombre === undefined || typeof nombre === 'string') &&
+    (domicilio === undefined || typeof domicilio === 'string') &&
     Number.isSafeInteger(usos) &&
     Number.isSafeInteger(ultimoUso)
   );
@@ -121,6 +129,5 @@ function aReceptor(registro: Registro): ReceptorConCuit | undefined {
   const condicion = CondicionIvaReceptor.desdeCodigoArca(registro.condicion);
   if (!cuit.ok || !condicion) return undefined;
 
-  const nombre = limpiarNombre(registro.nombre);
-  return { cuit: cuit.valor, condicion, ...(nombre ? { nombre } : {}) };
+  return { cuit: cuit.valor, condicion, ...textosLimpios(registro) };
 }

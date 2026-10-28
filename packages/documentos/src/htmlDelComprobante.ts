@@ -72,6 +72,7 @@ ${deHomologacion ? '<p class="prueba">Homologación: comprobante de prueba, sin 
     <p>Punto de venta y número: <b class="sin-corte">${numeroCompleto}</b></p>
     <p>Fecha de emisión: ${escapar(fechaDeEmision.formatear())}</p>
     <p>CUIT: ${escapar(emisor.datos.cuit.formateado())}</p>
+    ${emisor.datos.ingresosBrutos ? `<p>Ingresos Brutos: ${escapar(emisor.datos.ingresosBrutos)}</p>` : ''}
     <p>Inicio de actividades: ${escapar(emisor.datos.inicioDeActividades.formatear())}</p>
   </section>
 </header>
@@ -101,7 +102,7 @@ export function escapar(texto: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function seccionDelReceptor({ identificacion, condicion, nombre }: Receptor): string {
+function seccionDelReceptor({ identificacion, condicion, nombre, domicilio }: Receptor): string {
   const documento =
     identificacion.tipo === 'cuit'
       ? `<p>CUIT: ${escapar(identificacion.cuit.formateado())}</p>`
@@ -111,6 +112,7 @@ function seccionDelReceptor({ identificacion, condicion, nombre }: Receptor): st
   return `<section class="receptor">
   ${nombre ? `<p>Razón social: ${escapar(nombre)}</p>` : ''}
   ${documento}
+  ${domicilio ? `<p>Domicilio: ${escapar(domicilio)}</p>` : ''}
   <p>Condición frente al IVA: ${escapar(condicion.descripcion)}</p>
 </section>`;
 }

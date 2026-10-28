@@ -4,6 +4,7 @@ import {
   Emisor,
   FechaCalendario,
   LARGO_MAXIMO_DOMICILIO,
+  LARGO_MAXIMO_INGRESOS_BRUTOS,
   LARGO_MAXIMO_RAZON_SOCIAL,
   validarDatosDelEmisor,
   type CondicionEmisor,
@@ -47,9 +48,11 @@ const MENSAJE_DEL_EMISOR: Readonly<Record<MotivoEmisorInvalido, string>> = {
   domicilio_vacio: 'Escribí tu domicilio comercial.',
   domicilio_largo: `Hasta ${String(LARGO_MAXIMO_DOMICILIO)} caracteres.`,
   punto_de_venta_invalido: 'Un número del 1 al 99999.',
+  ingresos_brutos_invalido: `Solo letras, números, espacios, puntos, guiones y barras; hasta ${String(LARGO_MAXIMO_INGRESOS_BRUTOS)} caracteres.`,
 };
 
-type CampoConError = 'razonSocial' | 'cuit' | 'domicilio' | 'inicio' | 'puntoDeVenta';
+type CampoConError =
+  'razonSocial' | 'cuit' | 'domicilio' | 'ingresosBrutos' | 'inicio' | 'puntoDeVenta';
 type Errores = Readonly<Partial<Record<CampoConError, string | undefined>>>;
 
 export default function Configuracion() {
@@ -59,6 +62,7 @@ export default function Configuracion() {
   const [cuit, setCuit] = useState('');
   const [condicion, setCondicion] = useState<CondicionEmisor>('monotributo');
   const [domicilio, setDomicilio] = useState('');
+  const [ingresosBrutos, setIngresosBrutos] = useState('');
   const [inicio, setInicio] = useState<FechaCalendario>();
   const [puntoDeVenta, setPuntoDeVenta] = useState('');
   const [ambiente, setAmbiente] = useState<Ambiente>('homologacion');
@@ -75,6 +79,7 @@ export default function Configuracion() {
       setCuit(datos.cuit.formateado());
       setCondicion(datos.condicion);
       setDomicilio(datos.domicilio);
+      setIngresosBrutos(datos.ingresosBrutos ?? '');
       setInicio(datos.inicioDeActividades);
       setPuntoDeVenta(String(datos.puntoDeVenta));
       setAmbiente(guardada.ambiente);
@@ -101,9 +106,15 @@ export default function Configuracion() {
       razonSocial,
       condicion,
       domicilio,
+      ingresosBrutos,
       puntoDeVenta: /^\d{1,5}$/.test(puntoDeVenta) ? Number(puntoDeVenta) : 0,
     };
-    const encontrados = erroresDe(validarDatosDelEmisor(datos), cuitValido, inicio);
+    const encontrados = erroresDe(
+      validarDatosDelEmisor(datos),
+      cuitValido,
+      inicio,
+      ingresosBrutos.trim() === '',
+    );
     const emisor =
       cuitValido.ok && inicio
         ? Emisor.crear({ ...datos, cuit: cuitValido.valor, inicioDeActividades: inicio })
@@ -157,6 +168,17 @@ export default function Configuracion() {
           maximo={LARGO_MAXIMO_DOMICILIO}
           error={errores.domicilio}
         />
+        <CampoDeTexto
+          etiqueta="Ingresos Brutos"
+          valor={ingresosBrutos}
+          onCambiar={corrigiendo('ingresosBrutos', setIngresosBrutos)}
+          maximo={LARGO_MAXIMO_INGRESOS_BRUTOS}
+          error={errores.ingresosBrutos}
+        />
+        <Texto variante="detalle">
+          Tu número de inscripción, &quot;Exento&quot; o &quot;Convenio Multilateral&quot; con su
+          número.
+        </Texto>
         <CampoDeFecha
           etiqueta="Inicio de actividades"
           texto={inicio?.formatear() ?? ''}
@@ -226,6 +248,7 @@ function erroresDe(
   motivos: readonly MotivoEmisorInvalido[],
   cuit: ReturnType<typeof Cuit.crear>,
   inicio: FechaCalendario | undefined,
+  vacioIngresosBrutos: boolean,
 ): Errores {
   const mensaje = (...posibles: readonly MotivoEmisorInvalido[]) => {
     const motivo = posibles.find((m) => motivos.includes(m));
@@ -234,11 +257,15 @@ function erroresDe(
   const razonSocial = mensaje('razon_social_vacia', 'razon_social_larga');
   const domicilio = mensaje('domicilio_vacio', 'domicilio_largo');
   const puntoDeVenta = mensaje('punto_de_venta_invalido');
+  const ingresosBrutos = vacioIngresosBrutos
+    ? 'Escribí tu número de Ingresos Brutos, o "Exento".'
+    : mensaje('ingresos_brutos_invalido');
 
   return {
     ...(razonSocial ? { razonSocial } : {}),
     ...(domicilio ? { domicilio } : {}),
     ...(puntoDeVenta ? { puntoDeVenta } : {}),
+    ...(ingresosBrutos ? { ingresosBrutos } : {}),
     ...(cuit.ok ? {} : { cuit: MENSAJE_DE_CUIT[cuit.error.motivo] }),
     ...(inicio ? {} : { inicio: 'Elegí la fecha en que empezaste la actividad.' }),
   };
