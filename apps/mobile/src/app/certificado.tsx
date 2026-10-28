@@ -22,7 +22,7 @@ import { ScrollView, View } from 'react-native';
 import { almacenDeClavesDelDispositivo } from '../arca/almacenDeClavesDelDispositivo';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
-import { almacenDeCertificados, olvidarEmisiones } from '../composicion';
+import { almacenDeCertificados, olvidarEmisiones, registro } from '../composicion';
 
 const DONDE_SUBIRLO: Readonly<Record<Ambiente, string>> = {
   homologacion:
@@ -87,7 +87,8 @@ export default function Certificado() {
         paso: 'listo',
         pem: await crearPedidoDeCertificado(datos, almacenDeClavesDelDispositivo),
       });
-    } catch {
+    } catch (error) {
+      registro.error('no se pudo generar el pedido de certificado', error);
       setPedido({ paso: 'fallo' });
     }
   };
@@ -114,7 +115,8 @@ export default function Certificado() {
         mimeType: 'application/pkcs10',
         dialogTitle: 'Pedido de certificado',
       });
-    } catch {
+    } catch (error) {
+      registro.error('no se pudo compartir el pedido de certificado', error);
       setNoSeCompartio(true);
     }
   };
@@ -152,7 +154,8 @@ export default function Certificado() {
       await almacenDeCertificados.guardar(datos, resultado.valor.der);
       olvidarEmisiones();
       setCertificado(resultado.valor);
-    } catch {
+    } catch (error) {
+      registro.error('no se pudo leer el certificado elegido', error);
       setRechazo('No se pudo leer el archivo. Probá de nuevo.');
     } finally {
       setCargando(false);

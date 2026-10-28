@@ -1,7 +1,9 @@
 import {
   crearEmision,
   crearPreferencias,
+  crearRegistro,
   crearReceptoresFrecuentes,
+  salidaDeConsola,
   type Configuracion,
   type Emision,
 } from '@facturador/aplicacion';
@@ -25,6 +27,8 @@ import { almacenSeguroDelDispositivo } from './infraestructura/almacenSeguroDelD
  * Las pantallas piden lo que necesitan acá y no arman infraestructura por su cuenta.
  */
 
+/** En producción solo quedan errores, sin su detalle. */
+export const registro = crearRegistro({ produccion: !__DEV__, salida: salidaDeConsola });
 export const preferencias = crearPreferencias(almacenLocalDelDispositivo);
 export const receptoresFrecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
