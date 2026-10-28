@@ -90,6 +90,15 @@ export default function Inicio() {
           >
             Nueva factura
           </Boton>
+          <Boton
+            variante="secundario"
+            icon="file-document-multiple-outline"
+            onPress={() => {
+              router.push('/comprobantes');
+            }}
+          >
+            Comprobantes
+          </Boton>
           <Boton variante="texto" onPress={irAConfiguracion}>
             Datos del emisor
           </Boton>

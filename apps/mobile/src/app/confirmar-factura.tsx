@@ -1,13 +1,14 @@
-import { importeDe, type Receptor } from '@facturador/dominio';
+import type { Receptor } from '@facturador/dominio';
 import { Aviso, Boton, Pantalla, ResumenDeTotales, Tarjeta, Texto, useTema } from '@facturador/ui';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, ScrollView } from 'react-native';
 
 import { emisionPara } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
+import { ItemsDelComprobante } from '../emision/ItemsDelComprobante';
 import { lineasDelResumen } from '../emision/resumen';
 
 /**
@@ -36,7 +37,7 @@ export default function ConfirmarFactura() {
 
   const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
   const { comprobante, receptor } = enCurso;
-  const { tipo, items, fechaDeEmision } = comprobante.datos;
+  const { tipo, fechaDeEmision } = comprobante.datos;
   const total = comprobante.totales.total.formatear();
 
   const emitir = async () => {
@@ -82,20 +83,7 @@ export default function ConfirmarFactura() {
               Punto de venta {String(configurada.emisor.datos.puntoDeVenta)} · Fecha{' '}
               {fechaDeEmision.formatear()}
             </Texto>
-            {items.map((item, indice) => (
-              <View key={String(indice)} style={estilos.item} accessible>
-                <View style={[estilos.descripcion, { paddingRight: espacio.chico }]}>
-                  <Texto variante="cuerpo">{item.descripcion}</Texto>
-                  <Texto variante="detalle">
-                    {item.cantidad.formatear()} × {item.precioUnitario.formatear()}
-                    {tipo.informaIva() && item.alicuota
-                      ? ` · IVA ${item.alicuota.formatear()}`
-                      : ''}
-                  </Texto>
-                </View>
-                <Texto variante="importe">{importeDe(item).formatear()}</Texto>
-              </View>
-            ))}
+            <ItemsDelComprobante comprobante={comprobante} />
           </Tarjeta>
 
           <ResumenDeTotales lineas={lineasDelResumen(tipo, comprobante.totales)} total={total} />
@@ -148,8 +136,3 @@ function DatosDelReceptor({ receptor }: { readonly receptor: Receptor }) {
     </>
   );
 }
-
-const estilos = StyleSheet.create({
-  item: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  descripcion: { flex: 1 },
-});
