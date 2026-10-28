@@ -13,4 +13,4 @@ No abras issues públicos para problemas de seguridad. Usá la opción **Report 
 * Todas las entradas se validan en el borde con esquemas tipados.
 * Los logs nunca incluyen CUIT completos, certificados, tokens ni importes asociados a personas.
 * Las dependencias se auditan en cada PR y se actualizan con Dependabot.
-* Tomamos como referencia OWASP MASVS para aplicaciones móviles.
+* Tomamos como referencia OWASP MASVS para aplicaciones móviles. El [modelo de amenazas](docs/seguridad/modelo_de_amenazas.md) detalla qué se protege, cómo, y el estado de cada control.

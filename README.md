@@ -88,6 +88,7 @@ Por seguridad, pnpm solo instala versiones publicadas hace al menos 14 días (`m
 * [Arquitectura](docs/arquitectura.md)
 * [Guía de contribución](CONTRIBUTING.md)
 * [Política de seguridad](SECURITY.md)
+* [Modelo de amenazas](docs/seguridad/modelo_de_amenazas.md)
 * [Registro de decisiones](docs/adr)
 
 ## Estado
