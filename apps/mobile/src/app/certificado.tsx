@@ -31,17 +31,30 @@ const DONDE_SUBIRLO: Readonly<Record<Ambiente, string>> = {
     'En ARCA, entrá con tu clave fiscal a "Administración de Certificados Digitales", agregá un alias y subí el archivo del pedido.',
 };
 
+const COMO_CARGARLO: Readonly<Record<Ambiente, string>> = {
+  homologacion:
+    'WSASS te muestra el certificado como texto: copialo entero, desde BEGIN CERTIFICATE hasta END CERTIFICATE, y pegalo acá. Si lo guardaste como archivo, cargalo.',
+  produccion: 'Descargá el certificado que te da ARCA y cargalo acá.',
+};
+
+/** El certificado llega como archivo o como el texto que muestra WSASS. */
+type Origen = 'archivo' | 'texto';
+
 const NOMBRE_DEL_AMBIENTE: Readonly<Record<Ambiente, string>> = {
   homologacion: 'homologación',
   produccion: 'producción',
 };
 
-function explicar(motivo: MotivoCertificadoInvalido, ambiente: Ambiente): string {
+function explicar(motivo: MotivoCertificadoInvalido, ambiente: Ambiente, origen: Origen): string {
   switch (motivo) {
     case 'archivo_demasiado_grande':
-      return 'El archivo es demasiado grande para ser un certificado.';
+      return origen === 'archivo'
+        ? 'El archivo es demasiado grande para ser un certificado.'
+        : 'Lo que copiaste es demasiado largo para ser un certificado.';
     case 'no_es_un_certificado':
-      return 'El archivo no es un certificado. Elegí el que descargaste de ARCA.';
+      return origen === 'archivo'
+        ? 'El archivo no es un certificado. Elegí el que descargaste de ARCA.'
+        : 'Lo que copiaste no es un certificado. Copiá el texto de ARCA entero, desde BEGIN CERTIFICATE hasta END CERTIFICATE.';
     case 'emisor_desconocido':
       return 'El certificado no lo emitió ARCA.';
     case 'es_de_otro_ambiente':
@@ -126,6 +139,25 @@ export default function Certificado() {
     setCopiado(true);
   };
 
+  /** Valida lo recibido como cualquier entrada y, si es el certificado de este teléfono, lo guarda. */
+  const aceptar = async (contenido: Uint8Array, datos: Titular, origen: Origen) => {
+    const resultado = await validarCertificado(
+      contenido,
+      datos,
+      almacenDeClavesDelDispositivo,
+      new Date(),
+    );
+    if (!resultado.ok) {
+      setRechazo(explicar(resultado.error.motivo, datos.ambiente, origen));
+      return;
+    }
+    await almacenDeCertificados.guardar(datos, resultado.valor.der);
+    olvidarEmisiones();
+    // Lo verificado con el certificado anterior no prueba nada del nuevo.
+    await registroDeAlta.olvidarVerificacion(datos);
+    setCertificado(resultado.valor);
+  };
+
   const cargar = async (datos: Titular) => {
     setRechazo(undefined);
     // Sin copiarlo: el archivo se lee una vez, en memoria, desde donde el usuario lo tiene.
@@ -138,24 +170,10 @@ export default function Certificado() {
       const archivo = new File(elegido.uri);
       // El tamaño se mira antes de leerlo, para no cargar en memoria un archivo enorme.
       if ((elegido.size ?? archivo.size) > TAMANIO_MAXIMO_DEL_CERTIFICADO) {
-        setRechazo(explicar('archivo_demasiado_grande', datos.ambiente));
+        setRechazo(explicar('archivo_demasiado_grande', datos.ambiente, 'archivo'));
         return;
       }
-      const resultado = await validarCertificado(
-        await archivo.bytes(),
-        datos,
-        almacenDeClavesDelDispositivo,
-        new Date(),
-      );
-      if (!resultado.ok) {
-        setRechazo(explicar(resultado.error.motivo, datos.ambiente));
-        return;
-      }
-      await almacenDeCertificados.guardar(datos, resultado.valor.der);
-      olvidarEmisiones();
-      // Lo verificado con el certificado anterior no prueba nada del nuevo.
-      await registroDeAlta.olvidarVerificacion(datos);
-      setCertificado(resultado.valor);
+      await aceptar(await archivo.bytes(), datos, 'archivo');
     } catch (error) {
       registro.error('no se pudo leer el certificado elegido', error);
       setRechazo('No se pudo leer el archivo. Probá de nuevo.');
@@ -164,17 +182,58 @@ export default function Certificado() {
     }
   };
 
-  const botonDeCarga = (datos: Titular, texto: string) => (
-    <Boton
-      variante={certificado ? 'secundario' : 'principal'}
-      icon="file-certificate-outline"
-      onPress={() => void cargar(datos)}
-      loading={cargando}
-      disabled={cargando}
-    >
-      {texto}
-    </Boton>
-  );
+  const pegar = async (datos: Titular) => {
+    setRechazo(undefined);
+    setCargando(true);
+    try {
+      const texto = await Clipboard.getStringAsync();
+      if (texto.trim() === '') {
+        setRechazo(
+          'No hay nada copiado. Copiá el certificado que te muestra ARCA y volvé a pegar.',
+        );
+        return;
+      }
+      if (texto.length > TAMANIO_MAXIMO_DEL_CERTIFICADO) {
+        setRechazo(explicar('archivo_demasiado_grande', datos.ambiente, 'texto'));
+        return;
+      }
+      await aceptar(new TextEncoder().encode(texto), datos, 'texto');
+    } catch (error) {
+      registro.error('no se pudo leer el certificado pegado', error);
+      setRechazo('No se pudo leer lo que copiaste. Probá de nuevo.');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  /** Homologación muestra el certificado como texto; producción lo descarga como archivo. */
+  const botonesDeCarga = (datos: Titular) => {
+    const principal = certificado ? 'secundario' : 'principal';
+    const pegarPrimero = datos.ambiente === 'homologacion';
+    const botones = [
+      <Boton
+        key="pegar"
+        variante={pegarPrimero ? principal : 'secundario'}
+        icon="content-paste"
+        onPress={() => void pegar(datos)}
+        loading={cargando && pegarPrimero}
+        disabled={cargando}
+      >
+        {certificado ? 'Pegar otro certificado' : 'Pegar certificado'}
+      </Boton>,
+      <Boton
+        key="archivo"
+        variante={pegarPrimero ? 'secundario' : principal}
+        icon="file-certificate-outline"
+        onPress={() => void cargar(datos)}
+        loading={cargando && !pegarPrimero}
+        disabled={cargando}
+      >
+        {certificado ? 'Cargar otro desde un archivo' : 'Cargar desde un archivo'}
+      </Boton>,
+    ];
+    return <View style={{ gap: espacio.chico }}>{pegarPrimero ? botones : botones.reverse()}</View>;
+  };
 
   return (
     <Pantalla conEncabezado>
@@ -189,7 +248,7 @@ export default function Certificado() {
               <Texto variante="cuerpo">
                 Vence el {FechaCalendario.enArgentina(certificado.vigenteHasta).formatear()}.
               </Texto>
-              {botonDeCarga(titular, 'Cargar otro certificado')}
+              {botonesDeCarga(titular)}
             </Tarjeta>
           ) : (
             <Texto variante="cuerpo">
@@ -246,10 +305,8 @@ export default function Certificado() {
                 {copiado ? 'Copiado' : 'Copiar como texto'}
               </Boton>
               <Texto variante="cuerpo">2. {DONDE_SUBIRLO[titular.ambiente]}</Texto>
-              <Texto variante="cuerpo">
-                3. Descargá el certificado que te da ARCA y cargalo acá.
-              </Texto>
-              {botonDeCarga(titular, 'Cargar certificado')}
+              <Texto variante="cuerpo">3. {COMO_CARGARLO[titular.ambiente]}</Texto>
+              {botonesDeCarga(titular)}
             </View>
           )}
         </ScrollView>
