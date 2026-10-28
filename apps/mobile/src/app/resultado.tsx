@@ -163,8 +163,8 @@ export default function Resultado() {
               onCorregir={() => {
                 router.dismissTo('/nueva-factura');
               }}
-              onIrAlCertificado={() => {
-                router.push('/certificado');
+              onRevisarAlta={() => {
+                router.push('/alta');
               }}
             />
           )}
@@ -230,13 +230,13 @@ function AccionesDelError({
   reintentando,
   onReintentar,
   onCorregir,
-  onIrAlCertificado,
+  onRevisarAlta,
 }: {
   readonly error: ErrorAutorizacion;
   readonly reintentando: boolean;
   readonly onReintentar: () => void;
   readonly onCorregir: () => void;
-  readonly onIrAlCertificado: () => void;
+  readonly onRevisarAlta: () => void;
 }) {
   const { accion } = explicarError(error);
 
@@ -250,8 +250,10 @@ function AccionesDelError({
   if (accion === 'corregir_comprobante') {
     return <Boton onPress={onCorregir}>Corregir la factura</Boton>;
   }
-  if (accion === 'revisar_certificado') {
-    return <Boton onPress={onIrAlCertificado}>Ir al certificado</Boton>;
+  // La verificación de la puesta en marcha dice qué falta: el certificado, la autorización o el
+  // punto de venta.
+  if (accion === 'revisar_certificado' || accion === 'revisar_punto_de_venta') {
+    return <Boton onPress={onRevisarAlta}>Revisar la puesta en marcha</Boton>;
   }
   return null;
 }

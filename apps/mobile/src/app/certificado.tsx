@@ -22,7 +22,7 @@ import { ScrollView, View } from 'react-native';
 import { almacenDeClavesDelDispositivo } from '../arca/almacenDeClavesDelDispositivo';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
-import { almacenDeCertificados, olvidarEmisiones, registro } from '../composicion';
+import { almacenDeCertificados, olvidarEmisiones, registro, registroDeAlta } from '../composicion';
 
 const DONDE_SUBIRLO: Readonly<Record<Ambiente, string>> = {
   homologacion:
@@ -153,6 +153,8 @@ export default function Certificado() {
       }
       await almacenDeCertificados.guardar(datos, resultado.valor.der);
       olvidarEmisiones();
+      // Lo verificado con el certificado anterior no prueba nada del nuevo.
+      await registroDeAlta.olvidarVerificacion(datos);
       setCertificado(resultado.valor);
     } catch (error) {
       registro.error('no se pudo leer el certificado elegido', error);
