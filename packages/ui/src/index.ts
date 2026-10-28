@@ -16,6 +16,7 @@ export * from './componentes/ResumenDeTotales';
 export * from './componentes/Selector';
 export * from './componentes/SelectorSegmentado';
 export * from './componentes/Tarjeta';
+export * from './componentes/TarjetaDeComprobante';
 export * from './componentes/Texto';
 export * from './cuit/entradaDeCuit';
 export * from './importes/entradaDeImporte';
