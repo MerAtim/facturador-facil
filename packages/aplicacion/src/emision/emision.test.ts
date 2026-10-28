@@ -13,12 +13,24 @@ import {
 } from '@facturador/dominio';
 import { describe, expect, it } from 'vitest';
 
+import {
+  crearRepositorioDeComprobantes,
+  type RepositorioDeComprobantes,
+} from '../comprobantes/comprobantesEmitidos';
+import { crearBaseSqliteDePrueba } from '../persistencia/baseSqliteDePrueba';
+import { migrar } from '../persistencia/migraciones';
 import { AlmacenEnMemoria } from '../puertos/almacenEnMemoria';
+import type { Registro } from '../registro/registro';
 import {
   crearReceptoresFrecuentes,
   type ReceptoresFrecuentes,
 } from '../receptores/receptoresFrecuentes';
-import { crearEmision, type AutorizadorDeComprobantes } from './emision';
+import {
+  crearEmision,
+  type AutorizadorDeComprobantes,
+  type ComprobanteNumerado,
+  type DependenciasDeEmision,
+} from './emision';
 import { prepararFactura } from './prepararFactura';
 
 const valor = <T>(resultado: { ok: true; valor: T } | { ok: false }): T => {
@@ -46,10 +58,19 @@ const comprobante = valor(
   }),
 );
 
+const emisor = valor(Cuit.crear('20111111112'));
+const autorizado: ComprobanteNumerado = {
+  comprobante: valor(
+    comprobante.autorizar('76431234567890', valor(FechaCalendario.crear(2026, 11, 6))),
+  ),
+  puntoDeVenta: 3,
+  numero: 12,
+};
+
 /** Autorizador de prueba que registra lo que recibe y responde lo que se le indique. */
-function autorizadorQue(respuesta: Resultado<string, string>) {
+function autorizadorQue(respuesta: Resultado<ComprobanteNumerado, string>) {
   const pedidos: { comprobante: Comprobante; puntoDeVenta: number }[] = [];
-  const autorizador: AutorizadorDeComprobantes<string, string> = {
+  const autorizador: AutorizadorDeComprobantes<ComprobanteNumerado, string> = {
     autorizar: (recibido, puntoDeVenta) => {
       pedidos.push({ comprobante: recibido, puntoDeVenta });
       return Promise.resolve(respuesta);
@@ -58,60 +79,100 @@ function autorizadorQue(respuesta: Resultado<string, string>) {
   return { autorizador, pedidos };
 }
 
+/** Registro de prueba que junta los errores. */
+function registroDePrueba() {
+  const errores: string[] = [];
+  const registro: Registro = {
+    depurar: () => undefined,
+    error: (mensaje) => {
+      errores.push(mensaje);
+    },
+  };
+  return { registro, errores };
+}
+
+async function comprobantesEnBase() {
+  const base = crearBaseSqliteDePrueba();
+  await migrar(base);
+  return crearRepositorioDeComprobantes(base);
+}
+
+async function emisionCon(
+  respuesta: Resultado<ComprobanteNumerado, string>,
+  cambios: Partial<DependenciasDeEmision<ComprobanteNumerado, string>> = {},
+) {
+  const { autorizador, pedidos } = autorizadorQue(respuesta);
+  const { registro, errores } = registroDePrueba();
+  const dependencias: DependenciasDeEmision<ComprobanteNumerado, string> = {
+    autorizador,
+    comprobantes: await comprobantesEnBase(),
+    receptoresFrecuentes: crearReceptoresFrecuentes(new AlmacenEnMemoria()),
+    registro,
+    ambiente: 'homologacion',
+    cuitEmisor: emisor,
+    puntoDeVenta: 3,
+    ...cambios,
+  };
+  return { emision: crearEmision(dependencias), dependencias, pedidos, errores };
+}
+
+const listarGuardados = (comprobantes: RepositorioDeComprobantes) =>
+  comprobantes.listar({ ambiente: 'homologacion', cuitEmisor: emisor, limite: 10 });
+
 describe('crearEmision', () => {
   it('pide la autorización con el punto de venta configurado y devuelve el resultado', async () => {
-    const { autorizador, pedidos } = autorizadorQue(exito('CAE 12345678901234'));
-    const emision = crearEmision({
-      autorizador,
-      receptoresFrecuentes: crearReceptoresFrecuentes(new AlmacenEnMemoria()),
-      puntoDeVenta: 3,
-    });
+    const { emision, pedidos } = await emisionCon(exito(autorizado));
 
-    await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(
-      exito('CAE 12345678901234'),
-    );
+    await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(exito(autorizado));
     expect(pedidos).toEqual([{ comprobante, puntoDeVenta: 3 }]);
   });
 
-  it('si ARCA autoriza, recuerda al receptor con CUIT', async () => {
-    const frecuentes = crearReceptoresFrecuentes(new AlmacenEnMemoria());
-    const emision = crearEmision({
-      autorizador: autorizadorQue(exito('ok')).autorizador,
-      receptoresFrecuentes: frecuentes,
-      puntoDeVenta: 1,
-    });
+  it('si ARCA autoriza, guarda el comprobante con su receptor', async () => {
+    const { emision, dependencias } = await emisionCon(exito(autorizado));
 
     await emision.emitir(comprobante, conCuit);
 
-    const [recordado] = await frecuentes.listar();
+    expect(await listarGuardados(dependencias.comprobantes)).toEqual([
+      { ambiente: 'homologacion', cuitEmisor: emisor, ...autorizado, receptor: conCuit },
+    ]);
+  });
+
+  it('si no se puede guardar, la emisión igual sale bien y queda registrado', async () => {
+    const roto: RepositorioDeComprobantes = {
+      guardar: () => Promise.reject(new Error('base bloqueada')),
+      listar: () => Promise.resolve([]),
+    };
+    const { emision, errores } = await emisionCon(exito(autorizado), { comprobantes: roto });
+
+    await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(exito(autorizado));
+    expect(errores).toEqual(['no se pudo guardar el comprobante emitido']);
+  });
+
+  it('si ARCA autoriza, recuerda al receptor con CUIT', async () => {
+    const { emision, dependencias } = await emisionCon(exito(autorizado));
+
+    await emision.emitir(comprobante, conCuit);
+
+    const [recordado] = await dependencias.receptoresFrecuentes.listar();
     expect(recordado?.cuit.valor).toBe('30712345671');
     expect(recordado?.nombre).toBe('Ferretería Sur');
     expect(recordado?.domicilio).toBe('Belgrano 123, Rosario');
   });
 
-  it('si ARCA rechaza, no lo recuerda', async () => {
-    const frecuentes = crearReceptoresFrecuentes(new AlmacenEnMemoria());
-    const emision = crearEmision({
-      autorizador: autorizadorQue(fallo('rechazado')).autorizador,
-      receptoresFrecuentes: frecuentes,
-      puntoDeVenta: 1,
-    });
+  it('si ARCA rechaza, no guarda nada ni recuerda al receptor', async () => {
+    const { emision, dependencias } = await emisionCon(fallo('rechazado'));
 
     await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(fallo('rechazado'));
-    expect(await frecuentes.listar()).toEqual([]);
+    expect(await listarGuardados(dependencias.comprobantes)).toEqual([]);
+    expect(await dependencias.receptoresFrecuentes.listar()).toEqual([]);
   });
 
   it('al consumidor final sin identificar no hay nada que recordar', async () => {
-    const frecuentes = crearReceptoresFrecuentes(new AlmacenEnMemoria());
-    const emision = crearEmision({
-      autorizador: autorizadorQue(exito('ok')).autorizador,
-      receptoresFrecuentes: frecuentes,
-      puntoDeVenta: 1,
-    });
+    const { emision, dependencias } = await emisionCon(exito(autorizado));
 
     await emision.emitir(comprobante, CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
 
-    expect(await frecuentes.listar()).toEqual([]);
+    expect(await dependencias.receptoresFrecuentes.listar()).toEqual([]);
   });
 
   it('si no se puede recordar al receptor, la emisión igual sale bien', async () => {
@@ -119,12 +180,8 @@ describe('crearEmision', () => {
       listar: () => Promise.resolve([]),
       registrarUso: () => Promise.reject(new Error('bloqueado')),
     };
-    const emision = crearEmision({
-      autorizador: autorizadorQue(exito('ok')).autorizador,
-      receptoresFrecuentes: roto,
-      puntoDeVenta: 1,
-    });
+    const { emision } = await emisionCon(exito(autorizado), { receptoresFrecuentes: roto });
 
-    await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(exito('ok'));
+    await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(exito(autorizado));
   });
 });
