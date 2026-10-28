@@ -2,6 +2,7 @@ import {
   crearEmision,
   crearPreferencias,
   crearRegistro,
+  crearRegistroDeAlta,
   crearReceptoresFrecuentes,
   salidaDeConsola,
   type Configuracion,
@@ -14,9 +15,14 @@ import {
   crearProveedorDeTickets,
   firmadorDeClave,
   transporteFetch,
+  verificarAlta,
+  type AltaVerificada,
   type CaeOtorgado,
   type ErrorAutorizacion,
+  type FallaDeVerificacion,
+  type ProveedorDeTickets,
 } from '@facturador/arca';
+import type { Cuit, Resultado } from '@facturador/dominio';
 
 import { almacenDeClavesDelDispositivo } from './arca/almacenDeClavesDelDispositivo';
 import { almacenLocalDelDispositivo } from './infraestructura/almacenLocalDelDispositivo';
@@ -32,27 +38,26 @@ export const registro = crearRegistro({ produccion: !__DEV__, salida: salidaDeCo
 export const preferencias = crearPreferencias(almacenLocalDelDispositivo);
 export const receptoresFrecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
+export const registroDeAlta = crearRegistroDeAlta(almacenLocalDelDispositivo);
 
 export type EmisionWsfe = Emision<CaeOtorgado, ErrorAutorizacion>;
 
 /**
- * Una emisión por emisor y ambiente. Se reutiliza para que el ticket de acceso quede en memoria y
- * el turno por punto de venta valga entre pantallas.
+ * Un proveedor de tickets por emisor y ambiente, compartido entre la emisión y la verificación del
+ * alta: así los pedidos simultáneos a WSAA se juntan en uno.
  */
+const proveedoresDeTickets = new Map<string, ProveedorDeTickets>();
+
+/** Una emisión por emisor, ambiente y punto de venta, para que el turno valga entre pantallas. */
 const emisiones = new Map<string, EmisionWsfe>();
 
-/** La emisión para la configuración vigente, o undefined si todavía no hay certificado. */
-export async function emisionPara({
-  emisor,
-  ambiente,
-}: Configuracion): Promise<EmisionWsfe | undefined> {
-  const { cuit, puntoDeVenta } = emisor.datos;
-  const titular = { ambiente, cuit };
-  const clave = `${ambiente}.${cuit.valor}.${String(puntoDeVenta)}`;
-
-  const existente = emisiones.get(clave);
+/** Los tickets para la configuración vigente, o undefined si todavía no hay certificado. */
+async function ticketsPara(ambiente: Configuracion['ambiente'], cuit: Cuit) {
+  const clave = `${ambiente}.${cuit.valor}`;
+  const existente = proveedoresDeTickets.get(clave);
   if (existente) return existente;
 
+  const titular = { ambiente, cuit };
   const certificado = await almacenDeCertificados.leer(titular);
   if (!certificado) return undefined;
 
@@ -65,6 +70,24 @@ export async function emisionPara({
     transporte: transporteFetch,
     almacen: almacenSeguroDelDispositivo,
   });
+  proveedoresDeTickets.set(clave, tickets);
+  return tickets;
+}
+
+/** La emisión para la configuración vigente, o undefined si todavía no hay certificado. */
+export async function emisionPara({
+  emisor,
+  ambiente,
+}: Configuracion): Promise<EmisionWsfe | undefined> {
+  const { cuit, puntoDeVenta } = emisor.datos;
+  const clave = `${ambiente}.${cuit.valor}.${String(puntoDeVenta)}`;
+
+  const existente = emisiones.get(clave);
+  if (existente) return existente;
+
+  const tickets = await ticketsPara(ambiente, cuit);
+  if (!tickets) return undefined;
+
   const emision = crearEmision({
     autorizador: crearAutorizadorWsfe({
       ambiente,
@@ -80,7 +103,19 @@ export async function emisionPara({
   return emision;
 }
 
-/** Al cambiar el certificado, las emisiones armadas con el anterior ya no sirven. */
+/** Comprueba contra ARCA que se puede facturar. Sin certificado, devuelve undefined. */
+export async function verificarAltaDe({
+  emisor,
+  ambiente,
+}: Configuracion): Promise<Resultado<AltaVerificada, FallaDeVerificacion> | undefined> {
+  const { cuit, puntoDeVenta } = emisor.datos;
+  const tickets = await ticketsPara(ambiente, cuit);
+  if (!tickets) return undefined;
+  return verificarAlta({ ambiente, cuit, puntoDeVenta, tickets, transporte: transporteFetch });
+}
+
+/** Al cambiar el certificado, lo armado con el anterior ya no sirve. */
 export function olvidarEmisiones(): void {
   emisiones.clear();
+  proveedoresDeTickets.clear();
 }

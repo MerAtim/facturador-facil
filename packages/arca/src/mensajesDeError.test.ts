@@ -13,7 +13,12 @@ import {
 } from '@facturador/dominio';
 import { describe, expect, it } from 'vitest';
 
-import { explicarError, explicarObservaciones, type MensajeDeError } from './mensajesDeError';
+import {
+  explicarError,
+  explicarObservaciones,
+  explicarVerificacion,
+  type MensajeDeError,
+} from './mensajesDeError';
 import type { ErrorAutorizacion } from './wsfe/autorizadorWsfe';
 import { solicitarCae } from './wsfe/cae';
 
@@ -267,5 +272,110 @@ describe('explicarObservaciones', () => {
       'El CUIT del receptor no figura activo en el padrón de ARCA. Conviene verificarlo.',
       'Observación nueva de ARCA. (código 10999)',
     ]);
+  });
+});
+
+describe('explicarVerificacion', () => {
+  it('sin conexión no manda a ningún paso', () => {
+    const mensaje = explicarVerificacion(
+      { etapa: 'conexion', tipo: 'error', error: { tipo: 'sin_conexion' } },
+      3,
+    );
+
+    expect(mensaje.titulo).toBe('Sin conexión con ARCA');
+    expect(mensaje).not.toHaveProperty('revisar');
+  });
+
+  it('con servidores caídos, sugiere volver a intentar más tarde', () => {
+    const mensaje = explicarVerificacion(
+      {
+        etapa: 'conexion',
+        tipo: 'servicio_caido',
+        servidores: { aplicacion: 'OK', baseDeDatos: 'ERROR', autenticacion: 'OK' },
+      },
+      3,
+    );
+
+    expect(mensaje.accion).toBe('reintentar_mas_tarde');
+  });
+
+  it.each([
+    ['no_autorizado', 'autorizacion'],
+    ['certificado_no_confiable', 'certificado'],
+    ['certificado_vencido', 'certificado'],
+    ['firma_invalida', 'certificado'],
+    ['reloj_desfasado', undefined],
+  ] as const)('si WSAA rechaza por %s, manda al paso %s', (motivo, paso) => {
+    const mensaje = explicarVerificacion(
+      {
+        etapa: 'acceso',
+        tipo: 'error',
+        error: { tipo: 'rechazo_wsaa', motivo, codigo: 'x', mensaje: '' },
+      },
+      3,
+    );
+
+    expect(mensaje.revisar).toBe(paso);
+  });
+
+  it('si WSFEv1 rechaza el acceso a la CUIT, manda a la autorización', () => {
+    const mensaje = explicarVerificacion(
+      {
+        etapa: 'acceso',
+        tipo: 'error',
+        error: { tipo: 'rechazo_wsfe', errores: [{ codigo: 601, mensaje: 'CUIT no autorizada' }] },
+      },
+      3,
+    );
+
+    expect(mensaje.revisar).toBe('autorizacion');
+    expect(mensaje.detalles).toEqual([
+      'El certificado no está autorizado a facturar con esta CUIT.',
+    ]);
+  });
+
+  it('un error al consultar los puntos de venta no manda a ningún paso', () => {
+    const mensaje = explicarVerificacion(
+      { etapa: 'punto_de_venta', tipo: 'error', error: { tipo: 'sin_conexion' } },
+      3,
+    );
+
+    expect(mensaje).not.toHaveProperty('revisar');
+  });
+
+  it('un punto de venta que no está sugiere los habilitados', () => {
+    const mensaje = explicarVerificacion(
+      { etapa: 'punto_de_venta', tipo: 'punto_de_venta_inexistente', habilitados: [2, 5] },
+      3,
+    );
+
+    expect(mensaje).toMatchObject({
+      titulo: 'El punto de venta 3 no está habilitado para web service',
+      detalles: ['Los que tenés habilitados son: 2, 5.'],
+      accion: 'revisar_punto_de_venta',
+      revisar: 'punto_de_venta',
+    });
+  });
+
+  it('sin puntos de venta habilitados, lo dice', () => {
+    const mensaje = explicarVerificacion(
+      { etapa: 'punto_de_venta', tipo: 'punto_de_venta_inexistente', habilitados: [] },
+      3,
+    );
+
+    expect(mensaje.detalles).toEqual([
+      'Todavía no tenés ningún punto de venta habilitado para web service.',
+    ]);
+  });
+
+  it('explica por qué un punto de venta existente no sirve', () => {
+    const mensaje = explicarVerificacion(
+      { etapa: 'punto_de_venta', tipo: 'punto_de_venta_no_habilitado', motivo: 'solo_caea' },
+      7,
+    );
+
+    expect(mensaje.titulo).toBe('El punto de venta 7 no sirve para facturar desde la app');
+    expect(mensaje.detalles[0]).toContain('CAEA');
+    expect(mensaje.revisar).toBe('punto_de_venta');
   });
 });

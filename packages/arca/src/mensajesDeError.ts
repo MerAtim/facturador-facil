@@ -1,7 +1,13 @@
+import type { PasoDeAlta } from '@facturador/aplicacion';
+
 import type { ErrorSoap } from './soap/soap';
 import type { ErrorAutorizacion } from './wsfe/autorizadorWsfe';
 import type { ErrorDeArca } from './wsfe/comun';
 import type { ErrorParametros } from './wsfe/parametrosWsfe';
+import type {
+  FallaDeVerificacion,
+  MotivoPuntoDeVentaNoHabilitado,
+} from './wsfe/verificacionDelAlta';
 import type { MotivoRechazoWsaa } from './wsaa/wsaa';
 
 /** Lo que la pantalla puede ofrecer para salir del error. */
@@ -10,6 +16,7 @@ export type AccionSugerida =
   | 'reintentar_mas_tarde'
   | 'corregir_comprobante'
   | 'revisar_certificado'
+  | 'revisar_punto_de_venta'
   | 'ajustar_reloj'
   | 'registrar_anterior'
   | 'contactar_soporte';
@@ -65,6 +72,8 @@ const SUGERENCIAS: Readonly<Record<AccionSugerida, string>> = {
   corregir_comprobante: 'Corregí el comprobante y volvé a emitirlo.',
   revisar_certificado:
     'Revisá en el sitio de ARCA que el certificado esté vigente y asociado a la factura electrónica.',
+  revisar_punto_de_venta:
+    'Habilitá el punto de venta en ARCA para web service o cambiá el número en tus datos de emisor.',
   ajustar_reloj: 'Activá la fecha y hora automáticas del teléfono y volvé a intentar.',
   registrar_anterior: 'Guardá el comprobante anterior antes de emitir uno nuevo.',
   contactar_soporte: 'Si vuelve a pasar, escribinos con los códigos que figuran abajo.',
@@ -170,6 +179,81 @@ export function explicarError(error: ErrorAutorizacion | ErrorParametros): Mensa
         'Para no duplicar comprobantes, la app guarda cada envío antes de hacerlo y ahora no puede.',
         'contactar_soporte',
       );
+  }
+}
+
+/** Para ofrecer volver al paso de la guía donde se resuelve. */
+export interface MensajeDeVerificacion extends MensajeDeError {
+  readonly revisar?: PasoDeAlta;
+}
+
+const POR_QUE_NO_SIRVE: Readonly<Record<MotivoPuntoDeVentaNoHabilitado, string>> = {
+  bloqueado: 'está bloqueado en ARCA',
+  dado_de_baja: 'está dado de baja en ARCA',
+  solo_caea: 'es para CAEA anticipado, y la app pide el CAE en el momento de emitir',
+};
+
+/** Qué impidió verificar el alta y en qué paso de la guía se arregla. */
+export function explicarVerificacion(
+  falla: FallaDeVerificacion,
+  puntoDeVenta: number,
+): MensajeDeVerificacion {
+  const numero = String(puntoDeVenta);
+  switch (falla.tipo) {
+    case 'servicio_caido':
+      return mensaje(
+        'ARCA está con problemas',
+        'Alguno de los servidores de la factura electrónica informa que no está funcionando.',
+        'reintentar_mas_tarde',
+      );
+    case 'punto_de_venta_inexistente': {
+      const detalle =
+        falla.habilitados.length > 0
+          ? `Los que tenés habilitados son: ${falla.habilitados.join(', ')}.`
+          : 'Todavía no tenés ningún punto de venta habilitado para web service.';
+      return {
+        ...mensaje(
+          `El punto de venta ${numero} no está habilitado para web service`,
+          detalle,
+          'revisar_punto_de_venta',
+        ),
+        revisar: 'punto_de_venta',
+      };
+    }
+    case 'punto_de_venta_no_habilitado':
+      return {
+        ...mensaje(
+          `El punto de venta ${numero} no sirve para facturar desde la app`,
+          `El punto de venta ${POR_QUE_NO_SIRVE[falla.motivo]}.`,
+          'revisar_punto_de_venta',
+        ),
+        revisar: 'punto_de_venta',
+      };
+    case 'error': {
+      const explicado = explicarError(falla.error);
+      const revisar = falla.etapa === 'acceso' ? pasoParaElAcceso(falla.error) : undefined;
+      return revisar ? { ...explicado, revisar } : explicado;
+    }
+  }
+}
+
+/** Sin permiso falta la autorización; un certificado que ARCA no acepta hay que pedirlo de nuevo. */
+function pasoParaElAcceso(error: ErrorAutorizacion | ErrorParametros): PasoDeAlta | undefined {
+  if (error.tipo === 'rechazo_wsfe') return 'autorizacion';
+  if (error.tipo !== 'rechazo_wsaa') return undefined;
+  switch (error.motivo) {
+    case 'no_autorizado':
+      return 'autorizacion';
+    case 'certificado_vencido':
+    case 'certificado_no_confiable':
+    case 'certificado_invalido':
+    case 'firma_invalida':
+      return 'certificado';
+    case 'ticket_vigente':
+    case 'reloj_desfasado':
+    case 'no_disponible':
+    case 'desconocido':
+      return undefined;
   }
 }
 

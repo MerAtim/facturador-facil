@@ -1,20 +1,35 @@
+import type { PasoDeAlta } from '@facturador/aplicacion';
 import { Aviso, Boton, Pantalla, Texto, useTema } from '@facturador/ui';
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { useAlta } from '../alta/useAlta';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
-import { useConfiguracion } from '../configuracion/configuracion';
 import { useProteccion } from '../seguridad/Bloqueo';
+
+const PENDIENTE: Readonly<Record<PasoDeAlta, string>> = {
+  datos: 'cargar tus datos de emisor',
+  certificado: 'cargar el certificado de ARCA',
+  autorizacion: 'autorizar la factura electrónica en ARCA',
+  punto_de_venta: 'crear el punto de venta en ARCA',
+  verificacion: 'verificar con ARCA',
+};
 
 export default function Inicio() {
   const router = useRouter();
   const { espacio } = useTema();
-  const configuracion = useConfiguracion();
+  const [guia] = useAlta();
   const protegida = useProteccion();
 
   const irAConfiguracion = () => {
     router.push('/configuracion');
   };
+  const irALaGuia = () => {
+    router.push('/alta');
+  };
+
+  const configuracion = guia.estado === 'lista' ? guia.configuracion : undefined;
+  const pendiente = guia.estado === 'lista' ? guia.alta.actual : undefined;
 
   return (
     <Pantalla style={[estilos.contenedor, { padding: espacio.normal, gap: espacio.grande }]}>
@@ -28,34 +43,46 @@ export default function Inicio() {
         </Aviso>
       )}
 
-      {configuracion.estado === 'no_disponible' && (
+      {guia.estado === 'no_disponible' && (
         <Aviso icono="alert-circle-outline" tono="error">
           No se pudieron leer tus datos. Desbloqueá el teléfono y volvé a abrir la app.
         </Aviso>
       )}
 
-      {configuracion.estado === 'lista' && !configuracion.configuracion && (
+      {guia.estado === 'lista' && !configuracion && (
         <View style={[estilos.centrado, { gap: espacio.normal }]}>
           <Texto variante="cuerpo" style={estilos.texto}>
-            Para empezar, cargá tus datos de emisor tal como figuran en ARCA.
+            Para facturar desde el teléfono hay que dejar todo listo con ARCA. La app te guía paso a
+            paso.
           </Texto>
-          <Boton icon="account-edit-outline" onPress={irAConfiguracion}>
-            Cargar mis datos
+          <Boton icon="arrow-right" onPress={irALaGuia}>
+            Empezar
           </Boton>
         </View>
       )}
 
-      {configuracion.estado === 'lista' && configuracion.configuracion && (
+      {configuracion && (
         <View style={[estilos.centrado, { gap: espacio.normal }]}>
-          <AvisoDeAmbiente ambiente={configuracion.configuracion.ambiente} />
-          {!configuracion.configuracion.emisor.datos.ingresosBrutos && (
+          <AvisoDeAmbiente ambiente={configuracion.ambiente} />
+          {!configuracion.emisor.datos.ingresosBrutos && (
             <Aviso icono="information-outline">
               Falta tu número de Ingresos Brutos, que va impreso en cada factura. Cargalo en los
               datos del emisor.
             </Aviso>
           )}
-          <Texto variante="subtitulo">{configuracion.configuracion.emisor.datos.razonSocial}</Texto>
+          <Texto variante="subtitulo">{configuracion.emisor.datos.razonSocial}</Texto>
+          {pendiente && (
+            <>
+              <Texto variante="cuerpo" style={estilos.texto}>
+                Para facturar te falta {PENDIENTE[pendiente]}.
+              </Texto>
+              <Boton icon="arrow-right" onPress={irALaGuia}>
+                Seguir con la puesta en marcha
+              </Boton>
+            </>
+          )}
           <Boton
+            variante={pendiente ? 'secundario' : 'principal'}
             icon="plus"
             onPress={() => {
               router.push('/nueva-factura');
@@ -74,6 +101,11 @@ export default function Inicio() {
           >
             Certificado
           </Boton>
+          {!pendiente && (
+            <Boton variante="texto" onPress={irALaGuia}>
+              Puesta en marcha
+            </Boton>
+          )}
         </View>
       )}
     </Pantalla>

@@ -15,3 +15,4 @@ export * from './wsfe/wsfe';
 export * from './certificados/almacenDeCertificados';
 export * from './certificados/certificado';
 export * from './certificados/pedidoDeCertificado';
+export * from './wsfe/verificacionDelAlta';
