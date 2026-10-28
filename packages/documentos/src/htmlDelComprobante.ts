@@ -17,7 +17,12 @@ export interface DatosDelDocumento {
   readonly numero: number;
   /** Lo emitido en homologación se marca como sin validez fiscal. */
   readonly deHomologacion: boolean;
+  /** El logo del emisor: un PNG ya validado y vuelto a codificar por la app, en base64. */
+  readonly logo?: string;
 }
+
+/** Solo caracteres de base64: lo que va dentro del atributo no puede cerrarlo. */
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 const CONDICION_DEL_EMISOR: Readonly<Record<CondicionEmisor, string>> = {
   responsable_inscripto: 'IVA Responsable Inscripto',
@@ -36,7 +41,7 @@ const POLITICA_DE_CONTENIDO = "default-src 'none'; style-src 'unsafe-inline'; im
  * escapa antes de insertarse.
  */
 export function htmlDelComprobante(documento: DatosDelDocumento): string {
-  const { comprobante, emisor, puntoDeVenta, numero, deHomologacion } = documento;
+  const { comprobante, emisor, puntoDeVenta, numero, deHomologacion, logo } = documento;
   const { tipo, fechaDeEmision } = comprobante.datos;
   const { autorizacion } = comprobante;
   if (!autorizacion) throw new Error('El documento solo se arma para un comprobante autorizado');
@@ -59,6 +64,7 @@ export function htmlDelComprobante(documento: DatosDelDocumento): string {
 ${deHomologacion ? '<p class="prueba">Homologación: comprobante de prueba, sin validez fiscal</p>' : ''}
 <header>
   <section class="emisor">
+    ${logo !== undefined && BASE64.test(logo) ? `<img class="logo" src="data:image/png;base64,${logo}" alt="">` : ''}
     <h1>${escapar(emisor.datos.razonSocial)}</h1>
     <p>${escapar(emisor.datos.domicilio)}</p>
     <p>${escapar(CONDICION_DEL_EMISOR[emisor.datos.condicion])}</p>
@@ -185,6 +191,7 @@ const ESTILOS = `
   .prueba { border: 1px solid #b00; color: #b00; text-align: center; padding: 4pt; font-weight: bold; }
   header { display: flex; justify-content: space-between; align-items: flex-start; border: 1px solid #111; padding: 8pt; gap: 8pt; }
   header section { flex: 1; }
+  .logo { display: block; max-width: 45mm; max-height: 20mm; margin-bottom: 4pt; }
   .letra { flex: 0 0 auto; text-align: center; border: 1px solid #111; padding: 4pt 10pt; }
   .letra strong { display: block; font-size: 28pt; line-height: 1; }
   .letra span { font-size: 8pt; }

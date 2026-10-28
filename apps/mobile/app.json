@@ -15,6 +15,14 @@
         {
           "faceIDPermission": "Facturador Fácil usa Face ID para que nadie más pueda usar la app con tus datos fiscales."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Facturador Fácil usa tus fotos solo para que elijas el logo que va en tus facturas.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

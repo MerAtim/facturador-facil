@@ -31,6 +31,7 @@ import { preferencias, registro } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { repositorioDeConfiguracion } from '../configuracion/configuracion';
 import { MENSAJE_DE_CUIT } from '../contribuyente/mensajesDeCuit';
+import { EleccionDeLogo } from '../logo/EleccionDeLogo';
 
 const CONDICIONES: readonly Opcion<CondicionEmisor>[] = [
   { valor: 'monotributo', etiqueta: 'Monotributo' },
@@ -220,6 +221,8 @@ export default function Configuracion() {
           El punto de venta tiene que estar dado de alta en ARCA para factura electrónica por web
           service.
         </Texto>
+
+        <EleccionDeLogo />
 
         <Texto variante="etiqueta">Ambiente</Texto>
         <SelectorSegmentado opciones={AMBIENTES} valor={ambiente} onCambiar={elegirAmbiente} />
