@@ -31,6 +31,7 @@ const conCuit: Receptor = {
   identificacion: { tipo: 'cuit', cuit },
   condicion: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
   nombre: 'Ferretería Sur',
+  domicilio: 'Belgrano 123, Rosario',
 };
 
 const comprobante = valor(
@@ -85,6 +86,7 @@ describe('crearEmision', () => {
     const [recordado] = await frecuentes.listar();
     expect(recordado?.cuit.valor).toBe('30712345671');
     expect(recordado?.nombre).toBe('Ferretería Sur');
+    expect(recordado?.domicilio).toBe('Belgrano 123, Rosario');
   });
 
   it('si ARCA rechaza, no lo recuerda', async () => {

@@ -3,6 +3,7 @@ import {
   CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
   CondicionIvaReceptor,
   Cuit,
+  LARGO_MAXIMO_DOMICILIO,
   type Receptor,
 } from '@facturador/dominio';
 import {
@@ -31,10 +32,11 @@ const CONDICIONES: readonly Opcion<string>[] = CondicionIvaReceptor.TODAS.map((c
   etiqueta: condicion.descripcion,
 }));
 
-const conCuit = ({ cuit, condicion, nombre }: ReceptorConCuit): Receptor => ({
+const conCuit = ({ cuit, condicion, nombre, domicilio }: ReceptorConCuit): Receptor => ({
   identificacion: { tipo: 'cuit', cuit },
   condicion,
   ...(nombre ? { nombre } : {}),
+  ...(domicilio ? { domicilio } : {}),
 });
 
 const cuitDe = (receptor: Receptor): Cuit | undefined =>
@@ -63,7 +65,7 @@ export function EleccionDeReceptor({
   // Si el receptor elegido no quedó entre los frecuentes (por ejemplo, el almacén falló), igual se ve.
   const visibles =
     cuitElegido && !recordados.some((r) => r.cuit.esIgualA(cuitElegido))
-      ? [{ cuit: cuitElegido, condicion: receptor.condicion, ...nombreDe(receptor) }, ...recordados]
+      ? [{ cuit: cuitElegido, condicion: receptor.condicion, ...textosDe(receptor) }, ...recordados]
       : recordados;
 
   const fichas: readonly Ficha<string>[] = [
@@ -106,8 +108,8 @@ export function EleccionDeReceptor({
   );
 }
 
-function nombreDe(receptor: Receptor): { readonly nombre?: string } {
-  return receptor.nombre ? { nombre: receptor.nombre } : {};
+function textosDe({ nombre, domicilio }: Receptor) {
+  return { ...(nombre ? { nombre } : {}), ...(domicilio ? { domicilio } : {}) };
 }
 
 function FormularioDeCuit({ onListo }: { readonly onListo: (receptor: ReceptorConCuit) => void }) {
@@ -115,6 +117,7 @@ function FormularioDeCuit({ onListo }: { readonly onListo: (receptor: ReceptorCo
   const [texto, setTexto] = useState('');
   const [condicion, setCondicion] = useState(CondicionIvaReceptor.RESPONSABLE_INSCRIPTO);
   const [nombre, setNombre] = useState('');
+  const [domicilio, setDomicilio] = useState('');
 
   const resultado = cuitCompleto(texto) ? Cuit.crear(texto) : undefined;
   const cuit = resultado?.ok ? resultado.valor : undefined;
@@ -143,12 +146,23 @@ function FormularioDeCuit({ onListo }: { readonly onListo: (receptor: ReceptorCo
         onCambiar={setNombre}
         maximo={60}
       />
+      <CampoDeTexto
+        etiqueta="Domicilio (lo pide la factura A)"
+        valor={domicilio}
+        onCambiar={setDomicilio}
+        maximo={LARGO_MAXIMO_DOMICILIO}
+      />
       <Boton
         variante="secundario"
         disabled={!cuit}
         onPress={() => {
-          if (cuit)
-            onListo({ cuit, condicion, ...(nombre.trim() ? { nombre: nombre.trim() } : {}) });
+          if (!cuit) return;
+          onListo({
+            cuit,
+            condicion,
+            ...(nombre.trim() ? { nombre: nombre.trim() } : {}),
+            ...(domicilio.trim() ? { domicilio: domicilio.trim() } : {}),
+          });
         }}
       >
         Usar este receptor

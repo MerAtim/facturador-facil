@@ -21,7 +21,9 @@ export interface RepositorioDeConfiguracion {
 }
 
 const CLAVE = 'configuracion.emisor';
-const VERSION = 1;
+/** La versión 2 suma Ingresos Brutos; la 1 se sigue leyendo, sin ese dato. */
+const VERSION = 2;
+const VERSIONES_LEGIBLES: readonly number[] = [1, 2];
 const CONDICIONES: readonly CondicionEmisor[] = ['responsable_inscripto', 'monotributo', 'exento'];
 const AMBIENTES: readonly Ambiente[] = ['homologacion', 'produccion'];
 
@@ -34,6 +36,7 @@ interface Guardado {
   readonly domicilio: string;
   readonly inicioDeActividades: string;
   readonly puntoDeVenta: number;
+  readonly ingresosBrutos?: string;
 }
 
 export function crearRepositorioDeConfiguracion(
@@ -56,6 +59,7 @@ export function crearRepositorioDeConfiguracion(
         domicilio: datos.domicilio,
         inicioDeActividades: datos.inicioDeActividades.aTextoArca(),
         puntoDeVenta: datos.puntoDeVenta,
+        ...(datos.ingresosBrutos === undefined ? {} : { ingresosBrutos: datos.ingresosBrutos }),
       };
       await almacen.guardar(CLAVE, JSON.stringify(guardado));
     },
@@ -70,7 +74,7 @@ function interpretar(texto: string): Configuracion | undefined {
   } catch {
     return undefined;
   }
-  if (!esGuardado(datos) || datos.version !== VERSION) return undefined;
+  if (!esGuardado(datos) || !VERSIONES_LEGIBLES.includes(datos.version)) return undefined;
 
   const ambiente = AMBIENTES.find((a) => a === datos.ambiente);
   const condicion = CONDICIONES.find((c) => c === datos.condicion);
@@ -85,6 +89,7 @@ function interpretar(texto: string): Configuracion | undefined {
     domicilio: datos.domicilio,
     inicioDeActividades: inicio.valor,
     puntoDeVenta: datos.puntoDeVenta,
+    ...(datos.ingresosBrutos === undefined ? {} : { ingresosBrutos: datos.ingresosBrutos }),
   });
   return emisor.ok ? { emisor: emisor.valor, ambiente } : undefined;
 }
@@ -92,12 +97,14 @@ function interpretar(texto: string): Configuracion | undefined {
 function esGuardado(valor: unknown): valor is Guardado {
   if (typeof valor !== 'object' || valor === null) return false;
   const { version, puntoDeVenta, ...textos } = valor as Record<string, unknown>;
-  const { ambiente, razonSocial, cuit, condicion, domicilio, inicioDeActividades } = textos;
+  const { ambiente, razonSocial, cuit, condicion, domicilio, inicioDeActividades, ingresosBrutos } =
+    textos;
   return (
     typeof version === 'number' &&
     typeof puntoDeVenta === 'number' &&
     [ambiente, razonSocial, cuit, condicion, domicilio, inicioDeActividades].every(
       (campo) => typeof campo === 'string',
-    )
+    ) &&
+    (ingresosBrutos === undefined || typeof ingresosBrutos === 'string')
   );
 }

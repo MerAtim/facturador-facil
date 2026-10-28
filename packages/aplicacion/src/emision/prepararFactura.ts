@@ -36,6 +36,7 @@ export type ProblemaDeLaFactura =
   | { readonly tipo: 'item_sin_descripcion'; readonly item: number }
   | { readonly tipo: 'item_sin_precio'; readonly item: number }
   | { readonly tipo: 'item_con_cantidad_invalida'; readonly item: number }
+  | { readonly tipo: 'receptor_sin_domicilio' }
   | { readonly tipo: 'envio'; readonly problema: ProblemaDeEnvio }
   | { readonly tipo: 'comprobante'; readonly motivo: MotivoComprobanteInvalido };
 
@@ -49,7 +50,14 @@ export function prepararFactura(
   const problemasDeItems = borrador.items.flatMap((item, indice) =>
     problemasDelItem(item, indice + 1),
   );
-  if (problemasDeItems.length > 0) return fallo(problemasDeItems);
+  // ARCA no pide el domicilio para autorizar, pero la factura A lo tiene que imprimir.
+  const problemasDelReceptor: ProblemaDeLaFactura[] =
+    borrador.tipo.discriminaIva() && !borrador.receptor.domicilio?.trim()
+      ? [{ tipo: 'receptor_sin_domicilio' }]
+      : [];
+  if (problemasDeItems.length + problemasDelReceptor.length > 0) {
+    return fallo([...problemasDeItems, ...problemasDelReceptor]);
+  }
 
   const comprobante = Comprobante.crear({
     tipo: borrador.tipo,

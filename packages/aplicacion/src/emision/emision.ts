@@ -30,11 +30,16 @@ export function crearEmision<Autorizado, Error>({
     async emitir(comprobante, receptor) {
       const resultado = await autorizador.autorizar(comprobante, puntoDeVenta);
 
-      const { identificacion, condicion, nombre } = receptor;
+      const { identificacion, condicion, nombre, domicilio } = receptor;
       if (resultado.ok && identificacion.tipo === 'cuit') {
         // Recordarlo es un extra: si falla, la factura igual quedó emitida.
         await receptoresFrecuentes
-          .registrarUso({ cuit: identificacion.cuit, condicion, ...(nombre ? { nombre } : {}) })
+          .registrarUso({
+            cuit: identificacion.cuit,
+            condicion,
+            ...(nombre ? { nombre } : {}),
+            ...(domicilio ? { domicilio } : {}),
+          })
           .catch(() => undefined);
       }
       return resultado;

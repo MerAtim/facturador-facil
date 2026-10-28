@@ -39,6 +39,12 @@ export default function Inicio() {
       {configuracion.estado === 'lista' && configuracion.configuracion && (
         <View style={[estilos.centrado, { gap: espacio.normal }]}>
           <AvisoDeAmbiente ambiente={configuracion.configuracion.ambiente} />
+          {!configuracion.configuracion.emisor.datos.ingresosBrutos && (
+            <Aviso icono="information-outline">
+              Falta tu número de Ingresos Brutos, que va impreso en cada factura. Cargalo en los
+              datos del emisor.
+            </Aviso>
+          )}
           <Texto variante="subtitulo">{configuracion.configuracion.emisor.datos.razonSocial}</Texto>
           <Boton
             icon="plus"

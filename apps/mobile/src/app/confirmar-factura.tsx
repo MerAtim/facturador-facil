@@ -134,7 +134,7 @@ export default function ConfirmarFactura() {
 }
 
 function DatosDelReceptor({ receptor }: { readonly receptor: Receptor }) {
-  const { identificacion, condicion, nombre } = receptor;
+  const { identificacion, condicion, nombre, domicilio } = receptor;
   if (identificacion.tipo !== 'cuit') {
     return <Texto variante="cuerpo">{condicion.descripcion}</Texto>;
   }
@@ -144,6 +144,7 @@ function DatosDelReceptor({ receptor }: { readonly receptor: Receptor }) {
       <Texto variante="detalle">
         CUIT {identificacion.cuit.formateado()} · {condicion.descripcion}
       </Texto>
+      {domicilio && <Texto variante="detalle">{domicilio}</Texto>}
     </>
   );
 }
