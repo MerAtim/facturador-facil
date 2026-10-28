@@ -5,8 +5,13 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 
 import { ProveedorDeBloqueo } from '../seguridad/Bloqueo';
+import { protegerLaPantalla } from '../seguridad/privacidadEnPantalla';
 
 export default function LayoutRaiz() {
+  useEffect(() => {
+    void protegerLaPantalla();
+  }, []);
+
   return (
     <ProveedorDeTema>
       <ProveedorDeBloqueo>

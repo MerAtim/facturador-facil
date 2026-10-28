@@ -8,3 +8,4 @@ export * from './configuracion/configuracion';
 export * from './emision/emision';
 export * from './emision/prepararFactura';
 export * from './bloqueo/bloqueo';
+export * from './registro/registro';

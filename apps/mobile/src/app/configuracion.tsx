@@ -27,7 +27,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 
-import { preferencias } from '../composicion';
+import { preferencias, registro } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { repositorioDeConfiguracion } from '../configuracion/configuracion';
 import { MENSAJE_DE_CUIT } from '../contribuyente/mensajesDeCuit';
@@ -143,7 +143,8 @@ export default function Configuracion() {
     try {
       await repositorioDeConfiguracion.guardar({ emisor: emisor.valor, ambiente });
       router.back();
-    } catch {
+    } catch (error) {
+      registro.error('no se pudo guardar la configuración', error);
       setFallo(true);
     } finally {
       setGuardando(false);

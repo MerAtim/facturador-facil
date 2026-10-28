@@ -12,7 +12,7 @@ import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 
-import { emisionPara } from '../composicion';
+import { emisionPara, registro } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { compartirFactura } from '../emision/compartirFactura';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
@@ -85,7 +85,8 @@ export default function Resultado() {
         },
         mensaje ?? sugerido,
       );
-    } catch {
+    } catch (error) {
+      registro.error('no se pudo generar o compartir el pdf', error);
       setNoSeCompartio(true);
     } finally {
       setCompartiendo(false);
