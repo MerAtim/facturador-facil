@@ -1,5 +1,6 @@
 import {
   crearEmision,
+  crearPreferencias,
   crearReceptoresFrecuentes,
   type Configuracion,
   type Emision,
@@ -16,6 +17,7 @@ import {
 } from '@facturador/arca';
 
 import { almacenDeClavesDelDispositivo } from './arca/almacenDeClavesDelDispositivo';
+import { almacenLocalDelDispositivo } from './infraestructura/almacenLocalDelDispositivo';
 import { almacenSeguroDelDispositivo } from './infraestructura/almacenSeguroDelDispositivo';
 
 /**
@@ -23,6 +25,7 @@ import { almacenSeguroDelDispositivo } from './infraestructura/almacenSeguroDelD
  * Las pantallas piden lo que necesitan acá y no arman infraestructura por su cuenta.
  */
 
+export const preferencias = crearPreferencias(almacenLocalDelDispositivo);
 export const receptoresFrecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
 

@@ -4,11 +4,13 @@ import { StyleSheet, View } from 'react-native';
 
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
+import { useProteccion } from '../seguridad/Bloqueo';
 
 export default function Inicio() {
   const router = useRouter();
   const { espacio } = useTema();
   const configuracion = useConfiguracion();
+  const protegida = useProteccion();
 
   const irAConfiguracion = () => {
     router.push('/configuracion');
@@ -18,6 +20,13 @@ export default function Inicio() {
     <Pantalla style={[estilos.contenedor, { padding: espacio.normal, gap: espacio.grande }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <Texto variante="titulo">Facturador Fácil</Texto>
+
+      {!protegida && (
+        <Aviso icono="shield-alert-outline" tono="error">
+          Tu teléfono no tiene bloqueo de pantalla, así que cualquiera que lo tenga puede usar la
+          app con tus datos. Configurá un PIN o tu huella en los ajustes del teléfono.
+        </Aviso>
+      )}
 
       {configuracion.estado === 'no_disponible' && (
         <Aviso icono="alert-circle-outline" tono="error">
