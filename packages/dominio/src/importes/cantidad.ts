@@ -17,6 +17,13 @@ export class Cantidad {
 
   static readonly UNO = new Cantidad(ESCALA);
 
+  /** Para rearmar una cantidad guardada. */
+  static desdeMilesimas(milesimas: number): Resultado<Cantidad, CantidadInvalida> {
+    if (!Number.isSafeInteger(milesimas)) return invalida('formato_invalido');
+    if (milesimas <= 0) return invalida('no_positiva');
+    return exito(new Cantidad(milesimas));
+  }
+
   static desdeTexto(texto: string): Resultado<Cantidad, CantidadInvalida> {
     const limpio = texto.trim();
     const partes = limpio.split(',');
