@@ -7,10 +7,19 @@ import {
   type ErrorAutorizacion,
 } from '@facturador/arca';
 import { mensajeSugerido } from '@facturador/documentos';
-import { Aviso, Boton, CampoDeTexto, Pantalla, Tarjeta, Texto, useTema } from '@facturador/ui';
+import type { Receptor } from '@facturador/dominio';
+import {
+  Aviso,
+  Boton,
+  CampoDeTexto,
+  Pantalla,
+  TarjetaDeComprobante,
+  Texto,
+  useTema,
+} from '@facturador/ui';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, ScrollView, View } from 'react-native';
 
 import { emisionPara, registro } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
@@ -120,7 +129,7 @@ export default function Resultado() {
       />
       <ScrollView contentContainerStyle={{ padding: espacio.normal, gap: espacio.normal }}>
         {resultado.ok ? (
-          <Autorizada otorgado={resultado.valor} />
+          <Autorizada otorgado={resultado.valor} receptor={receptor} />
         ) : (
           <Rechazada error={resultado.error} />
         )}
@@ -177,7 +186,13 @@ export default function Resultado() {
   );
 }
 
-function Autorizada({ otorgado }: { readonly otorgado: CaeOtorgado }) {
+function Autorizada({
+  otorgado,
+  receptor,
+}: {
+  readonly otorgado: CaeOtorgado;
+  readonly receptor: Receptor;
+}) {
   const { comprobante, puntoDeVenta, numero, observaciones } = otorgado;
   const autorizacion = comprobante.autorizacion;
   const notas = explicarObservaciones(observaciones);
@@ -185,16 +200,19 @@ function Autorizada({ otorgado }: { readonly otorgado: CaeOtorgado }) {
   return (
     <>
       <Aviso icono="check-circle-outline">ARCA autorizó la factura.</Aviso>
-      <Tarjeta>
-        <Dato etiqueta={`Factura ${comprobante.datos.tipo.clase}`}>
-          {numeroCompleto(puntoDeVenta, numero)}
-        </Dato>
-        <Dato etiqueta="Total">{comprobante.totales.total.formatear()}</Dato>
-        {autorizacion && <Dato etiqueta="CAE">{autorizacion.cae}</Dato>}
-        {autorizacion && (
-          <Dato etiqueta="Vencimiento del CAE">{autorizacion.vencimiento.formatear()}</Dato>
-        )}
-      </Tarjeta>
+      <TarjetaDeComprobante
+        titulo={`Factura ${comprobante.datos.tipo.clase}`}
+        numero={numeroCompleto(puntoDeVenta, numero)}
+        total={comprobante.totales.total.formatear()}
+        receptor={receptor.nombre ?? receptor.condicion.descripcion}
+        fecha={comprobante.datos.fechaDeEmision.formatear()}
+        {...(autorizacion && {
+          autorizacion: {
+            cae: autorizacion.cae,
+            vencimiento: autorizacion.vencimiento.formatear(),
+          },
+        })}
+      />
       {notas.length > 0 && (
         <Aviso icono="information-outline">
           {['ARCA hizo estas observaciones, que no invalidan la factura:', ...notas].join('\n')}
@@ -257,16 +275,3 @@ function AccionesDelError({
   }
   return null;
 }
-
-function Dato({ etiqueta, children }: { readonly etiqueta: string; readonly children: string }) {
-  return (
-    <View style={estilos.dato} accessible>
-      <Texto variante="detalle">{etiqueta}</Texto>
-      <Texto variante="importe">{children}</Texto>
-    </View>
-  );
-}
-
-const estilos = StyleSheet.create({
-  dato: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-});
