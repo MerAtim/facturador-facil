@@ -60,7 +60,7 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 | Amenaza | Mitigación | Estado |
 | --- | --- | --- |
 | Alguien con el teléfono desbloqueado abre la app y emite | Desbloqueo con la biometría o el PIN del sistema al abrir y al volver después de la espera elegida; el sistema limita los intentos. Sin bloqueo de pantalla, la app lo advierte | Cumple |
-| Se usa la clave privada con el teléfono bloqueado | iOS: `WhenUnlockedThisDeviceOnly`. Android: falta exigirlo | Pendiente, #133 |
+| Se usa la clave privada con el teléfono bloqueado | iOS: `WhenUnlockedThisDeviceOnly`. Android 9 o posterior: `setUnlockedDeviceRequired`. Si la firma falla, no se envía nada a ARCA y se puede reintentar | Cumple |
 | Se carga un certificado ajeno o de otro ambiente | Se valida el emisor ARCA del ambiente, el CUIT, que corresponda a la clave del teléfono y la vigencia | Cumple |
 | Un servidor falso se hace pasar por ARCA | TLS validado por el sistema; nunca se desactiva. URLs fijas en el código | Cumple |
 | Alguien toma la cuenta de GitHub o Expo y publica un build | Segundo factor y custodia del keystore | Pendiente, #134 |
@@ -123,7 +123,7 @@ Según [OWASP MASVS v2](https://mas.owasp.org/MASVS/). Los controles de resilien
 | MASVS-STORAGE-1 | Los datos sensibles se guardan de forma segura | Cumple: almacén seguro y SQLCipher |
 | MASVS-STORAGE-2 | Se evita la fuga de datos sensibles | Parcial: falta el teclado (#136) |
 | MASVS-CRYPTO-1 | Criptografía fuerte y actual | Cumple: RSA 2048 con SHA-256 en el hardware del teléfono, AES de SQLCipher |
-| MASVS-CRYPTO-2 | Gestión de claves según buenas prácticas | Parcial: falta exigir desbloqueo en Android (#133) |
+| MASVS-CRYPTO-2 | Gestión de claves según buenas prácticas | Cumple: claves no exportables, usables solo con el teléfono desbloqueado |
 | MASVS-AUTH-1 | Protocolos de autenticación seguros | Cumple: WSAA con CMS firmado en el teléfono |
 | MASVS-AUTH-2 | Autenticación local según la plataforma | Cumple: biometría o credencial del sistema |
 | MASVS-AUTH-3 | Autenticación adicional para operaciones sensibles | Cumple: confirmación explícita antes de emitir; el desbloqueo se renueva tras la espera |

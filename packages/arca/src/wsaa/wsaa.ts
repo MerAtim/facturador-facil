@@ -49,7 +49,16 @@ export interface TicketIlegible {
   readonly tipo: 'ticket_ilegible';
 }
 
-export type ErrorWsaa = RechazoWsaa | TicketIlegible | Exclude<ErrorSoap, FallaSoap>;
+/**
+ * El teléfono no firmó el pedido: la clave solo se usa con el teléfono desbloqueado, y el Keystore
+ * puede fallar. No se envió nada a ARCA, así que reintentar es seguro.
+ */
+export interface FirmaNoDisponible {
+  readonly tipo: 'firma_no_disponible';
+}
+
+export type ErrorWsaa =
+  RechazoWsaa | TicketIlegible | FirmaNoDisponible | Exclude<ErrorSoap, FallaSoap>;
 
 /** Códigos de falla según la especificación técnica de WSAA. */
 const MOTIVOS: Readonly<Record<string, MotivoRechazoWsaa>> = {
@@ -95,7 +104,12 @@ export async function solicitarTicket(
   url: string,
 ): Promise<Resultado<TicketDeAcceso, ErrorWsaa>> {
   const tra = new TextEncoder().encode(crearTra(solicitud.servicio, solicitud.ahora));
-  const cms = await firmarCms(tra, solicitud.certificado, firmador, solicitud.ahora);
+  let cms: Uint8Array;
+  try {
+    cms = await firmarCms(tra, solicitud.certificado, firmador, solicitud.ahora);
+  } catch {
+    return fallo({ tipo: 'firma_no_disponible' });
+  }
 
   const respuesta = await llamarSoap(
     transporte,
