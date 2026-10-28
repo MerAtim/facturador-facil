@@ -7,3 +7,4 @@ export * from './emision/borradorDeFactura';
 export * from './configuracion/configuracion';
 export * from './emision/emision';
 export * from './emision/prepararFactura';
+export * from './bloqueo/bloqueo';

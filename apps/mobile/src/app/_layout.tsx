@@ -4,10 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 
+import { ProveedorDeBloqueo } from '../seguridad/Bloqueo';
+
 export default function LayoutRaiz() {
   return (
     <ProveedorDeTema>
-      <Navegacion />
+      <ProveedorDeBloqueo>
+        <Navegacion />
+      </ProveedorDeBloqueo>
     </ProveedorDeTema>
   );
 }

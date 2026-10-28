@@ -1,4 +1,4 @@
-import type { Ambiente } from '@facturador/aplicacion';
+import type { Ambiente, EsperaDeBloqueo } from '@facturador/aplicacion';
 import {
   Cuit,
   Emisor,
@@ -27,6 +27,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 
+import { preferencias } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { repositorioDeConfiguracion } from '../configuracion/configuracion';
 import { MENSAJE_DE_CUIT } from '../contribuyente/mensajesDeCuit';
@@ -40,6 +41,12 @@ const CONDICIONES: readonly Opcion<CondicionEmisor>[] = [
 const AMBIENTES: readonly Opcion<Ambiente>[] = [
   { valor: 'homologacion', etiqueta: 'Homologación' },
   { valor: 'produccion', etiqueta: 'Producción' },
+];
+
+const ESPERAS: readonly Opcion<EsperaDeBloqueo>[] = [
+  { valor: 'al_instante', etiqueta: 'Al instante' },
+  { valor: 'un_minuto', etiqueta: '1 minuto' },
+  { valor: 'cinco_minutos', etiqueta: '5 minutos' },
 ];
 
 const MENSAJE_DEL_EMISOR: Readonly<Record<MotivoEmisorInvalido, string>> = {
@@ -70,6 +77,11 @@ export default function Configuracion() {
   const [errores, setErrores] = useState<Errores>({});
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState(false);
+  const [espera, setEspera] = useState<EsperaDeBloqueo>();
+
+  useEffect(() => {
+    void preferencias.esperaDeBloqueo().then(setEspera);
+  }, []);
 
   useEffect(() => {
     void repositorioDeConfiguracion.leer().then((guardada) => {
@@ -211,6 +223,19 @@ export default function Configuracion() {
         <Texto variante="etiqueta">Ambiente</Texto>
         <SelectorSegmentado opciones={AMBIENTES} valor={ambiente} onCambiar={elegirAmbiente} />
         <AvisoDeAmbiente ambiente={ambiente} />
+
+        <Texto variante="etiqueta">Pedir desbloqueo al volver a la app después de</Texto>
+        {espera && (
+          <SelectorSegmentado
+            opciones={ESPERAS}
+            valor={espera}
+            onCambiar={(elegida) => {
+              setEspera(elegida);
+              void preferencias.recordarEsperaDeBloqueo(elegida);
+            }}
+          />
+        )}
+        <Texto variante="detalle">Se aplica en el momento, sin guardar.</Texto>
 
         {fallo && (
           <Aviso icono="alert-circle-outline" tono="error">

@@ -1,5 +1,4 @@
 import {
-  crearPreferencias,
   itemVacio,
   prepararFactura,
   totalesDelBorrador,
@@ -29,15 +28,13 @@ import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { preferencias } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { EditorDeItem } from '../emision/EditorDeItem';
 import { EleccionDeReceptor } from '../emision/EleccionDeReceptor';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
 import { explicarProblema, lineasDelResumen } from '../emision/resumen';
-import { almacenLocalDelDispositivo } from '../infraestructura/almacenLocalDelDispositivo';
-
-const preferencias = crearPreferencias(almacenLocalDelDispositivo);
 
 const MODOS: readonly Opcion<ModoDePrecio>[] = [
   { valor: 'final', etiqueta: 'Precio final' },
