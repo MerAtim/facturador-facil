@@ -3,19 +3,27 @@ import {
   nombreDelArchivo,
   type DatosDelDocumento,
 } from '@facturador/documentos';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+
+import CompartirArchivo from '../../modules/compartir-archivo';
+
+/** La única carpeta que la app expone a otras apps, y solo por la hoja de compartir. */
+const compartidos = new Directory(Paths.cache, 'compartidos');
 
 /**
- * Convierte la factura en PDF y abre la hoja de compartir del sistema. El PDF queda en la caché de
- * la app, que no se comparte con otras apps salvo por esta hoja.
+ * Convierte la factura en PDF y abre la hoja de compartir del sistema con el mensaje para el
+ * cliente. El PDF queda en la caché de la app.
  */
-export async function compartirFactura(documento: DatosDelDocumento): Promise<void> {
+export async function compartirFactura(
+  documento: DatosDelDocumento,
+  mensaje: string,
+): Promise<void> {
   const { uri } = await Print.printToFileAsync({ html: htmlDelComprobante(documento) });
 
+  compartidos.create({ intermediates: true, idempotent: true });
   const destino = new File(
-    Paths.cache,
+    compartidos,
     nombreDelArchivo({
       clase: documento.comprobante.datos.tipo.clase,
       puntoDeVenta: documento.puntoDeVenta,
@@ -26,9 +34,5 @@ export async function compartirFactura(documento: DatosDelDocumento): Promise<vo
   if (destino.exists) destino.delete();
   await new File(uri).move(destino);
 
-  await Sharing.shareAsync(destino.uri, {
-    mimeType: 'application/pdf',
-    UTI: 'com.adobe.pdf',
-    dialogTitle: 'Compartir factura',
-  });
+  await CompartirArchivo.compartir(destino.uri, 'application/pdf', mensaje, 'Compartir factura');
 }

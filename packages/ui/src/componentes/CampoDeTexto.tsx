@@ -9,6 +9,7 @@ export function CampoDeTexto({
   maximo,
   autoFocus = false,
   numerico = false,
+  multilinea = false,
   error,
 }: {
   readonly etiqueta: string;
@@ -18,6 +19,8 @@ export function CampoDeTexto({
   readonly autoFocus?: boolean;
   /** Muestra el teclado de números, por ejemplo para un punto de venta. */
   readonly numerico?: boolean;
+  /** Para textos de más de una línea, como un mensaje. */
+  readonly multilinea?: boolean;
   readonly error?: string | undefined;
 }) {
   return (
@@ -29,6 +32,7 @@ export function CampoDeTexto({
         onChangeText={onCambiar}
         autoFocus={autoFocus}
         keyboardType={numerico ? 'number-pad' : 'default'}
+        multiline={multilinea}
         error={error !== undefined}
         {...(maximo === undefined ? {} : { maxLength: maximo })}
       />

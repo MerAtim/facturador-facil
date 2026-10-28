@@ -6,7 +6,8 @@ import {
   type CaeOtorgado,
   type ErrorAutorizacion,
 } from '@facturador/arca';
-import { Aviso, Boton, Pantalla, Tarjeta, Texto, useTema } from '@facturador/ui';
+import { mensajeSugerido } from '@facturador/documentos';
+import { Aviso, Boton, CampoDeTexto, Pantalla, Tarjeta, Texto, useTema } from '@facturador/ui';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
@@ -31,6 +32,8 @@ export default function Resultado() {
   const [reintentando, setReintentando] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [noSeCompartio, setNoSeCompartio] = useState(false);
+  // Sin escribir nada, se usa el mensaje sugerido.
+  const [mensaje, setMensaje] = useState<string>();
   const enviado = useRef(false);
 
   useEffect(() => {
@@ -43,6 +46,17 @@ export default function Resultado() {
   const enCurso = facturaEnCurso.leer();
   if (!enCurso?.resultado) return <Redirect href="/" />;
   const { comprobante, receptor, resultado } = enCurso;
+  const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
+  const sugerido =
+    resultado.ok && configurada
+      ? mensajeSugerido({
+          clase: resultado.valor.comprobante.datos.tipo.clase,
+          puntoDeVenta: resultado.valor.puntoDeVenta,
+          numero: resultado.valor.numero,
+          total: resultado.valor.comprobante.totales.total.formatear(),
+          emisor: configurada.emisor.datos.razonSocial,
+        })
+      : '';
 
   const volverAlInicio = () => {
     facturaEnCurso.terminar();
@@ -56,19 +70,21 @@ export default function Resultado() {
   };
 
   const compartir = async (otorgado: CaeOtorgado) => {
-    const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
     if (!configurada) return;
     setNoSeCompartio(false);
     setCompartiendo(true);
     try {
-      await compartirFactura({
-        comprobante: otorgado.comprobante,
-        emisor: configurada.emisor,
-        receptor,
-        puntoDeVenta: otorgado.puntoDeVenta,
-        numero: otorgado.numero,
-        deHomologacion: configurada.ambiente === 'homologacion',
-      });
+      await compartirFactura(
+        {
+          comprobante: otorgado.comprobante,
+          emisor: configurada.emisor,
+          receptor,
+          puntoDeVenta: otorgado.puntoDeVenta,
+          numero: otorgado.numero,
+          deHomologacion: configurada.ambiente === 'homologacion',
+        },
+        mensaje ?? sugerido,
+      );
     } catch {
       setNoSeCompartio(true);
     } finally {
@@ -78,7 +94,6 @@ export default function Resultado() {
 
   /** El mismo comprobante otra vez: el autorizador averigua qué pasó con un envío incierto. */
   const reintentar = async () => {
-    const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
     if (!configurada || enviado.current) return;
     enviado.current = true;
     setReintentando(true);
@@ -110,6 +125,15 @@ export default function Resultado() {
         )}
 
         <View style={{ gap: espacio.chico, marginTop: espacio.normal }}>
+          {resultado.ok && (
+            <CampoDeTexto
+              etiqueta="Mensaje para el cliente"
+              valor={mensaje ?? sugerido}
+              onCambiar={setMensaje}
+              multilinea
+              maximo={500}
+            />
+          )}
           {resultado.ok && (
             <Boton
               icon="share-variant"
