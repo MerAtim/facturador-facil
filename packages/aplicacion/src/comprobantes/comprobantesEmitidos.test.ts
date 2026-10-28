@@ -7,6 +7,7 @@ import {
   Cuit,
   Dinero,
   Dni,
+  Emisor,
   FechaCalendario,
   TipoComprobante,
   type Receptor,
@@ -18,6 +19,7 @@ import { migrar } from '../persistencia/migraciones';
 import {
   crearRepositorioDeComprobantes,
   type ComprobanteEmitido,
+  type FiltroDeComprobantes,
   type RepositorioDeComprobantes,
 } from './comprobantesEmitidos';
 
@@ -28,8 +30,20 @@ const valor = <T>(resultado: { ok: true; valor: T } | { ok: false }): T => {
 
 const fecha = (anio: number, mes: number, dia: number) =>
   valor(FechaCalendario.crear(anio, mes, dia));
-const cuitEmisor = valor(Cuit.crear('20111111112'));
-const otroEmisor = valor(Cuit.crear('27333333339'));
+const emisorCon = (cambios: { cuit?: string; domicilio?: string } = {}) =>
+  valor(
+    Emisor.crear({
+      razonSocial: 'Juana Pérez',
+      cuit: valor(Cuit.crear(cambios.cuit ?? '20111111112')),
+      condicion: 'responsable_inscripto',
+      domicilio: cambios.domicilio ?? 'Mitre 100, Rosario',
+      inicioDeActividades: fecha(2020, 1, 1),
+      puntoDeVenta: 3,
+      ingresosBrutos: 'Exento',
+    }),
+  );
+const emisor = emisorCon();
+const otroEmisor = emisorCon({ cuit: '27333333339' });
 
 const ferreteria: Receptor = {
   identificacion: { tipo: 'cuit', cuit: valor(Cuit.crear('30712345671')) },
@@ -85,7 +99,7 @@ const emitido = (
   receptor = ferreteria,
 ): ComprobanteEmitido => ({
   ambiente: 'homologacion',
-  cuitEmisor,
+  emisor,
   puntoDeVenta: 3,
   numero,
   comprobante,
@@ -95,8 +109,10 @@ const emitido = (
 describe('RepositorioDeComprobantes', () => {
   let base: ReturnType<typeof crearBaseSqliteDePrueba>;
   let repositorio: RepositorioDeComprobantes;
-  const listar = (limite = 10) =>
-    repositorio.listar({ ambiente: 'homologacion', cuitEmisor, limite });
+  const listar = (filtro: Partial<FiltroDeComprobantes> = {}) =>
+    repositorio.listar({ ambiente: 'homologacion', emisor, limite: 10, ...filtro });
+  const numeros = async (filtro: Partial<FiltroDeComprobantes> = {}) =>
+    (await listar(filtro)).map((comprobante) => comprobante.numero);
 
   beforeEach(async () => {
     base = crearBaseSqliteDePrueba();
@@ -157,17 +173,15 @@ describe('RepositorioDeComprobantes', () => {
     await repositorio.guardar(emitido(3, autorizada(ferreteria, { hoy: fecha(2026, 10, 27) })));
     await repositorio.guardar(emitido(2, autorizada(ferreteria, { hoy: fecha(2026, 10, 25) })));
 
-    const numeros = (await listar(2)).map((comprobante) => comprobante.numero);
-
-    expect(numeros).toEqual([3, 2]);
+    expect(await numeros({ limite: 2 })).toEqual([3, 2]);
   });
 
   it('separa los comprobantes por ambiente y por emisor', async () => {
     await repositorio.guardar(emitido(1));
     await repositorio.guardar({ ...emitido(2), ambiente: 'produccion' });
-    await repositorio.guardar({ ...emitido(3), cuitEmisor: otroEmisor });
+    await repositorio.guardar({ ...emitido(3), emisor: otroEmisor });
 
-    expect((await listar()).map((comprobante) => comprobante.numero)).toEqual([1]);
+    expect(await numeros()).toEqual([1]);
   });
 
   it('rechaza un comprobante sin CAE', async () => {
@@ -183,7 +197,7 @@ describe('RepositorioDeComprobantes', () => {
 
     expect(
       await base.consultar(
-        'SELECT tipo, punto_de_venta, numero, fecha, total_en_centavos, receptor, cae, guardado_en FROM comprobantes',
+        'SELECT tipo, punto_de_venta, numero, fecha, total_en_centavos, receptor, receptor_documento, cae, guardado_en FROM comprobantes',
       ),
     ).toEqual([
       {
@@ -193,6 +207,7 @@ describe('RepositorioDeComprobantes', () => {
         fecha: '20261027',
         total_en_centavos: 352625,
         receptor: 'Ferretería Sur',
+        receptor_documento: '30712345671',
         cae: '76431234567890',
         guardado_en: 1_000,
       },
@@ -230,6 +245,15 @@ describe('RepositorioDeComprobantes', () => {
       ['una condición inexistente', (g) => ({ ...g, receptor: { condicion: 99 } })],
       ['un período incompleto', (g) => ({ ...g, periodoDeServicio: { desde: '20261001' } })],
       ['algo que no es un objeto', () => 'texto'],
+      ['un emisor con CUIT inválido', (g) => ({ ...g, emisor: { ...emisorDe(g), cuit: '1' } })],
+      [
+        'un emisor sin razón social',
+        (g) => ({ ...g, emisor: { ...emisorDe(g), razonSocial: '' } }),
+      ],
+      [
+        'un emisor con condición inexistente',
+        (g) => ({ ...g, emisor: { ...emisorDe(g), condicion: 'x' } }),
+      ],
     ])('descarta un comprobante con %s', async (_, danar) => {
       await reemplazarDatos(
         JSON.stringify(danar(JSON.parse(await datosDe()) as Record<string, unknown>)),
@@ -248,10 +272,119 @@ describe('RepositorioDeComprobantes', () => {
       await reemplazarDatos('{');
       await repositorio.guardar(emitido(13));
 
-      expect((await listar()).map((comprobante) => comprobante.numero)).toEqual([13]);
+      expect(await numeros()).toEqual([13]);
+    });
+  });
+
+  it('conserva los datos del emisor al emitir aunque después cambien', async () => {
+    await repositorio.guardar(emitido(12));
+
+    const [leido] = await listar({ emisor: emisorCon({ domicilio: 'Otra calle 9' }) });
+
+    expect(leido?.emisor.datos.domicilio).toBe('Mitre 100, Rosario');
+  });
+
+  it('lee lo guardado en la versión 1, sin emisor, con los datos del emisor actual', async () => {
+    await repositorio.guardar(emitido(12));
+    const guardado = JSON.parse(
+      String((await base.consultar('SELECT datos FROM comprobantes'))[0]?.['datos']),
+    ) as Record<string, unknown>;
+    const version1: Record<string, unknown> = { ...guardado, version: 1 };
+    delete version1['emisor'];
+    await base.ejecutar('UPDATE comprobantes SET datos = ?', [JSON.stringify(version1)]);
+    const actual = emisorCon({ domicilio: 'Otra calle 9' });
+
+    const [leido] = await listar({ emisor: actual });
+
+    expect(leido?.emisor).toBe(actual);
+    expect(leido?.numero).toBe(12);
+  });
+
+  it('lee un comprobante por su tipo, punto de venta y número', async () => {
+    await repositorio.guardar(emitido(12));
+    await repositorio.guardar(emitido(13));
+    const clave = {
+      ambiente: 'homologacion' as const,
+      emisor,
+      tipo: TipoComprobante.FACTURA_A,
+      puntoDeVenta: 3,
+    };
+
+    expect((await repositorio.leer({ ...clave, numero: 13 }))?.numero).toBe(13);
+    expect(await repositorio.leer({ ...clave, numero: 14 })).toBeUndefined();
+    expect(
+      await repositorio.leer({ ...clave, tipo: TipoComprobante.FACTURA_B, numero: 13 }),
+    ).toBeUndefined();
+  });
+
+  describe('buscar y filtrar', () => {
+    const consumidor: Receptor = {
+      identificacion: { tipo: 'dni', dni: valor(Dni.crear('30123456')) },
+      condicion: CondicionIvaReceptor.CONSUMIDOR_FINAL,
+      nombre: 'Ana_100%',
+    };
+
+    beforeEach(async () => {
+      await repositorio.guardar(emitido(1, autorizada(ferreteria, { hoy: fecha(2026, 9, 15) })));
+      await repositorio.guardar(
+        emitido(
+          2,
+          autorizada(consumidor, { tipo: TipoComprobante.FACTURA_B, hoy: fecha(2026, 10, 2) }),
+          consumidor,
+        ),
+      );
+      await repositorio.guardar(
+        emitido(
+          3,
+          autorizada(CONSUMIDOR_FINAL_SIN_IDENTIFICAR, {
+            tipo: TipoComprobante.FACTURA_B,
+            hoy: fecha(2026, 10, 20),
+          }),
+          CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
+        ),
+      );
+    });
+
+    it.each<[string, string, number[]]>([
+      ['parte del nombre, sin importar mayúsculas', 'ferre', [1]],
+      ['un comodín de LIKE como texto', '_100%', [2]],
+      ['un guion bajo que no es comodín', 'r_a', []],
+      ['parte del CUIT', '712345', [1]],
+      ['el CUIT con guiones', '30-71234567-1', [1]],
+      ['parte del DNI', '30123', [2]],
+      ['el número', '3', [3]],
+      ['punto de venta y número', '00003-00000002', [2]],
+      ['el importe total', '3.526,25', [3, 2, 1]],
+      ['algo que no está', 'nada', []],
+      ['solo espacios, que no filtra', '   ', [3, 2, 1]],
+    ])('busca por %s', async (_, busqueda, esperados) => {
+      expect(await numeros({ busqueda })).toEqual(esperados);
+    });
+
+    it('filtra por fecha, con los extremos incluidos', async () => {
+      expect(await numeros({ desde: fecha(2026, 10, 2) })).toEqual([3, 2]);
+      expect(await numeros({ hasta: fecha(2026, 10, 2) })).toEqual([2, 1]);
+      expect(await numeros({ desde: fecha(2026, 10, 1), hasta: fecha(2026, 10, 31) })).toEqual([
+        3, 2,
+      ]);
+    });
+
+    it('filtra por clase', async () => {
+      expect(await numeros({ clase: 'A' })).toEqual([1]);
+      expect(await numeros({ clase: 'B' })).toEqual([3, 2]);
+      expect(await numeros({ clase: 'C' })).toEqual([]);
+    });
+
+    it('combina búsqueda y filtros', async () => {
+      expect(
+        await numeros({ busqueda: '3.526,25', clase: 'B', desde: fecha(2026, 10, 10) }),
+      ).toEqual([3]);
     });
   });
 });
+
+const emisorDe = (guardado: Record<string, unknown>) =>
+  guardado['emisor'] as Record<string, unknown>;
 
 const first = (guardado: Record<string, unknown>) =>
   (guardado['items'] as Record<string, unknown>[])[0];
