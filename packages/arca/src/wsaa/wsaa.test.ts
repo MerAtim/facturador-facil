@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Firmador } from '../criptografia/firmador';
 import { crearCertificadoDePrueba, crearFirmadorDePrueba } from '../criptografia/paraPruebas';
 import type { Transporte } from '../soap/transporte';
 import { crearTra, solicitarTicket } from './wsaa';
@@ -27,6 +28,31 @@ const respuestaExitosa = conTicket(
     '&lt;credentials&gt;&lt;token&gt;VE9LRU4=&lt;/token&gt;&lt;sign&gt;RklSTUE=&lt;/sign&gt;&lt;/credentials&gt;' +
     '&lt;/loginTicketResponse&gt;',
 );
+
+describe('solicitarTicket sin firma', () => {
+  it('si el teléfono no firma, no llama a WSAA y lo informa', async () => {
+    const { firmador } = crearFirmadorDePrueba();
+    const certificado = await crearCertificadoDePrueba(firmador);
+    const llamadas: string[] = [];
+    const bloqueado: Firmador = {
+      clavePublica: () => firmador.clavePublica(),
+      firmar: () => Promise.reject(new Error('teléfono bloqueado')),
+    };
+
+    const resultado = await solicitarTicket(
+      { servicio: 'wsfe', certificado, ahora },
+      bloqueado,
+      (url) => {
+        llamadas.push(url);
+        return Promise.resolve({ estado: 200, cuerpo: '' });
+      },
+      'https://wsaa',
+    );
+
+    expect(resultado).toEqual({ ok: false, error: { tipo: 'firma_no_disponible' } });
+    expect(llamadas).toEqual([]);
+  });
+});
 
 const falla = (codigo: string, mensaje: string) =>
   sobre(

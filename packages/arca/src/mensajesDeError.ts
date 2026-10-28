@@ -132,6 +132,12 @@ export function explicarError(error: ErrorAutorizacion | ErrorParametros): Mensa
         'ARCA respondió algo que no esperábamos.',
         'reintentar_mas_tarde',
       );
+    case 'firma_no_disponible':
+      return mensaje(
+        'No se pudo usar la clave del certificado',
+        'La clave solo funciona con el teléfono desbloqueado. No se envió nada a ARCA.',
+        'reintentar',
+      );
     case 'rechazo_wsaa': {
       const { texto, accion = 'contactar_soporte' } = MOTIVOS_WSAA[error.motivo];
       return mensaje('ARCA no dio acceso a la app', texto, accion, [error.codigo]);

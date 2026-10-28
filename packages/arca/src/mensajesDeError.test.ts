@@ -233,6 +233,7 @@ describe('explicarError', () => {
     { tipo: 'xml_invalido', motivo: 'mal_formado' },
     { tipo: 'falla_soap', codigo: 'Server', mensaje: 'System.NullReferenceException at Foo.Bar()' },
     { tipo: 'ticket_ilegible' },
+    { tipo: 'firma_no_disponible' },
     { tipo: 'comprobante_no_soportado', motivo: 'ya_autorizado' },
     { tipo: 'comprobante_no_soportado', motivo: 'requiere_comprobante_asociado' },
     { tipo: 'almacen_no_disponible' },
@@ -243,6 +244,10 @@ describe('explicarError', () => {
       mensaje: '',
     },
   ];
+
+  it('si el teléfono no firmó, se puede reintentar: no se envió nada', () => {
+    expect(explicarError({ tipo: 'firma_no_disponible' }).accion).toBe('reintentar');
+  });
 
   it.each(errores)('explica $tipo sin trazas técnicas', (error) => {
     const mensaje = explicarError(error);

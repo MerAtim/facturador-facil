@@ -72,6 +72,12 @@ class AlmacenClavesModule : Module() {
       .setDigests(KeyProperties.DIGEST_SHA256)
       .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
       .apply { if (enStrongBox) setIsStrongBoxBacked(true) }
+      // Con la pantalla bloqueada, el Keystore se niega a firmar: aunque algo corra como la app,
+      // no puede usar la clave sin que el dueño desbloquee el teléfono. Igual que
+      // WhenUnlockedThisDeviceOnly en iOS. Antes de Android 9 no existe.
+      .apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setUnlockedDeviceRequired(true)
+      }
       .build()
 
     KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, PROVEEDOR).run {
