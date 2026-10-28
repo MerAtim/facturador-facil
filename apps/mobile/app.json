@@ -2,6 +2,7 @@
   "expo": {
     "name": "Facturador Fácil",
     "slug": "facturador-facil",
+    "owner": "meratim",
     "scheme": "facturadorfacil",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -42,6 +43,11 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b64f6434-3619-415a-bb56-7c3c50b84248"
+      }
     }
   }
 }

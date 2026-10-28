@@ -59,6 +59,28 @@ La primera vez compila todo y tarda varios minutos. Después, mientras no cambie
 pnpm --filter @facturador/mobile start
 ```
 
+### Builds instalables con EAS
+
+Para probar en un teléfono sin cable ni Metro, la app se compila en los servidores de Expo con [EAS Build](https://docs.expo.dev/build/introduction/). Hace falta una cuenta de Expo con acceso al proyecto:
+
+```
+cd apps/mobile
+npx eas-cli login
+npx eas-cli build --profile prueba --platform android
+```
+
+Al terminar, EAS da un enlace y un QR para instalar el APK en cualquier Android. Los perfiles están en `apps/mobile/eas.json`:
+
+| Perfil | Para qué | Resultado |
+| --- | --- | --- |
+| `desarrollo` | Desarrollar en un teléfono físico con Metro, como en el emulador | APK con el cliente de desarrollo |
+| `prueba` | Probar la app tal como la va a usar alguien, en homologación | APK de distribución interna |
+| `produccion` | Publicar en las tiendas | AAB firmado, con número de versión que sube solo |
+
+* **Solo se compila lo commiteado.** `requireCommit` hace que EAS rechace un build con cambios sin commitear, así no viaja código local de prueba.
+* **Los secretos viven en EAS, nunca en el repo.** El keystore de Android lo genera y guarda EAS la primera vez; las variables de entorno sensibles se cargan con `npx eas-cli env:create` en el ambiente que corresponda (`development`, `preview` o `production`). La app hoy no necesita ninguna: el certificado de ARCA se crea en el teléfono.
+* **iOS** necesita una cuenta de Apple Developer y registrar cada iPhone de prueba con `npx eas-cli device:create`.
+
 Por seguridad, pnpm solo instala versiones publicadas hace al menos 14 días (`minimumReleaseAge` en `pnpm-workspace.yaml`).
 
 ## Documentación

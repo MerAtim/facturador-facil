@@ -13,6 +13,9 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
+# Credenciales de firma que descarga `eas credentials`: viven en EAS, no en el repo.
+credentials.json
 *.p8
 *.p12
 *.key
