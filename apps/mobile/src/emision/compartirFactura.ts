@@ -7,6 +7,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 
 import CompartirArchivo from '../../modules/compartir-archivo';
+import { leerLogo } from '../logo/logoDelEmisor';
 
 /** La única carpeta que la app expone a otras apps, y solo por la hoja de compartir. */
 const compartidos = new Directory(Paths.cache, 'compartidos');
@@ -19,7 +20,11 @@ export async function compartirFactura(
   documento: DatosDelDocumento,
   mensaje: string,
 ): Promise<void> {
-  const { uri } = await Print.printToFileAsync({ html: htmlDelComprobante(documento) });
+  // Sin logo, o si no se puede leer, la factura sale igual.
+  const logo = await leerLogo().catch(() => undefined);
+  const { uri } = await Print.printToFileAsync({
+    html: htmlDelComprobante(logo === undefined ? documento : { ...documento, logo }),
+  });
 
   compartidos.create({ intermediates: true, idempotent: true });
   const destino = new File(

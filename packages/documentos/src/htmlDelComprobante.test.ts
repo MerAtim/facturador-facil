@@ -153,6 +153,27 @@ describe('htmlDelComprobante', () => {
     });
   });
 
+  describe('logo', () => {
+    it('sin logo no hay imagen', () => {
+      expect(htmlDelComprobante(documento())).not.toContain('class="logo"');
+    });
+
+    it('va embebido como PNG, sin cargar nada de afuera', () => {
+      const html = htmlDelComprobante(documento({ logo: 'iVBORw0KGgo=' }));
+
+      expect(html).toContain('<img class="logo" src="data:image/png;base64,iVBORw0KGgo=" alt="">');
+      // La única etiqueta con src es la del logo, y es un dato embebido.
+      expect(html.match(/<[^>]*\s(src|href)=/g)).toEqual(['<img class="logo" src=']);
+    });
+
+    it('un logo que no es base64 no se inserta', () => {
+      const html = htmlDelComprobante(documento({ logo: 'x" onerror="alert(1)' }));
+
+      expect(html).not.toContain('onerror');
+      expect(html).not.toContain('class="logo"');
+    });
+  });
+
   it('no arma el documento de un comprobante sin autorizar', () => {
     expect(() => htmlDelComprobante(documento({ comprobante: sinAutorizar() }))).toThrow(
       'autorizado',
