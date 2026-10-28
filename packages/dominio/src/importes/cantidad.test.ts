@@ -34,6 +34,24 @@ describe('Cantidad', () => {
     });
   });
 
+  it('se rearma desde las milésimas guardadas', () => {
+    const cantidad = Cantidad.desdeMilesimas(2500);
+
+    expect(cantidad.ok && cantidad.valor.formatear()).toBe('2,5');
+  });
+
+  it.each([
+    [0, 'no_positiva'],
+    [-1000, 'no_positiva'],
+    [1.5, 'formato_invalido'],
+    [Number.NaN, 'formato_invalido'],
+  ])('no rearma %s milésimas: %s', (milesimas, motivo) => {
+    expect(Cantidad.desdeMilesimas(milesimas)).toEqual({
+      ok: false,
+      error: { tipo: 'cantidad_invalida', motivo },
+    });
+  });
+
   it('se expresa como fracción en milésimas', () => {
     expect(Cantidad.UNO.comoFraccion()).toEqual([1000, 1000]);
   });

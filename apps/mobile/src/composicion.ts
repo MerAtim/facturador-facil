@@ -1,5 +1,6 @@
 import {
   crearEmision,
+  crearRepositorioDeComprobantes,
   crearPreferencias,
   crearRegistro,
   crearRegistroDeAlta,
@@ -27,6 +28,7 @@ import type { Cuit, Resultado } from '@facturador/dominio';
 import { almacenDeClavesDelDispositivo } from './arca/almacenDeClavesDelDispositivo';
 import { almacenLocalDelDispositivo } from './infraestructura/almacenLocalDelDispositivo';
 import { almacenSeguroDelDispositivo } from './infraestructura/almacenSeguroDelDispositivo';
+import { baseDeDatosDelDispositivo } from './infraestructura/baseDeDatosDelDispositivo';
 
 /**
  * El único lugar donde los casos de uso se conectan con los adaptadores del dispositivo y de ARCA.
@@ -39,6 +41,7 @@ export const preferencias = crearPreferencias(almacenLocalDelDispositivo);
 export const receptoresFrecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
 export const registroDeAlta = crearRegistroDeAlta(almacenLocalDelDispositivo);
+export const comprobantesEmitidos = crearRepositorioDeComprobantes(baseDeDatosDelDispositivo);
 
 export type EmisionWsfe = Emision<CaeOtorgado, ErrorAutorizacion>;
 
@@ -96,7 +99,11 @@ export async function emisionPara({
       transporte: transporteFetch,
       almacen: almacenSeguroDelDispositivo,
     }),
+    comprobantes: comprobantesEmitidos,
     receptoresFrecuentes,
+    registro,
+    ambiente,
+    cuitEmisor: cuit,
     puntoDeVenta,
   });
   emisiones.set(clave, emision);

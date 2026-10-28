@@ -15,6 +15,7 @@
     "@facturador/dominio": "workspace:*"
   },
   "devDependencies": {
-    "@facturador/config": "workspace:*"
+    "@facturador/config": "workspace:*",
+    "@types/node": "26.6.5"
   }
 }
