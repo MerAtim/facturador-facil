@@ -6,10 +6,12 @@ import { useEffect } from 'react';
 
 import { ProveedorDeBloqueo } from '../seguridad/Bloqueo';
 import { protegerLaPantalla } from '../seguridad/privacidadEnPantalla';
+import { protegerElTeclado } from '../seguridad/tecladoPrivado';
 
 export default function LayoutRaiz() {
   useEffect(() => {
     void protegerLaPantalla();
+    protegerElTeclado();
   }, []);
 
   return (

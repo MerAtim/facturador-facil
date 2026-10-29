@@ -132,6 +132,7 @@ export default function Comprobantes() {
           <View style={{ gap: espacio.medio }}>
             <CampoDeTexto
               etiqueta="Buscar por cliente, CUIT, número o importe"
+              datoPersonal
               valor={texto}
               onCambiar={(nuevo) => {
                 setTexto(nuevo);
