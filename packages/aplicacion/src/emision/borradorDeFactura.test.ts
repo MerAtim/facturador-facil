@@ -1,4 +1,4 @@
-import { AlicuotaIva, Cantidad, TipoComprobante } from '@facturador/dominio';
+import { AlicuotaIva, Cantidad, TipoComprobante, UnidadDeMedida } from '@facturador/dominio';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -15,7 +15,7 @@ const item = (
   cantidad = '',
   alicuota = AlicuotaIva.VEINTIUNO,
   descripcion = 'Servicio',
-): BorradorDeItem => ({ descripcion, cantidad, precio, alicuota });
+): BorradorDeItem => ({ descripcion, cantidad, unidad: UnidadDeMedida.UNIDADES, precio, alicuota });
 
 describe('cantidadDelBorrador', () => {
   it('vacía vale uno', () => {
@@ -40,6 +40,17 @@ describe('itemDelBorrador', () => {
     expect(resultado.cantidad.formatear()).toBe('3');
     expect(resultado.precioUnitario.formatear()).toBe('$ 1.234,50');
     expect(resultado.alicuota).toBe(AlicuotaIva.DIEZ_Y_MEDIO);
+    expect(resultado.unidad).toBe(UnidadDeMedida.UNIDADES);
+  });
+
+  it('lleva la unidad elegida', () => {
+    const conLitros = { ...item('100', '2'), unidad: UnidadDeMedida.LITROS };
+
+    expect(itemDelBorrador(conLitros).unidad).toBe(UnidadDeMedida.LITROS);
+  });
+
+  it('un ítem nuevo cuenta unidades', () => {
+    expect(itemVacio(AlicuotaIva.VEINTIUNO).unidad).toBe(UnidadDeMedida.UNIDADES);
   });
 
   it('un precio vacío o a medio escribir cuenta como cero o como lo ya escrito', () => {

@@ -10,6 +10,7 @@ import {
   Emisor,
   FechaCalendario,
   TipoComprobante,
+  UnidadDeMedida,
   type Receptor,
 } from '@facturador/dominio';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -131,6 +132,41 @@ describe('RepositorioDeComprobantes', () => {
     expect(leido?.comprobante.totales.total.esIgualA(original.comprobante.totales.total)).toBe(
       true,
     );
+  });
+
+  it('conserva la unidad de medida de cada ítem', async () => {
+    const base = autorizada(ferreteria);
+    const conUnidades = valor(
+      valor(
+        Comprobante.crear({
+          ...base.datos,
+          items: base.datos.items.map((item, indice) =>
+            indice === 0 ? { ...item, unidad: UnidadDeMedida.KILOGRAMOS } : item,
+          ),
+        }),
+      ).autorizar('76431234567890', fecha(2026, 11, 6)),
+    );
+    const original = emitido(14, conUnidades);
+
+    await repositorio.guardar(original);
+    const [leido] = await listar();
+
+    expect(leido).toEqual(original);
+    expect(leido?.comprobante.datos.items.map((item) => item.unidad)).toEqual([
+      UnidadDeMedida.KILOGRAMOS,
+      undefined,
+    ]);
+  });
+
+  it('descarta un ítem con una unidad desconocida', async () => {
+    await repositorio.guardar(emitido(12));
+    const guardado = JSON.parse(
+      String((await base.consultar('SELECT datos FROM comprobantes'))[0]?.['datos']),
+    ) as { items: Record<string, unknown>[] };
+    const danado = { ...guardado, items: guardado.items.map((i) => ({ ...i, unidad: 'leguas' })) };
+    await base.ejecutar('UPDATE comprobantes SET datos = ?', [JSON.stringify(danado)]);
+
+    expect(await listar()).toEqual([]);
   });
 
   it('conserva el período de un comprobante de servicios', async () => {

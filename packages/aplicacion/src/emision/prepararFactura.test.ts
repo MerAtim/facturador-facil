@@ -6,6 +6,7 @@ import {
   FechaCalendario,
   TipoComprobante,
   type Receptor,
+  UnidadDeMedida,
 } from '@facturador/dominio';
 import { describe, expect, it } from 'vitest';
 
@@ -22,6 +23,7 @@ const hoy = valor(FechaCalendario.crear(2026, 10, 27));
 const item = (precio: string, descripcion = 'Tornillos', cantidad = ''): BorradorDeItem => ({
   descripcion,
   cantidad,
+  unidad: UnidadDeMedida.UNIDADES,
   precio,
   alicuota: AlicuotaIva.VEINTIUNO,
 });
