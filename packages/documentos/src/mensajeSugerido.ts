@@ -1,4 +1,4 @@
-import type { ClaseComprobante } from '@facturador/dominio';
+import type { TipoComprobante } from '@facturador/dominio';
 
 import { numeroDeComprobante } from './numeroDeComprobante';
 
@@ -7,7 +7,7 @@ import { numeroDeComprobante } from './numeroDeComprobante';
  * antes de enviarlo.
  */
 export function mensajeSugerido(datos: {
-  readonly clase: ClaseComprobante;
+  readonly tipo: TipoComprobante;
   readonly puntoDeVenta: number;
   readonly numero: number;
   /** El total ya formateado, `$ 1.210,00`. */
@@ -15,5 +15,6 @@ export function mensajeSugerido(datos: {
   readonly emisor: string;
 }): string {
   const numero = numeroDeComprobante(datos.puntoDeVenta, datos.numero);
-  return `Hola, te envío la factura ${datos.clase} ${numero} por ${datos.total}. ¡Gracias! ${datos.emisor}`;
+  const comprobante = `${datos.tipo.nombre.toLowerCase()} ${datos.tipo.clase}`;
+  return `Hola, te envío la ${comprobante} ${numero} por ${datos.total}. ¡Gracias! ${datos.emisor}`;
 }

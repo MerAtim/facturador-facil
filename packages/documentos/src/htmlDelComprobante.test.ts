@@ -5,6 +5,7 @@ import {
   Cuit,
   Dni,
   Emisor,
+  FechaCalendario,
   TipoComprobante,
   type Receptor,
 } from '@facturador/dominio';
@@ -120,6 +121,34 @@ describe('htmlDelComprobante', () => {
     expect(html).toContain('Total</td><td class="numero">$ 800,00');
     expect(html).not.toContain('IVA contenido');
     expect(html).not.toContain('Neto gravado');
+  });
+
+  it('una factura no muestra comprobante asociado', () => {
+    const html = htmlDelComprobante(documento());
+
+    expect(html).toContain('<h2>Factura</h2>');
+    expect(html).toContain('<title>Factura B 00002-00000015</title>');
+    expect(html).not.toContain('Comprobante asociado');
+  });
+
+  it('la nota de crédito se nombra e informa la factura que ajusta', () => {
+    const nota = autorizado({
+      tipo: TipoComprobante.NOTA_DE_CREDITO_B,
+      asociado: {
+        tipo: TipoComprobante.FACTURA_B,
+        puntoDeVenta: 2,
+        numero: 14,
+        fechaDeEmision: valor(FechaCalendario.crear(2026, 10, 20)),
+      },
+    });
+    const html = htmlDelComprobante(documento({ comprobante: nota }));
+
+    expect(html).toContain('<title>Nota de crédito B 00002-00000015</title>');
+    expect(html).toContain('<h2>Nota de crédito</h2>');
+    expect(html).toContain('Cód. 008');
+    expect(html).toContain(
+      'Comprobante asociado: <b class="sin-corte">Factura B 00002-00000014</b> del 20/10/2026',
+    );
   });
 
   it('marca lo emitido en homologación', () => {

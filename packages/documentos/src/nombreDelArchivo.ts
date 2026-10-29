@@ -1,23 +1,24 @@
-import type { ClaseComprobante } from '@facturador/dominio';
+import type { TipoComprobante } from '@facturador/dominio';
 
 import { numeroDeComprobante } from './numeroDeComprobante';
 
 const LARGO_MAXIMO_DEL_NOMBRE = 40;
 
 /**
- * Nombre descriptivo para el PDF: `factura-B-00002-00000015-ferreteria-sur.pdf`. El nombre del
+ * Nombre descriptivo para el PDF: `factura-B-00002-00000015-ferreteria-sur.pdf` o
+ * `nota-de-credito-B-00002-00000003.pdf`. El nombre del
  * receptor lo escribió el usuario, así que se reduce a letras, números y guiones: sin separadores de
  * ruta ni nada que el sistema de archivos interprete.
  */
 export function nombreDelArchivo(datos: {
-  readonly clase: ClaseComprobante;
+  readonly tipo: TipoComprobante;
   readonly puntoDeVenta: number;
   readonly numero: number;
   readonly receptor?: string | undefined;
 }): string {
   const numero = numeroDeComprobante(datos.puntoDeVenta, datos.numero);
   const receptor = datos.receptor ? sanear(datos.receptor) : '';
-  return `factura-${datos.clase}-${numero}${receptor ? `-${receptor}` : ''}.pdf`;
+  return `${sanear(datos.tipo.nombre)}-${datos.tipo.clase}-${numero}${receptor ? `-${receptor}` : ''}.pdf`;
 }
 
 function sanear(texto: string): string {
