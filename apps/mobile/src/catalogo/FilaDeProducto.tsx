@@ -15,7 +15,7 @@ export function FilaDeProducto({
   const { descripcion, precio, modoDePrecio, alicuota, unidad } = producto;
   const detalle = [
     `${precio.formatear()}${conIva ? (modoDePrecio === 'final' ? ' con IVA' : ' sin IVA') : ''}`,
-    ...(conIva && alicuota ? [`IVA ${alicuota.formatear()}`] : []),
+    ...(conIva && alicuota ? [`IVA\u00a0${alicuota.formatear()}`] : []),
     unidad.nombre,
   ].join(' · ');
   return (

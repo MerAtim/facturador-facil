@@ -77,13 +77,13 @@ describe('Comprobante', () => {
 
       expect(totales.porAlicuota.map((g) => [g.alicuota, enPesos(g.neto), enPesos(g.iva)])).toEqual(
         [
-          [AlicuotaIva.VEINTIUNO, '$ 206,61', '$ 43,39'],
-          [AlicuotaIva.DIEZ_Y_MEDIO, '$ 1.000,00', '$ 105,00'],
+          [AlicuotaIva.VEINTIUNO, '$\u00a0206,61', '$\u00a043,39'],
+          [AlicuotaIva.DIEZ_Y_MEDIO, '$\u00a01.000,00', '$\u00a0105,00'],
         ],
       );
-      expect(enPesos(totales.neto)).toBe('$ 1.206,61');
-      expect(enPesos(totales.iva)).toBe('$ 148,39');
-      expect(enPesos(totales.total)).toBe('$ 1.355,00');
+      expect(enPesos(totales.neto)).toBe('$\u00a01.206,61');
+      expect(enPesos(totales.iva)).toBe('$\u00a0148,39');
+      expect(enPesos(totales.total)).toBe('$\u00a01.355,00');
     });
 
     it('calcula desde el precio neto', () => {
@@ -92,14 +92,14 @@ describe('Comprobante', () => {
         modoDePrecio: 'neto',
       });
 
-      expect(enPesos(totales.iva)).toBe('$ 210,00');
-      expect(enPesos(totales.total)).toBe('$ 1.210,00');
+      expect(enPesos(totales.iva)).toBe('$\u00a0210,00');
+      expect(enPesos(totales.total)).toBe('$\u00a01.210,00');
     });
 
     it('multiplica por cantidades con decimales', () => {
       const { totales } = crear(facturaA([item('100', AlicuotaIva.VEINTIUNO, '2,5')]));
 
-      expect(enPesos(totales.total)).toBe('$ 250,00');
+      expect(enPesos(totales.total)).toBe('$\u00a0250,00');
     });
 
     it('la factura B informa neto e IVA aunque no los discrimine', () => {
@@ -109,8 +109,8 @@ describe('Comprobante', () => {
         receptor: CondicionIvaReceptor.CONSUMIDOR_FINAL,
       });
 
-      expect(enPesos(totales.neto)).toBe('$ 1.000,00');
-      expect(enPesos(totales.iva)).toBe('$ 210,00');
+      expect(enPesos(totales.neto)).toBe('$\u00a01.000,00');
+      expect(enPesos(totales.iva)).toBe('$\u00a0210,00');
     });
 
     it('la factura C no lleva IVA ni necesita alícuota', () => {
@@ -124,8 +124,8 @@ describe('Comprobante', () => {
         concepto: 'productos',
       });
 
-      expect(enPesos(totales.total)).toBe('$ 350,00');
-      expect(enPesos(totales.neto)).toBe('$ 350,00');
+      expect(enPesos(totales.total)).toBe('$\u00a0350,00');
+      expect(enPesos(totales.neto)).toBe('$\u00a0350,00');
       expect(totales.iva.esCero()).toBe(true);
       expect(totales.porAlicuota).toEqual([]);
     });

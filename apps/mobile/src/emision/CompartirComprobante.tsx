@@ -51,7 +51,7 @@ export function CompartirComprobante({ documento }: { readonly documento: DatosD
         loading={compartiendo}
         disabled={compartiendo}
       >
-        Compartir {comprobante.datos.tipo.nombre.toLowerCase()}
+        {`Compartir ${comprobante.datos.tipo.nombre.toLowerCase()}`}
       </Boton>
       {noSeCompartio && (
         <Aviso icono="alert-circle-outline" tono="error">

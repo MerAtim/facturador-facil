@@ -128,7 +128,7 @@ describe('prepararNotaDeCredito', () => {
 
     expect(datos.items).toEqual([item('Descuento por pronto pago', '121', AlicuotaIva.VEINTIUNO)]);
     expect(datos.modoDePrecio).toBe('final');
-    expect(totales.iva.formatear()).toBe('$ 21,00');
+    expect(totales.iva.formatear()).toBe('$\u00a021,00');
   });
 
   it('respeta el modo de precio de la factura', () => {
@@ -136,7 +136,7 @@ describe('prepararNotaDeCredito', () => {
 
     const { totales } = valor(preparar({ factura, alcance: parcial('100') }));
 
-    expect(totales.total.formatear()).toBe('$ 121,00');
+    expect(totales.total.formatear()).toBe('$\u00a0121,00');
   });
 
   it('con varias alícuotas, la parcial tiene que elegir una de la factura', () => {

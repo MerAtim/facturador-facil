@@ -10,10 +10,10 @@ describe('mensajeSugerido', () => {
         tipo: TipoComprobante.FACTURA_B,
         puntoDeVenta: 2,
         numero: 15,
-        total: '$ 1.210,00',
+        total: '$\u00a01.210,00',
         emisor: 'Juana Pérez',
       }),
-    ).toBe('Hola, te envío la factura B 00002-00000015 por $ 1.210,00. ¡Gracias! Juana Pérez');
+    ).toBe('Hola, te envío la factura B 00002-00000015 por $\u00a01.210,00. ¡Gracias! Juana Pérez');
   });
 
   it('nombra la nota de crédito', () => {
@@ -22,11 +22,11 @@ describe('mensajeSugerido', () => {
         tipo: TipoComprobante.NOTA_DE_CREDITO_A,
         puntoDeVenta: 2,
         numero: 3,
-        total: '$ 500,00',
+        total: '$\u00a0500,00',
         emisor: 'Juana Pérez',
       }),
     ).toBe(
-      'Hola, te envío la nota de crédito A 00002-00000003 por $ 500,00. ¡Gracias! Juana Pérez',
+      'Hola, te envío la nota de crédito A 00002-00000003 por $\u00a0500,00. ¡Gracias! Juana Pérez',
     );
   });
 });

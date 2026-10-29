@@ -42,7 +42,7 @@ const MENSAJE: Readonly<Record<ProblemaDelProducto['tipo'], string>> = {
 
 /** El precio guardado se muestra como se escribiría: sin el signo. */
 const textoDelPrecio = (producto?: Producto) =>
-  producto ? producto.precio.formatear().replace('$ ', '') : '';
+  producto ? producto.precio.formatearSinSigno() : '';
 
 /**
  * Un producto o servicio del catálogo. Quien factura IVA elige si el precio es final o neto y su

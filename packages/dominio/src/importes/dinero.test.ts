@@ -18,6 +18,8 @@ describe('Dinero', () => {
       ['1.234,56', 123456],
       ['1.234.567,89', 123456789],
       ['$ 1.234,56', 123456],
+      // Lo que devuelve formatear, por ejemplo si se pega en un campo.
+      ['$\u00a01.234,56', 123456],
       [' 0,01 ', 1],
     ])('interpreta %s como %i centavos', (texto, centavos) => {
       expect(pesos(texto).centavos).toBe(centavos);
@@ -94,10 +96,10 @@ describe('Dinero', () => {
   });
 
   it.each([
-    ['0', '0.00', '$ 0,00'],
-    ['0,05', '0.05', '$ 0,05'],
-    ['1234,5', '1234.50', '$ 1.234,50'],
-    ['1.234.567,89', '1234567.89', '$ 1.234.567,89'],
+    ['0', '0.00', '$\u00a00,00'],
+    ['0,05', '0.05', '$\u00a00,05'],
+    ['1234,5', '1234.50', '$\u00a01.234,50'],
+    ['1.234.567,89', '1234567.89', '$\u00a01.234.567,89'],
   ])('%s se envía a ARCA como %s y se muestra como %s', (texto, arca, pantalla) => {
     expect(pesos(texto).aTextoArca()).toBe(arca);
     expect(pesos(texto).formatear()).toBe(pantalla);

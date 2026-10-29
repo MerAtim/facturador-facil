@@ -48,8 +48,12 @@ export function CampoDeFecha({
         accessibilityRole="button"
         accessibilityLabel={`${etiqueta}: ${texto}`}
       >
-        {/* Se ve como los demás campos, pero el toque lo recibe el contenedor. */}
-        <View pointerEvents="none">
+        {/* Se ve como los demás campos, pero el toque y la lectura los recibe el contenedor. */}
+        <View
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+        >
           <TextInput
             mode="outlined"
             label={etiqueta}

@@ -81,9 +81,17 @@ export class Dinero {
     return `${String(Math.trunc(this.centavos / 100))}.${this.decimales()}`;
   }
 
-  /** Formato para mostrar: `$ 1.234,56` */
+  /**
+   * Formato para mostrar: `$ 1.234,56`. El espacio es duro para que un renglón nunca termine en el
+   * signo y siga en la cifra, como pasaba con la fuente grande del teléfono.
+   */
   formatear(): string {
-    return `$ ${agruparMiles(String(Math.trunc(this.centavos / 100)))},${this.decimales()}`;
+    return `$\u00a0${this.formatearSinSigno()}`;
+  }
+
+  /** Como se escribe en un campo de importe, que ya muestra el signo: `1.234,56`. */
+  formatearSinSigno(): string {
+    return `${agruparMiles(String(Math.trunc(this.centavos / 100)))},${this.decimales()}`;
   }
 
   private decimales(): string {

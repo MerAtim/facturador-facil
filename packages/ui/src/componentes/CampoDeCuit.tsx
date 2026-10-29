@@ -40,7 +40,18 @@ export function CampoDeCuit({
         maxLength={13}
         autoFocus={autoFocus}
         error={error !== undefined}
-        {...(valido ? { right: <TextInput.Icon icon="check-circle" /> } : {})}
+        // El tilde es solo visual: para el lector de pantalla sería un botón sin nombre.
+        {...(valido
+          ? {
+              right: (
+                <TextInput.Icon
+                  icon="check-circle"
+                  accessible={false}
+                  importantForAccessibility="no"
+                />
+              ),
+            }
+          : {})}
       />
       {error !== undefined && (
         <HelperText type="error" visible>

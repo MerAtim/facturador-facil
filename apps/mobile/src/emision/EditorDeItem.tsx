@@ -20,7 +20,7 @@ import {
   useTema,
   type Opcion,
 } from '@facturador/ui';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 const ALICUOTAS: readonly Opcion<string>[] = AlicuotaIva.TODAS.map((alicuota) => ({
   valor: String(alicuota.codigoArca),
@@ -31,6 +31,8 @@ const UNIDADES: readonly Opcion<string>[] = UnidadDeMedida.TODAS.map((unidad) =>
   valor: unidad.clave,
   etiqueta: unidad.nombre,
 }));
+
+const ESCALA_PARA_APILAR = 1.3;
 
 const MENSAJE_DE_CANTIDAD: Readonly<Record<MotivoCantidadInvalida, string>> = {
   no_positiva: 'Tiene que ser mayor a cero.',
@@ -58,6 +60,8 @@ export function EditorDeItem({
   readonly enfocarAlAbrir: 'descripcion' | 'precio';
 }) {
   const { espacio } = useTema();
+  // Con la fuente grande del teléfono, cantidad y unidad no entran una al lado de la otra.
+  const apilar = useWindowDimensions().fontScale > ESCALA_PARA_APILAR;
   const cantidad = cantidadDelBorrador(borrador.cantidad);
   const errorDeCantidad =
     cantidad instanceof Cantidad ? undefined : MENSAJE_DE_CANTIDAD[cantidad.motivo];
@@ -87,7 +91,7 @@ export function EditorDeItem({
         maximo={200}
         autoFocus={enfocarAlAbrir === 'descripcion'}
       />
-      <View style={[estilos.fila, { gap: espacio.chico }]}>
+      <View style={[!apilar && estilos.fila, { gap: espacio.chico }]}>
         <View style={estilos.cantidad}>
           <CampoDeCantidad
             valor={borrador.cantidad}

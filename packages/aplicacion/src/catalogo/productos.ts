@@ -113,7 +113,7 @@ export function itemDelProducto(
     cantidad: '',
     unidad: producto.unidad,
     // Sin el signo: es lo que se ve en el campo del precio.
-    precio: precioEnLaFactura(producto, modo, informaIva).formatear().replace('$ ', ''),
+    precio: precioEnLaFactura(producto, modo, informaIva).formatearSinSigno(),
     alicuota: producto.alicuota ?? alicuotaPorDefecto,
   };
 }

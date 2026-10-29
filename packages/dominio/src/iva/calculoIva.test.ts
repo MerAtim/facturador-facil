@@ -66,18 +66,18 @@ describe('calcularDesdePrecioNeto', () => {
     const desdeFinal = calcularDesdePrecioFinal(pesos('100'), AlicuotaIva.VEINTIUNO);
     const desdeNeto = calcularDesdePrecioNeto(desdeFinal.neto, AlicuotaIva.VEINTIUNO);
 
-    expect(desdeNeto.total.formatear()).toBe('$ 99,99');
+    expect(desdeNeto.total.formatear()).toBe('$\u00a099,99');
   });
 });
 
 describe('AlicuotaIva', () => {
   it.each([
-    [3, '0 %'],
-    [9, '2,5 %'],
-    [8, '5 %'],
-    [4, '10,5 %'],
-    [5, '21 %'],
-    [6, '27 %'],
+    [3, '0\u00a0%'],
+    [9, '2,5\u00a0%'],
+    [8, '5\u00a0%'],
+    [4, '10,5\u00a0%'],
+    [5, '21\u00a0%'],
+    [6, '27\u00a0%'],
   ])('el código %i de ARCA corresponde a %s', (codigo, texto) => {
     expect(AlicuotaIva.desdeCodigoArca(codigo)?.formatear()).toBe(texto);
   });
