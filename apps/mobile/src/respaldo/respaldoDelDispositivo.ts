@@ -6,7 +6,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 import CompartirArchivo from '../../modules/compartir-archivo';
 import DerivacionDeClave from '../../modules/derivacion-de-clave';
-import { clientes, comprobantesEmitidos } from '../composicion';
+import { clientes, comprobantesEmitidos, productos } from '../composicion';
 import { repositorioDeConfiguracion } from '../configuracion/configuracion';
 import { guardarLogo, leerLogo } from '../logo/logoDelEmisor';
 
@@ -26,6 +26,7 @@ async function guardarLogoDelRespaldo(base64: string): Promise<void> {
 export const respaldo = crearRespaldo({
   configuracion: repositorioDeConfiguracion,
   clientes,
+  productos,
   comprobantes: comprobantesEmitidos,
   logo: { leer: leerLogo, guardar: guardarLogoDelRespaldo },
   cifrado: crearCifradoDeRespaldos({

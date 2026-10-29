@@ -5,6 +5,7 @@ import {
   crearRegistro,
   crearRegistroDeAlta,
   crearRepositorioDeClientes,
+  crearRepositorioDeProductos,
   importarClientesFrecuentes,
   salidaDeConsola,
   type Configuracion,
@@ -40,6 +41,7 @@ import { baseDeDatosDelDispositivo } from './infraestructura/baseDeDatosDelDispo
 export const registro = crearRegistro({ produccion: !__DEV__, salida: salidaDeConsola });
 export const preferencias = crearPreferencias(almacenLocalDelDispositivo);
 export const clientes = crearRepositorioDeClientes(baseDeDatosDelDispositivo);
+export const productos = crearRepositorioDeProductos(baseDeDatosDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
 export const registroDeAlta = crearRegistroDeAlta(almacenLocalDelDispositivo);
 export const comprobantesEmitidos = crearRepositorioDeComprobantes(baseDeDatosDelDispositivo);

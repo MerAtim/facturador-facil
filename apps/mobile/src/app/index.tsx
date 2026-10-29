@@ -124,6 +124,15 @@ export default function Inicio() {
           >
             Clientes
           </Boton>
+          <Boton
+            variante="secundario"
+            icon="package-variant-closed"
+            onPress={() => {
+              router.push('/productos');
+            }}
+          >
+            Productos y servicios
+          </Boton>
           <Boton variante="texto" onPress={irAConfiguracion}>
             Datos del emisor
           </Boton>
