@@ -11,6 +11,7 @@ import {
   type Comprobante,
   type Receptor,
   type Resultado,
+  UnidadDeMedida,
 } from '@facturador/dominio';
 import { describe, expect, it } from 'vitest';
 
@@ -53,7 +54,13 @@ const comprobante = valor(
     receptor: conCuit,
     modoDePrecio: 'final',
     items: [
-      { descripcion: 'Tornillos', cantidad: '', precio: '1.210', alicuota: AlicuotaIva.VEINTIUNO },
+      {
+        descripcion: 'Tornillos',
+        cantidad: '',
+        unidad: UnidadDeMedida.UNIDADES,
+        precio: '1.210',
+        alicuota: AlicuotaIva.VEINTIUNO,
+      },
     ],
     hoy: valor(FechaCalendario.crear(2026, 10, 27)),
   }),

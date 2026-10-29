@@ -3,6 +3,7 @@ import { exito, fallo, type Resultado } from '../compartido/resultado';
 import type { IdentificacionReceptor } from '../contribuyente/identificacionReceptor';
 import type { Cantidad } from '../importes/cantidad';
 import { Dinero } from '../importes/dinero';
+import { UnidadDeMedida } from '../importes/unidadDeMedida';
 import type { AlicuotaIva } from '../iva/alicuotaIva';
 import { calcularDesdePrecioFinal, calcularDesdePrecioNeto } from '../iva/calculoIva';
 import { incluyeServicios, type Concepto, type PeriodoDeServicio } from './concepto';
@@ -14,6 +15,8 @@ export type ModoDePrecio = 'final' | 'neto';
 export interface ItemComprobante {
   readonly descripcion: string;
   readonly cantidad: Cantidad;
+  /** Sin unidad son unidades, como en el facturador de ARCA. */
+  readonly unidad?: UnidadDeMedida;
   readonly precioUnitario: Dinero;
   /** Obligatoria en las clases que informan IVA. En la clase C se ignora. */
   readonly alicuota?: AlicuotaIva;
@@ -156,6 +159,9 @@ function validarAsociado({
   if (fechaDeEmision.esAnteriorA(asociado.fechaDeEmision)) return 'anterior_al_asociado';
   return undefined;
 }
+
+export const unidadDe = (item: ItemComprobante): UnidadDeMedida =>
+  item.unidad ?? UnidadDeMedida.UNIDADES;
 
 /** Precio unitario por cantidad, redondeado al centavo. En el modo de precio del comprobante. */
 export const importeDe = (item: ItemComprobante): Dinero =>

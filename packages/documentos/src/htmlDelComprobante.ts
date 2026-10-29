@@ -1,5 +1,6 @@
 import {
   importeDe,
+  unidadDe,
   type CondicionEmisor,
   type Comprobante,
   type Emisor,
@@ -143,7 +144,7 @@ function tablaDeItems(comprobante: Comprobante): string {
     .map(
       (item) => `<tr>
     <td>${escapar(item.descripcion)}</td>
-    <td class="numero">${escapar(item.cantidad.formatear())}</td>
+    <td class="numero">${escapar(unidadDe(item).formatear(item.cantidad))}</td>
     <td class="numero">${escapar(item.precioUnitario.formatear())}</td>
     ${conAlicuota ? `<td class="numero">${escapar(item.alicuota?.formatear() ?? '')}</td>` : ''}
     <td class="numero">${escapar(importeDe(item).formatear())}</td>

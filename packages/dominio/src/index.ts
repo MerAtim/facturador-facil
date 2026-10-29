@@ -7,6 +7,7 @@ export * from './comprobantes/tipoComprobante';
 export * from './comprobantes/condicionIvaReceptor';
 export * from './comprobantes/receptor';
 export * from './importes/cantidad';
+export * from './importes/unidadDeMedida';
 export * from './comprobantes/comprobante';
 export * from './compartido/fechaCalendario';
 export * from './comprobantes/concepto';

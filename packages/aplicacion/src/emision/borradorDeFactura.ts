@@ -3,6 +3,7 @@ import {
   Cantidad,
   Dinero,
   importeDe,
+  UnidadDeMedida,
   type AlicuotaIva,
   type CantidadInvalida,
   type ItemComprobante,
@@ -15,12 +16,14 @@ import {
 export interface BorradorDeItem {
   readonly descripcion: string;
   readonly cantidad: string;
+  readonly unidad: UnidadDeMedida;
   readonly precio: string;
   readonly alicuota: AlicuotaIva;
 }
 
+/** Con unidades, que es lo más común: elegir otra es opcional. */
 export function itemVacio(alicuota: AlicuotaIva): BorradorDeItem {
-  return { descripcion: '', cantidad: '', precio: '', alicuota };
+  return { descripcion: '', cantidad: '', unidad: UnidadDeMedida.UNIDADES, precio: '', alicuota };
 }
 
 /**
@@ -44,6 +47,7 @@ export function itemDelBorrador(borrador: BorradorDeItem): ItemComprobante {
   return {
     descripcion: borrador.descripcion.trim(),
     cantidad: cantidad instanceof Cantidad ? cantidad : Cantidad.UNO,
+    unidad: borrador.unidad,
     precioUnitario: precio.ok ? precio.valor : Dinero.CERO,
     alicuota: borrador.alicuota,
   };

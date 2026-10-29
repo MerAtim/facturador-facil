@@ -3,7 +3,12 @@ import {
   subtotalDelBorrador,
   type BorradorDeItem,
 } from '@facturador/aplicacion';
-import { AlicuotaIva, Cantidad, type MotivoCantidadInvalida } from '@facturador/dominio';
+import {
+  AlicuotaIva,
+  Cantidad,
+  UnidadDeMedida,
+  type MotivoCantidadInvalida,
+} from '@facturador/dominio';
 import {
   BotonDeIcono,
   CampoDeCantidad,
@@ -20,6 +25,11 @@ import { StyleSheet, View } from 'react-native';
 const ALICUOTAS: readonly Opcion<string>[] = AlicuotaIva.TODAS.map((alicuota) => ({
   valor: String(alicuota.codigoArca),
   etiqueta: alicuota.formatear(),
+}));
+
+const UNIDADES: readonly Opcion<string>[] = UnidadDeMedida.TODAS.map((unidad) => ({
+  valor: unidad.clave,
+  etiqueta: unidad.nombre,
 }));
 
 const MENSAJE_DE_CANTIDAD: Readonly<Record<MotivoCantidadInvalida, string>> = {
@@ -87,17 +97,25 @@ export function EditorDeItem({
             error={errorDeCantidad}
           />
         </View>
-        <View style={estilos.precio}>
-          <CampoDeImporte
-            etiqueta={etiquetaDelPrecio}
-            valor={borrador.precio}
-            onCambiar={(precio) => {
-              cambiar({ precio });
+        <View style={estilos.unidad}>
+          <Selector
+            etiqueta="Unidad"
+            opciones={UNIDADES}
+            valor={borrador.unidad.clave}
+            onCambiar={(clave) => {
+              cambiar({ unidad: UnidadDeMedida.desdeClave(clave) ?? borrador.unidad });
             }}
-            autoFocus={enfocarAlAbrir === 'precio'}
           />
         </View>
       </View>
+      <CampoDeImporte
+        etiqueta={etiquetaDelPrecio}
+        valor={borrador.precio}
+        onCambiar={(precio) => {
+          cambiar({ precio });
+        }}
+        autoFocus={enfocarAlAbrir === 'precio'}
+      />
       {conAlicuota && (
         <Selector
           etiqueta="Alícuota de IVA"
@@ -124,5 +142,5 @@ const estilos = StyleSheet.create({
   },
   fila: { flexDirection: 'row', alignItems: 'flex-start' },
   cantidad: { flex: 1 },
-  precio: { flex: 2 },
+  unidad: { flex: 1 },
 });

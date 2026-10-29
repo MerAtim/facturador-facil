@@ -9,6 +9,7 @@ import {
   Emisor,
   FechaCalendario,
   TipoComprobante,
+  UnidadDeMedida,
   type ComprobanteAsociado,
   type CondicionEmisor,
   type Concepto,
@@ -26,9 +27,10 @@ import {
  * - 1: el comprobante y el receptor.
  * - 2: suma los datos del emisor al momento de emitir, para rehacer el PDF tal como salió.
  * - 3: suma la factura que ajusta una nota de crédito o de débito.
+ * - 4: suma la unidad de medida de cada ítem. Sin unidad, son unidades.
  */
-const VERSION = 3;
-const VERSIONES_LEGIBLES: readonly number[] = [1, 2, 3];
+const VERSION = 4;
+const VERSIONES_LEGIBLES: readonly number[] = [1, 2, 3, 4];
 const MODOS_DE_PRECIO: readonly ModoDePrecio[] = ['final', 'neto'];
 const CONCEPTOS: readonly Concepto[] = ['productos', 'servicios', 'productos_y_servicios'];
 const CONDICIONES: readonly CondicionEmisor[] = ['responsable_inscripto', 'monotributo', 'exento'];
@@ -47,6 +49,8 @@ interface Guardado {
   readonly items: readonly {
     readonly descripcion: string;
     readonly cantidadEnMilesimas: number;
+    /** Desde la versión 4. */
+    readonly unidad?: string;
     readonly precioUnitarioEnCentavos: number;
     readonly alicuota?: number;
   }[];
@@ -105,6 +109,7 @@ export function aTextoGuardado({ comprobante, receptor, emisor }: Rearmado): str
     items: datos.items.map((item) => ({
       descripcion: item.descripcion,
       cantidadEnMilesimas: item.cantidad.milesimas,
+      ...(item.unidad && { unidad: item.unidad.clave }),
       precioUnitarioEnCentavos: item.precioUnitario.centavos,
       ...(item.alicuota && { alicuota: item.alicuota.codigoArca }),
     })),
@@ -253,17 +258,21 @@ function rearmarItem(item: Guardado['items'][number]): ItemComprobante | undefin
   const precio = Dinero.desdeCentavos(item.precioUnitarioEnCentavos);
   const alicuota =
     item.alicuota === undefined ? undefined : AlicuotaIva.desdeCodigoArca(item.alicuota);
+  const unidad =
+    typeof item.unidad === 'string' ? UnidadDeMedida.desdeClave(item.unidad) : undefined;
   if (
     typeof item.descripcion !== 'string' ||
     !cantidad.ok ||
     !precio.ok ||
-    (item.alicuota !== undefined && !alicuota)
+    (item.alicuota !== undefined && !alicuota) ||
+    (item.unidad !== undefined && !unidad)
   ) {
     return undefined;
   }
   return {
     descripcion: item.descripcion,
     cantidad: cantidad.valor,
+    ...(unidad && { unidad }),
     precioUnitario: precio.valor,
     ...(alicuota && { alicuota }),
   };
