@@ -11,6 +11,7 @@ packages/
   arca/            Adaptadores de WSAA, WSFEv1 y padrón. Implementan puertos de aplicacion
   ui/              Tema, tokens y componentes sobre Material 3 (ADR 0005). La app no usa Paper directo
   documentos/      HTML del comprobante y QR de ARCA para generar el PDF. Escapa todo dato insertado
+  respaldo/        Formato cifrado del archivo de respaldo (ADR 0006). Implementa un puerto de aplicacion
   config/          Configuraciones compartidas de TypeScript, ESLint y Vitest
 ```
 

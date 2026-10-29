@@ -45,29 +45,34 @@ export function crearRepositorioDeConfiguracion(
   return {
     async leer() {
       const texto = await almacen.leer(CLAVE);
-      return texto === undefined ? undefined : interpretar(texto);
+      return texto === undefined ? undefined : configuracionDesdeTexto(texto);
     },
 
-    async guardar({ emisor, ambiente }) {
-      const { datos } = emisor;
-      const guardado: Guardado = {
-        version: VERSION,
-        ambiente,
-        razonSocial: datos.razonSocial,
-        cuit: datos.cuit.valor,
-        condicion: datos.condicion,
-        domicilio: datos.domicilio,
-        inicioDeActividades: datos.inicioDeActividades.aTextoArca(),
-        puntoDeVenta: datos.puntoDeVenta,
-        ...(datos.ingresosBrutos === undefined ? {} : { ingresosBrutos: datos.ingresosBrutos }),
-      };
-      await almacen.guardar(CLAVE, JSON.stringify(guardado));
+    async guardar(configuracion) {
+      await almacen.guardar(CLAVE, configuracionATexto(configuracion));
     },
   };
 }
 
+/** El formato guardado. El respaldo usa el mismo, así se valida igual al restaurarlo. */
+export function configuracionATexto({ emisor, ambiente }: Configuracion): string {
+  const { datos } = emisor;
+  const guardado: Guardado = {
+    version: VERSION,
+    ambiente,
+    razonSocial: datos.razonSocial,
+    cuit: datos.cuit.valor,
+    condicion: datos.condicion,
+    domicilio: datos.domicilio,
+    inicioDeActividades: datos.inicioDeActividades.aTextoArca(),
+    puntoDeVenta: datos.puntoDeVenta,
+    ...(datos.ingresosBrutos === undefined ? {} : { ingresosBrutos: datos.ingresosBrutos }),
+  };
+  return JSON.stringify(guardado);
+}
+
 /** Lo guardado pasa por las mismas validaciones que lo que se carga en pantalla. */
-function interpretar(texto: string): Configuracion | undefined {
+export function configuracionDesdeTexto(texto: string): Configuracion | undefined {
   let datos: unknown;
   try {
     datos = JSON.parse(texto);
