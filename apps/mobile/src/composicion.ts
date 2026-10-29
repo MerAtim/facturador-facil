@@ -4,7 +4,8 @@ import {
   crearPreferencias,
   crearRegistro,
   crearRegistroDeAlta,
-  crearReceptoresFrecuentes,
+  crearRepositorioDeClientes,
+  importarClientesFrecuentes,
   salidaDeConsola,
   type Configuracion,
   type Emision,
@@ -38,7 +39,7 @@ import { baseDeDatosDelDispositivo } from './infraestructura/baseDeDatosDelDispo
 /** En producción solo quedan errores, sin su detalle. */
 export const registro = crearRegistro({ produccion: !__DEV__, salida: salidaDeConsola });
 export const preferencias = crearPreferencias(almacenLocalDelDispositivo);
-export const receptoresFrecuentes = crearReceptoresFrecuentes(almacenSeguroDelDispositivo);
+export const clientes = crearRepositorioDeClientes(baseDeDatosDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
 export const registroDeAlta = crearRegistroDeAlta(almacenLocalDelDispositivo);
 export const comprobantesEmitidos = crearRepositorioDeComprobantes(baseDeDatosDelDispositivo);
@@ -100,7 +101,7 @@ export async function emisionPara({
       almacen: almacenSeguroDelDispositivo,
     }),
     comprobantes: comprobantesEmitidos,
-    receptoresFrecuentes,
+    clientes,
     registro,
     ambiente,
     emisor,
@@ -125,4 +126,11 @@ export async function verificarAltaDe({
 export function olvidarEmisiones(): void {
   emisiones.clear();
   proveedoresDeTickets.clear();
+}
+
+/** Los receptores frecuentes de antes de la tabla de clientes pasan a ella una sola vez. */
+export function importarClientesDeAntes(): void {
+  importarClientesFrecuentes(almacenSeguroDelDispositivo, clientes).catch((error: unknown) => {
+    registro.error('no se pudieron importar los clientes frecuentes', error);
+  });
 }

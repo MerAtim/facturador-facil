@@ -115,6 +115,15 @@ export default function Inicio() {
           >
             Comprobantes
           </Boton>
+          <Boton
+            variante="secundario"
+            icon="account-multiple-outline"
+            onPress={() => {
+              router.push('/clientes');
+            }}
+          >
+            Clientes
+          </Boton>
           <Boton variante="texto" onPress={irAConfiguracion}>
             Datos del emisor
           </Boton>
