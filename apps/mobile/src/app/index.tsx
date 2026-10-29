@@ -1,7 +1,7 @@
 import type { PasoDeAlta } from '@facturador/aplicacion';
 import { Aviso, Boton, Pantalla, Texto, useTema } from '@facturador/ui';
 import { Stack, useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { useAlta } from '../alta/useAlta';
 import { AvisoDeVencimiento } from '../alta/AvisoDeVencimiento';
@@ -22,9 +22,6 @@ export default function Inicio() {
   const [guia] = useAlta();
   const protegida = useProteccion();
 
-  const irAConfiguracion = () => {
-    router.push('/configuracion');
-  };
   const irALaGuia = () => {
     router.push('/alta');
   };
@@ -37,132 +34,134 @@ export default function Inicio() {
   const vigenteHasta = guia.estado === 'lista' ? guia.vigenteHasta : undefined;
 
   return (
-    <Pantalla style={[estilos.contenedor, { padding: espacio.normal, gap: espacio.grande }]}>
+    <Pantalla>
       <Stack.Screen options={{ headerShown: false }} />
-      <Texto variante="titulo">Facturador Fácil</Texto>
+      {/* Con varios avisos el contenido no entra en pantallas chicas: se desplaza. */}
+      <ScrollView
+        contentContainerStyle={[
+          estilos.contenedor,
+          { padding: espacio.normal, gap: espacio.grande },
+        ]}
+      >
+        <Texto variante="titulo">Facturador Fácil</Texto>
 
-      {!protegida && (
-        <Aviso icono="shield-alert-outline" tono="error">
-          Tu teléfono no tiene bloqueo de pantalla, así que cualquiera que lo tenga puede usar la
-          app con tus datos. Configurá un PIN o tu huella en los ajustes del teléfono.
-        </Aviso>
-      )}
+        {!protegida && (
+          <Aviso icono="shield-alert-outline" tono="error">
+            Tu teléfono no tiene bloqueo de pantalla, así que cualquiera que lo tenga puede usar la
+            app con tus datos. Configurá un PIN o tu huella en los ajustes del teléfono.
+          </Aviso>
+        )}
 
-      {guia.estado === 'no_disponible' && (
-        <Aviso icono="alert-circle-outline" tono="error">
-          No se pudieron leer tus datos. Desbloqueá el teléfono y volvé a abrir la app.
-        </Aviso>
-      )}
+        {guia.estado === 'no_disponible' && (
+          <Aviso icono="alert-circle-outline" tono="error">
+            No se pudieron leer tus datos. Desbloqueá el teléfono y volvé a abrir la app.
+          </Aviso>
+        )}
 
-      {guia.estado === 'lista' && !configuracion && (
-        <View style={[estilos.centrado, { gap: espacio.normal }]}>
-          <Texto variante="cuerpo" style={estilos.texto}>
-            Para facturar desde el teléfono hay que dejar todo listo con ARCA. La app te guía paso a
-            paso.
-          </Texto>
-          <Boton icon="arrow-right" onPress={irALaGuia}>
-            Empezar
-          </Boton>
-          <Boton variante="texto" icon="backup-restore" onPress={irAlRespaldo}>
-            Restaurar un respaldo
-          </Boton>
-        </View>
-      )}
+        {guia.estado === 'lista' && !configuracion && (
+          <View style={[estilos.centrado, { gap: espacio.normal }]}>
+            <Texto variante="cuerpo" style={estilos.texto}>
+              Para facturar desde el teléfono hay que dejar todo listo con ARCA. La app te guía paso
+              a paso.
+            </Texto>
+            <Boton icon="arrow-right" onPress={irALaGuia}>
+              Empezar
+            </Boton>
+            <Boton variante="texto" icon="backup-restore" onPress={irAlRespaldo}>
+              Restaurar un respaldo
+            </Boton>
+          </View>
+        )}
 
-      {configuracion && (
-        <View style={[estilos.centrado, { gap: espacio.normal }]}>
-          <AvisoDeAmbiente ambiente={configuracion.ambiente} />
-          {vigenteHasta && (
-            <AvisoDeVencimiento
-              vigenteHasta={vigenteHasta}
-              onRenovar={() => {
-                router.push('/certificado');
-              }}
-            />
-          )}
-          {!configuracion.emisor.datos.ingresosBrutos && (
-            <Aviso icono="information-outline">
-              Falta tu número de Ingresos Brutos, que va impreso en cada factura. Cargalo en los
-              datos del emisor.
-            </Aviso>
-          )}
-          <Texto variante="subtitulo">{configuracion.emisor.datos.razonSocial}</Texto>
-          {pendiente && (
-            <>
+        {configuracion && (
+          <View style={[estilos.centrado, { gap: espacio.normal }]}>
+            <AvisoDeAmbiente ambiente={configuracion.ambiente} />
+            {vigenteHasta && (
+              <AvisoDeVencimiento
+                vigenteHasta={vigenteHasta}
+                onRenovar={() => {
+                  router.push('/certificado');
+                }}
+              />
+            )}
+            {!configuracion.emisor.datos.ingresosBrutos && (
+              <Aviso icono="information-outline">
+                Falta tu número de Ingresos Brutos, que va impreso en cada factura. Cargalo en los
+                datos del emisor.
+              </Aviso>
+            )}
+            <Texto variante="subtitulo">{configuracion.emisor.datos.razonSocial}</Texto>
+            {pendiente && (
               <Texto variante="cuerpo" style={estilos.texto}>
                 Para facturar te falta {PENDIENTE[pendiente]}.
               </Texto>
-              <Boton icon="arrow-right" onPress={irALaGuia}>
-                Seguir con la puesta en marcha
+            )}
+            <View style={[estilos.accesos, { gap: espacio.medio }]}>
+              {pendiente && (
+                <Boton icon="arrow-right" onPress={irALaGuia}>
+                  Seguir con la puesta en marcha
+                </Boton>
+              )}
+              <Boton
+                variante={pendiente ? 'secundario' : 'principal'}
+                icon="plus"
+                onPress={() => {
+                  router.push('/nueva-factura');
+                }}
+              >
+                Nueva factura
               </Boton>
-            </>
-          )}
-          <Boton
-            variante={pendiente ? 'secundario' : 'principal'}
-            icon="plus"
-            onPress={() => {
-              router.push('/nueva-factura');
-            }}
-          >
-            Nueva factura
-          </Boton>
-          <Boton
-            variante="secundario"
-            icon="file-document-multiple-outline"
-            onPress={() => {
-              router.push('/comprobantes');
-            }}
-          >
-            Comprobantes
-          </Boton>
-          <Boton
-            variante="secundario"
-            icon="account-multiple-outline"
-            onPress={() => {
-              router.push('/clientes');
-            }}
-          >
-            Clientes
-          </Boton>
-          <Boton
-            variante="secundario"
-            icon="package-variant-closed"
-            onPress={() => {
-              router.push('/productos');
-            }}
-          >
-            Productos y servicios
-          </Boton>
-          <Boton variante="texto" onPress={irAConfiguracion}>
-            Datos del emisor
-          </Boton>
-          <Boton
-            variante="texto"
-            onPress={() => {
-              router.push('/certificado');
-            }}
-          >
-            Certificado
-          </Boton>
-          <Boton variante="texto" onPress={irAlRespaldo}>
-            Respaldo
-          </Boton>
-          {!pendiente && (
-            <Boton variante="texto" onPress={irALaGuia}>
-              Puesta en marcha
+              <Boton
+                variante="secundario"
+                icon="file-document-multiple-outline"
+                onPress={() => {
+                  router.push('/comprobantes');
+                }}
+              >
+                Comprobantes
+              </Boton>
+              <Boton
+                variante="secundario"
+                icon="account-multiple-outline"
+                onPress={() => {
+                  router.push('/clientes');
+                }}
+              >
+                Clientes
+              </Boton>
+              <Boton
+                variante="secundario"
+                icon="package-variant-closed"
+                onPress={() => {
+                  router.push('/productos');
+                }}
+              >
+                Productos y servicios
+              </Boton>
+            </View>
+            <Boton
+              variante="texto"
+              icon="cog-outline"
+              onPress={() => {
+                router.push('/ajustes');
+              }}
+            >
+              Ajustes
             </Boton>
-          )}
-        </View>
-      )}
+          </View>
+        )}
+      </ScrollView>
     </Pantalla>
   );
 }
 
 const estilos = StyleSheet.create({
   contenedor: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  accesos: { alignSelf: 'stretch' },
   centrado: { alignItems: 'center', alignSelf: 'stretch' },
   texto: { textAlign: 'center' },
 });
