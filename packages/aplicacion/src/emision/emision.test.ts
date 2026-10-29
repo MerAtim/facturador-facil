@@ -160,6 +160,7 @@ describe('crearEmision', () => {
       listar: () => Promise.resolve([]),
       leer: () => Promise.resolve(undefined),
       notasDeCreditoDe: () => Promise.resolve([]),
+      todosDelEmisor: () => Promise.resolve([]),
     };
     const { emision, errores } = await emisionCon(exito(autorizado), { comprobantes: roto });
 

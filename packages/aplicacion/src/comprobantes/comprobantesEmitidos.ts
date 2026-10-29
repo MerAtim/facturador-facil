@@ -59,6 +59,8 @@ export interface RepositorioDeComprobantes {
   leer(clave: ClaveDeComprobante): Promise<ComprobanteEmitido | undefined>;
   /** Las notas de crédito que ajustan esa factura, de la más vieja a la más nueva. */
   notasDeCreditoDe(factura: ClaveDeComprobante): Promise<readonly ComprobanteEmitido[]>;
+  /** Todos los del emisor, de los dos ambientes, en el orden en que se guardaron. Para el respaldo. */
+  todosDelEmisor(emisor: Emisor): Promise<readonly ComprobanteEmitido[]>;
 }
 
 const GUARDAR = `
@@ -109,6 +111,15 @@ const NOTAS_DE_CREDITO_DE = `
     AND tipo IN (?, ?, ?)
   ORDER BY fecha, id
 `;
+
+const TODOS_DEL_EMISOR = `
+  SELECT ambiente, punto_de_venta, numero, datos
+  FROM comprobantes
+  WHERE cuit_emisor = ?
+  ORDER BY id
+`;
+
+const AMBIENTES: readonly Ambiente[] = ['homologacion', 'produccion'];
 
 export function crearRepositorioDeComprobantes(
   base: BaseDeDatos,
@@ -173,6 +184,15 @@ export function crearRepositorioDeComprobantes(
         ...NOTAS_DE_CREDITO,
       ]);
       return rearmar(filas, ambiente, emisor);
+    },
+
+    async todosDelEmisor(emisor) {
+      const filas = await base.consultar(TODOS_DEL_EMISOR, [emisor.datos.cuit.valor]);
+      return filas.flatMap((fila) => {
+        const ambiente = AMBIENTES.find((a) => a === fila['ambiente']);
+        const emitido = ambiente && desdeFila(fila, ambiente, emisor);
+        return emitido ? [emitido] : [];
+      });
     },
   };
 }

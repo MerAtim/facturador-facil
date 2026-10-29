@@ -16,3 +16,4 @@ export * from './bloqueo/bloqueo';
 export * from './registro/registro';
 export * from './alta/guiaDeAlta';
 export * from './alta/vencimientoDelCertificado';
+export * from './respaldo/respaldo';
