@@ -13,14 +13,18 @@ import {
 } from '@facturador/aplicacion';
 import {
   aliasDeClave,
+  consultarPadron,
   crearAlmacenDeCertificados,
   crearAutorizadorWsfe,
   crearProveedorDeTickets,
   firmadorDeClave,
   transporteFetch,
   verificarAlta,
+  SERVICIO_DEL_PADRON,
   type AltaVerificada,
   type CaeOtorgado,
+  type ContribuyenteDelPadron,
+  type ErrorDelPadron,
   type ErrorAutorizacion,
   type FallaDeVerificacion,
   type ProveedorDeTickets,
@@ -49,8 +53,8 @@ export const comprobantesEmitidos = crearRepositorioDeComprobantes(baseDeDatosDe
 export type EmisionWsfe = Emision<CaeOtorgado, ErrorAutorizacion>;
 
 /**
- * Un proveedor de tickets por emisor y ambiente, compartido entre la emisión y la verificación del
- * alta: así los pedidos simultáneos a WSAA se juntan en uno.
+ * Un proveedor de tickets por emisor, ambiente y servicio, compartido entre la emisión y la
+ * verificación del alta: así los pedidos simultáneos a WSAA se juntan en uno.
  */
 const proveedoresDeTickets = new Map<string, ProveedorDeTickets>();
 
@@ -58,8 +62,8 @@ const proveedoresDeTickets = new Map<string, ProveedorDeTickets>();
 const emisiones = new Map<string, EmisionWsfe>();
 
 /** Los tickets para la configuración vigente, o undefined si todavía no hay certificado. */
-async function ticketsPara(ambiente: Configuracion['ambiente'], cuit: Cuit) {
-  const clave = `${ambiente}.${cuit.valor}`;
+async function ticketsPara(ambiente: Configuracion['ambiente'], cuit: Cuit, servicio = 'wsfe') {
+  const clave = `${ambiente}.${cuit.valor}.${servicio}`;
   const existente = proveedoresDeTickets.get(clave);
   if (existente) return existente;
 
@@ -70,7 +74,7 @@ async function ticketsPara(ambiente: Configuracion['ambiente'], cuit: Cuit) {
   const tickets = crearProveedorDeTickets({
     ambiente,
     cuit,
-    servicio: 'wsfe',
+    servicio,
     certificado: certificado.der,
     firmador: firmadorDeClave(almacenDeClavesDelDispositivo, aliasDeClave(titular)),
     transporte: transporteFetch,
@@ -122,6 +126,17 @@ export async function verificarAltaDe({
   const tickets = await ticketsPara(ambiente, cuit);
   if (!tickets) return undefined;
   return verificarAlta({ ambiente, cuit, puntoDeVenta, tickets, transporte: transporteFetch });
+}
+
+/** Los datos de un CUIT según el padrón de ARCA. Sin certificado, devuelve undefined. */
+export async function consultarPadronDe(
+  { emisor, ambiente }: Configuracion,
+  consultado: Cuit,
+): Promise<Resultado<ContribuyenteDelPadron, ErrorDelPadron> | undefined> {
+  const { cuit } = emisor.datos;
+  const tickets = await ticketsPara(ambiente, cuit, SERVICIO_DEL_PADRON);
+  if (!tickets) return undefined;
+  return consultarPadron({ ambiente, cuit, tickets, transporte: transporteFetch }, consultado);
 }
 
 /** Al cambiar el certificado, lo armado con el anterior ya no sirve. */

@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   explicarError,
+  explicarFallaDelPadron,
   explicarObservaciones,
   explicarVerificacion,
   type MensajeDeError,
@@ -381,5 +382,32 @@ describe('explicarVerificacion', () => {
     expect(mensaje.titulo).toBe('El punto de venta 7 no sirve para facturar desde la app');
     expect(mensaje.detalles[0]).toContain('CAEA');
     expect(mensaje.revisar).toBe('punto_de_venta');
+  });
+});
+
+describe('explicarFallaDelPadron', () => {
+  it('pide revisar un CUIT que ARCA no tiene', () => {
+    expect(explicarFallaDelPadron({ tipo: 'cuit_inexistente' })).toContain('bien escrito');
+  });
+
+  it('nombra el servicio que falta autorizar', () => {
+    const texto = explicarFallaDelPadron({
+      tipo: 'rechazo_wsaa',
+      motivo: 'no_autorizado',
+      codigo: 'coe.notAuthorized',
+      mensaje: 'Computador no autorizado',
+    });
+
+    expect(texto).toContain('ws_sr_constancia_inscripcion');
+  });
+
+  it.each([
+    { tipo: 'sin_constancia' },
+    { tipo: 'sin_conexion' },
+    { tipo: 'firma_no_disponible' },
+    { tipo: 'respuesta_inesperada', estado: 500 },
+    { tipo: 'rechazo_wsaa', motivo: 'no_disponible', codigo: 'x', mensaje: '' },
+  ] as const)('ante $tipo deja seguir a mano', (error) => {
+    expect(explicarFallaDelPadron(error)).toMatch(/a mano/);
   });
 });

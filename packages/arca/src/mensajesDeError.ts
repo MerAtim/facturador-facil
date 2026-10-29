@@ -1,5 +1,6 @@
 import type { PasoDeAlta } from '@facturador/aplicacion';
 
+import type { ErrorDelPadron } from './padron/padron';
 import type { ErrorSoap } from './soap/soap';
 import type { ErrorAutorizacion } from './wsfe/autorizadorWsfe';
 import type { ErrorDeArca } from './wsfe/comun';
@@ -254,6 +255,36 @@ function pasoParaElAcceso(error: ErrorAutorizacion | ErrorParametros): PasoDeAlt
     case 'no_disponible':
     case 'desconocido':
       return undefined;
+  }
+}
+
+/**
+ * Una línea para debajo del CUIT. La consulta al padrón es una ayuda: si falla, se completa a mano y
+ * el mensaje lo dice, sin tratarlo como un error que frena la carga.
+ */
+export function explicarFallaDelPadron(error: ErrorDelPadron): string {
+  switch (error.tipo) {
+    case 'cuit_inexistente':
+      return 'ARCA no tiene registrado ese CUIT. Revisá que esté bien escrito.';
+    case 'sin_constancia':
+      return 'ARCA no entrega los datos de ese CUIT. Completalos a mano.';
+    case 'sin_conexion':
+      return 'Sin conexión no se pueden traer los datos de ARCA. Completalos a mano.';
+    case 'rechazo_wsaa':
+      if (error.motivo === 'no_autorizado') {
+        return (
+          'Para traer los datos solos, autorizá en ARCA el servicio de constancia de inscripción ' +
+          '(ws_sr_constancia_inscripcion). Mientras, completalos a mano.'
+        );
+      }
+      return 'ARCA no dio acceso para traer los datos. Completalos a mano.';
+    case 'firma_no_disponible':
+      return 'Desbloqueá el teléfono para traer los datos de ARCA, o completalos a mano.';
+    case 'ticket_ilegible':
+    case 'respuesta_inesperada':
+    case 'xml_invalido':
+    case 'falla_soap':
+      return 'ARCA no respondió como esperábamos. Completá los datos a mano.';
   }
 }
 
