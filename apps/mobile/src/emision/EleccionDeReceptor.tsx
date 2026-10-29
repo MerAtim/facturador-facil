@@ -142,12 +142,14 @@ function FormularioDeCuit({ onListo }: { readonly onListo: (receptor: ReceptorCo
       />
       <CampoDeTexto
         etiqueta="Nombre o razón social (opcional)"
+        datoPersonal
         valor={nombre}
         onCambiar={setNombre}
         maximo={60}
       />
       <CampoDeTexto
         etiqueta="Domicilio (lo pide la factura A)"
+        datoPersonal
         valor={domicilio}
         onCambiar={setDomicilio}
         maximo={LARGO_MAXIMO_DOMICILIO}

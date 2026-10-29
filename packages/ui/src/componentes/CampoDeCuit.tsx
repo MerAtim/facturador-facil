@@ -32,6 +32,10 @@ export function CampoDeCuit({
           onCambiar(formatearEntradaDeCuit(texto));
         }}
         keyboardType="number-pad"
+        // Un CUIT identifica a una persona: que el teclado no lo aprenda ni lo sugiera.
+        autoCorrect={false}
+        spellCheck={false}
+        autoComplete="off"
         placeholder="20-12345678-6"
         maxLength={13}
         autoFocus={autoFocus}

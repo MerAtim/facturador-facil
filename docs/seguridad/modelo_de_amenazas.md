@@ -89,7 +89,7 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 | Los datos salen en un respaldo del sistema | Android: `allowBackup` desactivado. iOS: la base cifrada entra en iCloud, pero sin su clave, que no viaja, es ilegible | Cumple; mejora anotada en #93 |
 | Capturas de pantalla o la vista previa del selector de apps | Android bloquea capturas y grabaciones; iOS las oculta en grabaciones y desenfoca la vista previa | Cumple |
 | Los registros exponen datos fiscales | Un único registro que tapa CUIT, DNI, CAE, tokens e importes; en producción, solo mensajes fijos | Cumple |
-| El teclado aprende nombres y CUIT de clientes | Desactivar sugerencias en esos campos | Pendiente, #136 |
+| El teclado aprende nombres y CUIT de clientes | Teclado en modo incógnito en toda la app (Android) y campos de datos personales sin sugerencias | Cumple, #136 |
 | Otra app lee la caché | La caché vive en el área privada de la app y solo tiene datos públicos de ARCA | Riesgo aceptado |
 | Un enlace abre una pantalla con datos | Todo deep link lleva al inicio | Cumple |
 
@@ -121,7 +121,7 @@ Según [OWASP MASVS v2](https://mas.owasp.org/MASVS/). Los controles de resilien
 | Control | Requisito | Estado |
 | --- | --- | --- |
 | MASVS-STORAGE-1 | Los datos sensibles se guardan de forma segura | Cumple: almacén seguro y SQLCipher |
-| MASVS-STORAGE-2 | Se evita la fuga de datos sensibles | Parcial: falta el teclado (#136) |
+| MASVS-STORAGE-2 | Se evita la fuga de datos sensibles | Cumple: capturas bloqueadas, logs sin datos y teclado sin aprendizaje |
 | MASVS-CRYPTO-1 | Criptografía fuerte y actual | Cumple: RSA 2048 con SHA-256 en el hardware del teléfono, AES de SQLCipher |
 | MASVS-CRYPTO-2 | Gestión de claves según buenas prácticas | Cumple: claves no exportables, usables solo con el teléfono desbloqueado |
 | MASVS-AUTH-1 | Protocolos de autenticación seguros | Cumple: WSAA con CMS firmado en el teléfono |

@@ -10,6 +10,7 @@ export function CampoDeTexto({
   autoFocus = false,
   numerico = false,
   multilinea = false,
+  datoPersonal = false,
   error,
 }: {
   readonly etiqueta: string;
@@ -21,6 +22,11 @@ export function CampoDeTexto({
   readonly numerico?: boolean;
   /** Para textos de más de una línea, como un mensaje. */
   readonly multilinea?: boolean;
+  /**
+   * Nombres, domicilios y documentos: sin autocorrección ni sugerencias, para que el teclado no los
+   * proponga después en otras apps.
+   */
+  readonly datoPersonal?: boolean;
   readonly error?: string | undefined;
 }) {
   return (
@@ -33,6 +39,11 @@ export function CampoDeTexto({
         autoFocus={autoFocus}
         keyboardType={numerico ? 'number-pad' : 'default'}
         multiline={multilinea}
+        {...(datoPersonal && {
+          autoCorrect: false,
+          spellCheck: false,
+          autoComplete: 'off' as const,
+        })}
         error={error !== undefined}
         {...(maximo === undefined ? {} : { maxLength: maximo })}
       />

@@ -167,6 +167,7 @@ export default function Configuracion() {
         </Texto>
         <CampoDeTexto
           etiqueta="Nombre o razón social"
+          datoPersonal
           valor={razonSocial}
           onCambiar={corrigiendo('razonSocial', setRazonSocial)}
           maximo={LARGO_MAXIMO_RAZON_SOCIAL}
@@ -177,6 +178,7 @@ export default function Configuracion() {
         <SelectorSegmentado opciones={CONDICIONES} valor={condicion} onCambiar={setCondicion} />
         <CampoDeTexto
           etiqueta="Domicilio comercial"
+          datoPersonal
           valor={domicilio}
           onCambiar={corrigiendo('domicilio', setDomicilio)}
           maximo={LARGO_MAXIMO_DOMICILIO}
@@ -184,6 +186,7 @@ export default function Configuracion() {
         />
         <CampoDeTexto
           etiqueta="Ingresos Brutos"
+          datoPersonal
           valor={ingresosBrutos}
           onCambiar={corrigiendo('ingresosBrutos', setIngresosBrutos)}
           maximo={LARGO_MAXIMO_INGRESOS_BRUTOS}
