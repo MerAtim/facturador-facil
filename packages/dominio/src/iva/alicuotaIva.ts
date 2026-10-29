@@ -28,8 +28,8 @@ export class AlicuotaIva {
     return AlicuotaIva.TODAS.find((alicuota) => alicuota.codigoArca === codigo);
   }
 
-  /** Para mostrar: `21 %`, `10,5 %` */
+  /** Para mostrar: `21 %`, `10,5 %`. Con espacio duro, para que el signo no quede solo en un renglón. */
   formatear(): string {
-    return `${String(this.puntosBasicos / 100).replace('.', ',')} %`;
+    return `${String(this.puntosBasicos / 100).replace('.', ',')}\u00a0%`;
   }
 }

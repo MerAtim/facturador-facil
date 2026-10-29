@@ -79,22 +79,22 @@ describe('crearProducto', () => {
 
 describe('precioEnLaFactura', () => {
   it('en el mismo modo, es el guardado', () => {
-    expect(precioEnLaFactura(pintura, 'final', true).formatear()).toBe('$ 12.100,00');
-    expect(precioEnLaFactura(flete, 'neto', true).formatear()).toBe('$ 1.000,00');
+    expect(precioEnLaFactura(pintura, 'final', true).formatear()).toBe('$\u00a012.100,00');
+    expect(precioEnLaFactura(flete, 'neto', true).formatear()).toBe('$\u00a01.000,00');
   });
 
   it('pasa de final a neto y de neto a final con su alícuota', () => {
-    expect(precioEnLaFactura(pintura, 'neto', true).formatear()).toBe('$ 10.000,00');
-    expect(precioEnLaFactura(flete, 'final', true).formatear()).toBe('$ 1.210,00');
+    expect(precioEnLaFactura(pintura, 'neto', true).formatear()).toBe('$\u00a010.000,00');
+    expect(precioEnLaFactura(flete, 'final', true).formatear()).toBe('$\u00a01.210,00');
   });
 
   it('sin IVA en la factura vale el precio final', () => {
-    expect(precioEnLaFactura(flete, 'neto', false).formatear()).toBe('$ 1.210,00');
-    expect(precioEnLaFactura(clase, 'neto', false).formatear()).toBe('$ 5.000,00');
+    expect(precioEnLaFactura(flete, 'neto', false).formatear()).toBe('$\u00a01.210,00');
+    expect(precioEnLaFactura(clase, 'neto', false).formatear()).toBe('$\u00a05.000,00');
   });
 
   it('sin alícuota no hay nada que convertir', () => {
-    expect(precioEnLaFactura(clase, 'neto', true).formatear()).toBe('$ 5.000,00');
+    expect(precioEnLaFactura(clase, 'neto', true).formatear()).toBe('$\u00a05.000,00');
   });
 });
 

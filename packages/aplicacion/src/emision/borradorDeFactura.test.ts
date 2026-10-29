@@ -38,7 +38,7 @@ describe('itemDelBorrador', () => {
 
     expect(resultado.descripcion).toBe('Flete');
     expect(resultado.cantidad.formatear()).toBe('3');
-    expect(resultado.precioUnitario.formatear()).toBe('$ 1.234,50');
+    expect(resultado.precioUnitario.formatear()).toBe('$\u00a01.234,50');
     expect(resultado.alicuota).toBe(AlicuotaIva.DIEZ_Y_MEDIO);
     expect(resultado.unidad).toBe(UnidadDeMedida.UNIDADES);
   });
@@ -55,13 +55,13 @@ describe('itemDelBorrador', () => {
 
   it('un precio vacío o a medio escribir cuenta como cero o como lo ya escrito', () => {
     expect(itemDelBorrador(item('')).precioUnitario.esCero()).toBe(true);
-    expect(itemDelBorrador(item('1.234,')).precioUnitario.formatear()).toBe('$ 1.234,00');
+    expect(itemDelBorrador(item('1.234,')).precioUnitario.formatear()).toBe('$\u00a01.234,00');
   });
 });
 
 describe('subtotalDelBorrador', () => {
   it('multiplica precio por cantidad', () => {
-    expect(subtotalDelBorrador(item('100', '2,5')).formatear()).toBe('$ 250,00');
+    expect(subtotalDelBorrador(item('100', '2,5')).formatear()).toBe('$\u00a0250,00');
   });
 
   it('con una cantidad inválida no suma', () => {
@@ -84,10 +84,10 @@ describe('totalesDelBorrador', () => {
         g.iva.formatear(),
       ]),
     ).toEqual([
-      ['21 %', '$ 2.100,00', '$ 441,00'],
-      ['10,5 %', '$ 500,00', '$ 52,50'],
+      ['21\u00a0%', '$\u00a02.100,00', '$\u00a0441,00'],
+      ['10,5\u00a0%', '$\u00a0500,00', '$\u00a052,50'],
     ]);
-    expect(totales.total.formatear()).toBe('$ 3.093,50');
+    expect(totales.total.formatear()).toBe('$\u00a03.093,50');
   });
 
   it('deja afuera los ítems con cantidad inválida', () => {
@@ -96,7 +96,7 @@ describe('totalesDelBorrador', () => {
       item('50'),
     ]);
 
-    expect(totales.total.formatear()).toBe('$ 50,00');
+    expect(totales.total.formatear()).toBe('$\u00a050,00');
   });
 
   it('un ítem vacío no suma', () => {

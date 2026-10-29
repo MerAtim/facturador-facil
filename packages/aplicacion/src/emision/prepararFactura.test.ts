@@ -50,7 +50,7 @@ describe('prepararFactura', () => {
   it('arma el comprobante con lo cargado', () => {
     const comprobante = valor(prepararFactura(facturaB([item('1.210', 'Tornillos', '2')])));
 
-    expect(comprobante.totales.total.formatear()).toBe('$ 2.420,00');
+    expect(comprobante.totales.total.formatear()).toBe('$\u00a02.420,00');
     expect(comprobante.datos.fechaDeEmision).toBe(hoy);
     expect(comprobante.datos.concepto).toBe('productos');
     expect(comprobante.datos.identificacionReceptor.tipo).toBe('sin_identificar');

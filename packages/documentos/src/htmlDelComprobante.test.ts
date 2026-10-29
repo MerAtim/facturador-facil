@@ -100,17 +100,17 @@ describe('htmlDelComprobante', () => {
   it('la factura A discrimina neto e IVA por alícuota', () => {
     const html = htmlDelComprobante(documento({ comprobante: facturaA, receptor: conCuit }));
 
-    expect(html).toContain('Neto gravado al 21 %');
-    expect(html).toContain('IVA 10,5 %');
-    expect(html).toContain('$ 52,50');
-    expect(html).toContain('Total</td><td class="numero">$ 1.762,50');
+    expect(html).toContain('Neto gravado al 21\u00a0%');
+    expect(html).toContain('IVA 10,5\u00a0%');
+    expect(html).toContain('$\u00a052,50');
+    expect(html).toContain('Total</td><td class="numero">$\u00a01.762,50');
     expect(html).toContain('Precio unitario sin IVA');
   });
 
   it('la factura B informa el IVA contenido (Ley 27.743)', () => {
     const html = htmlDelComprobante(documento());
 
-    expect(html).toContain('IVA contenido $ 210,00');
+    expect(html).toContain('IVA contenido $\u00a0210,00');
     expect(html).toContain('Precio unitario con IVA');
     expect(html).not.toContain('Neto gravado');
   });
@@ -119,7 +119,7 @@ describe('htmlDelComprobante', () => {
     const facturaC = autorizado({ tipo: TipoComprobante.FACTURA_C, items: [item('Clase', '800')] });
     const html = htmlDelComprobante(documento({ comprobante: facturaC }));
 
-    expect(html).toContain('Total</td><td class="numero">$ 800,00');
+    expect(html).toContain('Total</td><td class="numero">$\u00a0800,00');
     expect(html).not.toContain('IVA contenido');
     expect(html).not.toContain('Neto gravado');
   });

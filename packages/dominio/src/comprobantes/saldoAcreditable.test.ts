@@ -70,10 +70,10 @@ const enPesos = ({ total, porAlicuota }: ReturnType<typeof saldoAcreditable>) =>
 describe('saldoAcreditable', () => {
   it('sin notas, es la factura entera', () => {
     expect(enPesos(saldoAcreditable(facturaB, []))).toEqual({
-      total: '$ 13.205,00',
+      total: '$\u00a013.205,00',
       porAlicuota: [
-        [AlicuotaIva.VEINTIUNO, '$ 12.100,00'],
-        [AlicuotaIva.DIEZ_Y_MEDIO, '$ 1.105,00'],
+        [AlicuotaIva.VEINTIUNO, '$\u00a012.100,00'],
+        [AlicuotaIva.DIEZ_Y_MEDIO, '$\u00a01.105,00'],
       ],
     });
   });
@@ -85,10 +85,10 @@ describe('saldoAcreditable', () => {
     ]);
 
     expect(enPesos(saldo)).toEqual({
-      total: '$ 11.000,00',
+      total: '$\u00a011.000,00',
       porAlicuota: [
-        [AlicuotaIva.VEINTIUNO, '$ 10.000,00'],
-        [AlicuotaIva.DIEZ_Y_MEDIO, '$ 1.000,00'],
+        [AlicuotaIva.VEINTIUNO, '$\u00a010.000,00'],
+        [AlicuotaIva.DIEZ_Y_MEDIO, '$\u00a01.000,00'],
       ],
     });
   });
@@ -108,7 +108,7 @@ describe('saldoAcreditable', () => {
     const notaC = comprobante(TipoComprobante.NOTA_DE_CREDITO_C, [item('1.500')]);
 
     expect(enPesos(saldoAcreditable(facturaC, [notaC]))).toEqual({
-      total: '$ 3.500,00',
+      total: '$\u00a03.500,00',
       porAlicuota: [],
     });
   });
