@@ -13,7 +13,7 @@ import { leerLogo } from '../logo/logoDelEmisor';
 const compartidos = new Directory(Paths.cache, 'compartidos');
 
 /**
- * Convierte la factura en PDF y abre la hoja de compartir del sistema con el mensaje para el
+ * Convierte el comprobante en PDF y abre la hoja de compartir del sistema con el mensaje para el
  * cliente. El PDF queda en la caché de la app.
  */
 export async function compartirFactura(
@@ -30,7 +30,7 @@ export async function compartirFactura(
   const destino = new File(
     compartidos,
     nombreDelArchivo({
-      clase: documento.comprobante.datos.tipo.clase,
+      tipo: documento.comprobante.datos.tipo,
       puntoDeVenta: documento.puntoDeVenta,
       numero: documento.numero,
       receptor: documento.receptor.nombre,
@@ -39,5 +39,10 @@ export async function compartirFactura(
   if (destino.exists) destino.delete();
   await new File(uri).move(destino);
 
-  await CompartirArchivo.compartir(destino.uri, 'application/pdf', mensaje, 'Compartir factura');
+  await CompartirArchivo.compartir(
+    destino.uri,
+    'application/pdf',
+    mensaje,
+    'Compartir comprobante',
+  );
 }

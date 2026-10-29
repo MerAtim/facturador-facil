@@ -16,6 +16,7 @@ import { emisionPara } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { CompartirComprobante } from '../emision/CompartirComprobante';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
+import { nombreDelReceptor } from '../emision/resumenDelComprobante';
 
 /** Acciones de un error que se resuelven pidiendo de nuevo la autorización del mismo comprobante. */
 const SE_RESUELVE_REINTENTANDO: readonly AccionSugerida[] = [
@@ -42,6 +43,8 @@ export default function Resultado() {
   const enCurso = facturaEnCurso.leer();
   if (!enCurso?.resultado) return <Redirect href="/" />;
   const { comprobante, receptor, resultado } = enCurso;
+  const { tipo } = comprobante.datos;
+  const esFactura = tipo.naturaleza === 'factura';
   const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
   const volverAlInicio = () => {
     facturaEnCurso.terminar();
@@ -73,7 +76,7 @@ export default function Resultado() {
     <Pantalla conEncabezado>
       <Stack.Screen
         options={{
-          title: resultado.ok ? 'Factura emitida' : 'No se pudo emitir',
+          title: resultado.ok ? `${tipo.nombre} emitida` : 'No se pudo emitir',
           // Volver a la revisión ofrecería emitir otra vez lo que ya se envió.
           headerBackVisible: false,
           gestureEnabled: false,
@@ -99,7 +102,7 @@ export default function Resultado() {
               }}
             />
           )}
-          {resultado.ok && (
+          {resultado.ok && esFactura && (
             <Boton variante="secundario" onPress={emitirOtra}>
               Emitir otra factura
             </Boton>
@@ -110,7 +113,9 @@ export default function Resultado() {
               reintentando={reintentando}
               onReintentar={() => void reintentar()}
               onCorregir={() => {
-                router.dismissTo('/nueva-factura');
+                // La revisión se reemplazó por este resultado: atrás queda la carga de la nota.
+                if (esFactura) router.dismissTo('/nueva-factura');
+                else router.back();
               }}
               onRevisarAlta={() => {
                 router.push('/alta');
@@ -136,15 +141,16 @@ function Autorizada({
   const { comprobante, puntoDeVenta, numero, observaciones } = otorgado;
   const autorizacion = comprobante.autorizacion;
   const notas = explicarObservaciones(observaciones);
+  const { tipo } = comprobante.datos;
 
   return (
     <>
-      <Aviso icono="check-circle-outline">ARCA autorizó la factura.</Aviso>
+      <Aviso icono="check-circle-outline">ARCA autorizó la {tipo.nombre.toLowerCase()}.</Aviso>
       <TarjetaDeComprobante
-        titulo={`Factura ${comprobante.datos.tipo.clase}`}
+        titulo={tipo.descripcion}
         numero={numeroCompleto(puntoDeVenta, numero)}
         total={comprobante.totales.total.formatear()}
-        receptor={receptor.nombre ?? receptor.condicion.descripcion}
+        receptor={nombreDelReceptor(receptor)}
         fecha={comprobante.datos.fechaDeEmision.formatear()}
         {...(autorizacion && {
           autorizacion: {
@@ -155,7 +161,7 @@ function Autorizada({
       />
       {notas.length > 0 && (
         <Aviso icono="information-outline">
-          {['ARCA hizo estas observaciones, que no invalidan la factura:', ...notas].join('\n')}
+          {['ARCA hizo estas observaciones, que no invalidan el comprobante:', ...notas].join('\n')}
         </Aviso>
       )}
     </>
@@ -206,7 +212,7 @@ function AccionesDelError({
     );
   }
   if (accion === 'corregir_comprobante') {
-    return <Boton onPress={onCorregir}>Corregir la factura</Boton>;
+    return <Boton onPress={onCorregir}>Corregir el comprobante</Boton>;
   }
   // La verificación de la puesta en marcha dice qué falta: el certificado, la autorización o el
   // punto de venta.
