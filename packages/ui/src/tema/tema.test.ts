@@ -37,6 +37,8 @@ const PARES_DE_TEXTO: readonly [ColorPlano, ColorPlano][] = [
   ['onSurfaceVariant', 'surfaceVariant'],
   ['inverseOnSurface', 'inverseSurface'],
   ['primary', 'surface'],
+  // El total destacado, sobre el fondo del resumen.
+  ['primary', 'surfaceVariant'],
   ['error', 'surface'],
 ];
 

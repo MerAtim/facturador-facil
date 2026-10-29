@@ -7,6 +7,8 @@ import type { Opcion } from './SelectorSegmentado';
 /** Márgenes del ítem y lugar del ícono de la opción elegida. */
 const ESPACIO_DEL_ICONO = 56;
 
+const INICIO = { start: 0, end: 0 };
+
 /** Elección de una opción en una lista que se despliega, para cuando son demasiadas para verlas juntas. */
 export function Selector<T extends string>({
   etiqueta,
@@ -41,13 +43,20 @@ export function Selector<T extends string>({
             setAncho(evento.nativeEvent.layout.width);
           }}
         >
-          {/* Se ve como los demás campos, pero el toque lo recibe el contenedor. */}
-          <View pointerEvents="none">
+          {/* Se ve como los demás campos, pero el toque y la lectura los recibe el contenedor. */}
+          <View
+            pointerEvents="none"
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+          >
             <TextInput
               mode="outlined"
               label={etiqueta}
               value={elegida}
               editable={false}
+              // Si el texto no entra, Android lo desplaza hasta el final y se come el principio:
+              // con la fuente grande se leía "Jnidades". Así queda a la vista el comienzo.
+              selection={INICIO}
               right={<TextInput.Icon icon={abierto ? 'menu-up' : 'menu-down'} />}
             />
           </View>

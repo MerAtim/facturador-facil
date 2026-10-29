@@ -101,20 +101,23 @@ const estilos = StyleSheet.create({
     padding: espacio.normal,
     gap: espacio.medio,
   },
+  // Con la fuente grande, lo que no entra al lado pasa abajo en vez de partirse o salirse.
   fila: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    gap: espacio.chico,
+    columnGap: espacio.chico,
   },
   resumen: { gap: espacio.chico },
   encabezado: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     gap: espacio.chico,
   },
-  identificacion: { flex: 1, gap: espacio.minimo },
+  identificacion: { flexGrow: 1, gap: espacio.minimo },
   autorizacion: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: espacio.medio,

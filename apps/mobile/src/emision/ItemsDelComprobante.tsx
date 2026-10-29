@@ -14,7 +14,7 @@ export function ItemsDelComprobante({ comprobante }: { readonly comprobante: Com
             <Texto variante="cuerpo">{item.descripcion}</Texto>
             <Texto variante="detalle">
               {unidadDe(item).formatear(item.cantidad)} × {item.precioUnitario.formatear()}
-              {tipo.informaIva() && item.alicuota ? ` · IVA ${item.alicuota.formatear()}` : ''}
+              {tipo.informaIva() && item.alicuota ? ` · IVA\u00a0${item.alicuota.formatear()}` : ''}
             </Texto>
           </View>
           <Texto variante="importe">{importeDe(item).formatear()}</Texto>

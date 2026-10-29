@@ -11,7 +11,7 @@ export function lineasDelResumen(tipo: TipoComprobante, totales: Totales): reado
     return [
       { etiqueta: 'Neto', importe: totales.neto.formatear() },
       {
-        etiqueta: unica ? `IVA ${unica.alicuota.formatear()}` : 'IVA',
+        etiqueta: unica ? `IVA\u00a0${unica.alicuota.formatear()}` : 'IVA',
         importe: totales.iva.formatear(),
       },
     ];
@@ -19,7 +19,7 @@ export function lineasDelResumen(tipo: TipoComprobante, totales: Totales): reado
 
   return totales.porAlicuota.flatMap(({ alicuota, neto, iva }) => [
     { etiqueta: `Neto al ${alicuota.formatear()}`, importe: neto.formatear() },
-    { etiqueta: `IVA ${alicuota.formatear()}`, importe: iva.formatear() },
+    { etiqueta: `IVA\u00a0${alicuota.formatear()}`, importe: iva.formatear() },
   ]);
 }
 
