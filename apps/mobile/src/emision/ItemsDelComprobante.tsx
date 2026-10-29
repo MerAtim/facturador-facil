@@ -1,8 +1,8 @@
-import { importeDe, type Comprobante } from '@facturador/dominio';
+import { importeDe, unidadDe, type Comprobante } from '@facturador/dominio';
 import { Texto, useTema } from '@facturador/ui';
 import { StyleSheet, View } from 'react-native';
 
-/** Cada ítem con su cantidad, precio, alícuota si corresponde, y su importe. */
+/** Cada ítem con su cantidad y unidad, precio, alícuota si corresponde, y su importe. */
 export function ItemsDelComprobante({ comprobante }: { readonly comprobante: Comprobante }) {
   const { espacio } = useTema();
   const { tipo, items } = comprobante.datos;
@@ -13,7 +13,7 @@ export function ItemsDelComprobante({ comprobante }: { readonly comprobante: Com
           <View style={[estilos.descripcion, { paddingRight: espacio.chico }]}>
             <Texto variante="cuerpo">{item.descripcion}</Texto>
             <Texto variante="detalle">
-              {item.cantidad.formatear()} × {item.precioUnitario.formatear()}
+              {unidadDe(item).formatear(item.cantidad)} × {item.precioUnitario.formatear()}
               {tipo.informaIva() && item.alicuota ? ` · IVA ${item.alicuota.formatear()}` : ''}
             </Texto>
           </View>
