@@ -9,7 +9,7 @@ Qué protege Facturador Fácil, de quién y cómo. Sirve para revisar cada cambi
 * La app corre en el teléfono del contribuyente y habla directamente con ARCA, sin servidor propio ([ADR 0002](../adr/0002_local_first_y_claves_en_dispositivo.md)).
 * El sistema operativo no está comprometido. Un teléfono con root o jailbreak queda fuera del modelo: ahí ninguna protección de la app es confiable.
 * ARCA y su infraestructura TLS son confiables.
-* Fuera de alcance por ahora: respaldo y sincronización (#62), padrón de ARCA (#30), publicación en tiendas (#63).
+* Fuera de alcance por ahora: sincronización entre teléfonos, padrón de ARCA (#30), publicación en tiendas (#63).
 
 ## Activos
 
@@ -87,6 +87,8 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 | --- | --- | --- |
 | Se extraen datos de un teléfono perdido | Secretos en el almacén seguro; comprobantes en una base cifrada; la clave privada no es exportable | Cumple |
 | Los datos salen en un respaldo del sistema | Android: `allowBackup` desactivado. iOS: la base cifrada entra en iCloud, pero sin su clave, que no viaja, es ilegible | Cumple; mejora anotada en #93 |
+| Alguien obtiene el archivo de respaldo de la app | Cifrado con XChaCha20-Poly1305 y una clave derivada de la contraseña con PBKDF2 de 600.000 iteraciones; sin la clave privada ni el certificado (ADR 0006) | Cumple, #62 |
+| Un respaldo manipulado ataca la importación | Un único archivo sin zip, tope de tamaño, costo de derivación acotado, etiqueta verificada antes de leer y cada comprobante validado como lo guardado | Cumple, #62 |
 | Capturas de pantalla o la vista previa del selector de apps | Android bloquea capturas y grabaciones; iOS las oculta en grabaciones y desenfoca la vista previa | Cumple |
 | Los registros exponen datos fiscales | Un único registro que tapa CUIT, DNI, CAE, tokens e importes; en producción, solo mensajes fijos | Cumple |
 | El teclado aprende nombres y CUIT de clientes | Teclado en modo incógnito en toda la app (Android) y campos de datos personales sin sugerencias | Cumple, #136 |
@@ -139,4 +141,4 @@ Según [OWASP MASVS v2](https://mas.owasp.org/MASVS/). Los controles de resilien
 | MASVS-PRIVACY-1 | Acceso mínimo a datos | Cumple: sin servidor propio ni analítica; permisos mínimos |
 | MASVS-PRIVACY-2 | Se evita identificar al usuario | Cumple: no se envía nada fuera de ARCA |
 | MASVS-PRIVACY-3 | Transparencia sobre los datos | Pendiente: política de privacidad en #63 |
-| MASVS-PRIVACY-4 | Control del usuario sobre sus datos | Parcial: puede quitar el logo y cambiar sus datos; borrar comprobantes y exportarlos llega con el historial (#50) y el respaldo (#62) |
+| MASVS-PRIVACY-4 | Control del usuario sobre sus datos | Parcial: puede quitar el logo, cambiar sus datos y llevarse todo en un respaldo cifrado (#62); falta borrar comprobantes |
