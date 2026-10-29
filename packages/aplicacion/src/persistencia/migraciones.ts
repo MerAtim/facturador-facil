@@ -61,6 +61,23 @@ export const MIGRACIONES: readonly string[] = [
   );
   CREATE INDEX clientes_por_uso ON clientes (usos DESC, ultimo_uso DESC);
   `,
+  // 5: el catálogo de productos y servicios. El precio va con su modo, final o neto, y la alícuota
+  // es opcional para quien no factura IVA.
+  `
+  CREATE TABLE productos (
+    id INTEGER PRIMARY KEY,
+    descripcion TEXT NOT NULL,
+    busqueda TEXT NOT NULL,
+    precio_en_centavos INTEGER NOT NULL,
+    modo_de_precio TEXT NOT NULL CHECK (modo_de_precio IN ('final', 'neto')),
+    alicuota INTEGER,
+    unidad TEXT NOT NULL,
+    usos INTEGER NOT NULL DEFAULT 0,
+    ultimo_uso INTEGER,
+    creado_en INTEGER NOT NULL
+  );
+  CREATE INDEX productos_por_uso ON productos (usos DESC, ultimo_uso DESC);
+  `,
 ];
 
 export class BaseMasNueva extends Error {

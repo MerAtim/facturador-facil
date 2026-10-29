@@ -10,10 +10,12 @@ import {
   fallo,
   FechaCalendario,
   TipoComprobante,
+  UnidadDeMedida,
   type Receptor,
 } from '@facturador/dominio';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { crearRepositorioDeProductos } from '../catalogo/productos';
 import { crearRepositorioDeClientes, type Cliente } from '../clientes/clientes';
 import {
   crearRepositorioDeComprobantes,
@@ -109,6 +111,14 @@ const cifradoDePrueba: CifradoDeRespaldos = {
 
 const CONTRASENA = 'una contraseña larga';
 
+const pintura = {
+  descripcion: 'Pintura látex 20 l',
+  precio: valor(Dinero.desdeTexto('48.500')),
+  modoDePrecio: 'final' as const,
+  alicuota: AlicuotaIva.VEINTIUNO,
+  unidad: UnidadDeMedida.UNIDADES,
+};
+
 /** El contenido de un respaldo, para alterarlo en los tests. */
 const abrir = async (archivo: Uint8Array) =>
   JSON.parse(
@@ -123,6 +133,7 @@ async function telefono(configuracion?: Configuracion, logoInicial?: string) {
   const repositorios = {
     configuracion: crearRepositorioDeConfiguracion(almacen),
     clientes: crearRepositorioDeClientes(base),
+    productos: crearRepositorioDeProductos(base),
     comprobantes: crearRepositorioDeComprobantes(base),
   };
   if (configuracion) await repositorios.configuracion.guardar(configuracion);
@@ -151,6 +162,8 @@ describe('respaldo', () => {
     await viejo.comprobantes.guardar(emitido(1, 'homologacion'));
     await viejo.comprobantes.guardar(emitido(2));
     await viejo.comprobantes.guardar(emitido(3));
+    await viejo.productos.guardar(pintura);
+    await viejo.productos.guardar({ ...pintura, descripcion: 'Pincel', modoDePrecio: 'neto' });
     await viejo.clientes.registrarUso({
       cuit: valor(Cuit.crear('30712345671')),
       condicion: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
@@ -187,7 +200,14 @@ describe('respaldo', () => {
 
     expect(restaurado).toEqual({
       ok: true,
-      valor: { configuracion: true, comprobantes: 3, descartados: 0, clientes: 2, logo: true },
+      valor: {
+        configuracion: true,
+        comprobantes: 3,
+        descartados: 0,
+        clientes: 2,
+        productos: 2,
+        logo: true,
+      },
     });
     expect(await nuevo.configuracion.leer()).toEqual({ emisor: juana, ambiente: 'produccion' });
     expect(await nuevo.comprobantes.todosDelEmisor(juana)).toEqual(
@@ -197,6 +217,10 @@ describe('respaldo', () => {
       [...clientes].sort((a, b) => a.cuit.valor.localeCompare(b.cuit.valor));
     expect(porCuit(await nuevo.clientes.todos())).toEqual(porCuit(await viejo.clientes.todos()));
     expect(nuevo.logo.actual).toBe('iVBORw0KGgo=');
+    // Los ids los pone cada base: se comparan sin ellos.
+    const sinId = (productos: readonly { id?: number }[]) =>
+      productos.map((producto) => ({ ...producto, id: undefined }));
+    expect(sinId(await nuevo.productos.todos())).toEqual(sinId(await viejo.productos.todos()));
   });
 
   it('en un teléfono con el mismo emisor suma lo que falta sin pisar nada', async () => {
@@ -204,10 +228,20 @@ describe('respaldo', () => {
     const actual = await telefono({ emisor: otroDomicilio, ambiente: 'produccion' }, 'propio');
     await actual.comprobantes.guardar(emitido(3));
     await actual.comprobantes.guardar(emitido(4));
+    await actual.productos.guardar({
+      ...pintura,
+      descripcion: 'PINTURA LATEX 20 L',
+      precio: valor(Dinero.desdeTexto('1')),
+    });
 
     const restaurado = valor(await actual.respaldo.restaurar(await crear(), CONTRASENA));
 
     expect(restaurado.configuracion).toBe(false);
+    expect(restaurado.productos).toBe(1);
+    expect((await actual.productos.todos()).map((p) => p.descripcion)).toEqual([
+      'PINTURA LATEX 20 L',
+      'Pincel',
+    ]);
     expect(restaurado.logo).toBe(false);
     expect((await actual.configuracion.leer())?.emisor.datos.domicilio).toBe('Otra calle 9');
     expect(actual.logo.actual).toBe('propio');
