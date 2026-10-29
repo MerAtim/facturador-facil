@@ -16,6 +16,7 @@ import { FlatList, View } from 'react-native';
 
 import { comprobantesEmitidos, registro } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
+import { parametrosDe } from '../emision/claveDelComprobante';
 import { resumenDelComprobante } from '../emision/resumenDelComprobante';
 
 type Periodo = 'todo' | 'este_mes' | 'mes_anterior' | 'este_anio';
@@ -172,11 +173,7 @@ export default function Comprobantes() {
             onPress={() => {
               router.push({
                 pathname: '/comprobante',
-                params: {
-                  tipo: String(item.comprobante.datos.tipo.codigoArca),
-                  puntoDeVenta: String(item.puntoDeVenta),
-                  numero: String(item.numero),
-                },
+                params: parametrosDe(item.comprobante.datos.tipo, item.puntoDeVenta, item.numero),
               });
             }}
           />

@@ -235,7 +235,6 @@ describe('explicarError', () => {
     { tipo: 'ticket_ilegible' },
     { tipo: 'firma_no_disponible' },
     { tipo: 'comprobante_no_soportado', motivo: 'ya_autorizado' },
-    { tipo: 'comprobante_no_soportado', motivo: 'requiere_comprobante_asociado' },
     { tipo: 'almacen_no_disponible' },
     {
       tipo: 'rechazo_wsaa',

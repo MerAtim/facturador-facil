@@ -223,6 +223,57 @@ describe('Comprobante', () => {
     });
   });
 
+  describe('comprobante asociado', () => {
+    const facturaAsociada = {
+      tipo: TipoComprobante.FACTURA_A,
+      puntoDeVenta: 3,
+      numero: 102,
+      fechaDeEmision: fecha(2026, 10, 20),
+    };
+    const notaA = (asociado?: DatosComprobante['asociado']): DatosComprobante => ({
+      ...facturaA([item('100', AlicuotaIva.VEINTIUNO)]),
+      tipo: TipoComprobante.NOTA_DE_CREDITO_A,
+      ...(asociado && { asociado }),
+    });
+
+    it('una nota de crédito informa la factura que ajusta', () => {
+      expect(Comprobante.crear(notaA(facturaAsociada)).ok).toBe(true);
+    });
+
+    it('admite la nota del mismo día que la factura', () => {
+      expect(Comprobante.crear(notaA({ ...facturaAsociada, fechaDeEmision: hoy })).ok).toBe(true);
+    });
+
+    it.each<[string, DatosComprobante, string]>([
+      ['una nota sin asociado', notaA(), 'falta_comprobante_asociado'],
+      [
+        'una factura con asociado',
+        { ...facturaA([item('100', AlicuotaIva.VEINTIUNO)]), asociado: facturaAsociada },
+        'asociado_no_corresponde',
+      ],
+      [
+        'una nota A sobre una factura B',
+        notaA({ ...facturaAsociada, tipo: TipoComprobante.FACTURA_B }),
+        'asociado_de_otro_tipo',
+      ],
+      [
+        'una nota sobre otra nota',
+        notaA({ ...facturaAsociada, tipo: TipoComprobante.NOTA_DE_CREDITO_A }),
+        'asociado_de_otro_tipo',
+      ],
+      [
+        'una nota anterior a la factura',
+        notaA({ ...facturaAsociada, fechaDeEmision: fecha(2026, 10, 24) }),
+        'anterior_al_asociado',
+      ],
+    ])('rechaza %s', (_caso, datos, motivo) => {
+      expect(Comprobante.crear(datos)).toEqual({
+        ok: false,
+        error: { tipo: 'comprobante_invalido', motivo },
+      });
+    });
+  });
+
   describe('autorización', () => {
     const vencimiento = fecha(2026, 11, 2);
 

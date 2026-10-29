@@ -22,6 +22,15 @@ describe('TipoComprobante', () => {
   });
 
   it.each([
+    [TipoComprobante.FACTURA_B, 'Factura B'],
+    [TipoComprobante.NOTA_DE_CREDITO_A, 'Nota de crédito A'],
+    [TipoComprobante.NOTA_DE_DEBITO_C, 'Nota de débito C'],
+  ])('se imprime como %s', (tipo, descripcion) => {
+    expect(tipo.descripcion).toBe(descripcion);
+    expect(tipo.descripcion.startsWith(`${tipo.nombre} `)).toBe(true);
+  });
+
+  it.each([
     [TipoComprobante.FACTURA_A, true, true],
     [TipoComprobante.NOTA_DE_CREDITO_B, false, true],
     [TipoComprobante.FACTURA_C, false, false],

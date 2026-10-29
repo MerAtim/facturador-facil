@@ -1,12 +1,6 @@
 import type { ComprobanteEmitido } from '@facturador/aplicacion';
 import { numeroCompleto } from '@facturador/arca';
-import type { Naturaleza, Receptor } from '@facturador/dominio';
-
-const NOMBRE: Readonly<Record<Naturaleza, string>> = {
-  factura: 'Factura',
-  nota_de_debito: 'Nota de débito',
-  nota_de_credito: 'Nota de crédito',
-};
+import type { Receptor, TipoComprobante } from '@facturador/dominio';
 
 /** Cómo se identifica al receptor en una línea: su nombre, su documento o su condición. */
 export function nombreDelReceptor({ nombre, identificacion, condicion }: Receptor): string {
@@ -30,10 +24,14 @@ export function resumenDelComprobante({
 }: ComprobanteEmitido) {
   const { tipo, fechaDeEmision } = comprobante.datos;
   return {
-    titulo: `${NOMBRE[tipo.naturaleza]} ${tipo.clase}`,
+    titulo: tipo.descripcion,
     numero: numeroCompleto(puntoDeVenta, numero),
     total: comprobante.totales.total.formatear(),
     receptor: nombreDelReceptor(receptor),
     fecha: fechaDeEmision.formatear(),
   };
 }
+
+/** El tipo dentro de una oración: `factura B`, `nota de crédito A`. */
+export const enUnaFrase = (tipo: TipoComprobante): string =>
+  `${tipo.nombre.toLowerCase()} ${tipo.clase}`;

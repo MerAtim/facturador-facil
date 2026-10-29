@@ -57,7 +57,7 @@ export function htmlDelComprobante(documento: DatosDelDocumento): string {
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${POLITICA_DE_CONTENIDO}">
-<title>Factura ${escapar(tipo.clase)} ${numeroCompleto}</title>
+<title>${escapar(tipo.descripcion)} ${numeroCompleto}</title>
 <style>${ESTILOS}</style>
 </head>
 <body>
@@ -74,7 +74,7 @@ ${deHomologacion ? '<p class="prueba">Homologación: comprobante de prueba, sin 
     <span>Cód. ${String(tipo.codigoArca).padStart(3, '0')}</span>
   </section>
   <section class="numeracion">
-    <h2>Factura</h2>
+    <h2>${escapar(tipo.nombre)}</h2>
     <p>Punto de venta y número: <b class="sin-corte">${numeroCompleto}</b></p>
     <p>Fecha de emisión: ${escapar(fechaDeEmision.formatear())}</p>
     <p>CUIT: ${escapar(emisor.datos.cuit.formateado())}</p>
@@ -83,6 +83,7 @@ ${deHomologacion ? '<p class="prueba">Homologación: comprobante de prueba, sin 
   </section>
 </header>
 ${seccionDelReceptor(documento.receptor)}
+${seccionDelAsociado(comprobante)}
 ${tablaDeItems(comprobante)}
 ${bloqueDeTotales(comprobante)}
 <footer>
@@ -120,6 +121,15 @@ function seccionDelReceptor({ identificacion, condicion, nombre, domicilio }: Re
   ${documento}
   ${domicilio ? `<p>Domicilio: ${escapar(domicilio)}</p>` : ''}
   <p>Condición frente al IVA: ${escapar(condicion.descripcion)}</p>
+</section>`;
+}
+
+/** La factura que ajusta una nota de crédito o de débito. */
+function seccionDelAsociado({ datos: { asociado } }: Comprobante): string {
+  if (!asociado) return '';
+  const numero = numeroDeComprobante(asociado.puntoDeVenta, asociado.numero);
+  return `<section class="asociado">
+  <p>Comprobante asociado: <b class="sin-corte">${escapar(asociado.tipo.descripcion)} ${numero}</b> del ${escapar(asociado.fechaDeEmision.formatear())}</p>
 </section>`;
 }
 
@@ -195,7 +205,7 @@ const ESTILOS = `
   .letra { flex: 0 0 auto; text-align: center; border: 1px solid #111; padding: 4pt 10pt; }
   .letra strong { display: block; font-size: 28pt; line-height: 1; }
   .letra span { font-size: 8pt; }
-  .receptor { border: 1px solid #111; border-top: 0; padding: 8pt; }
+  .receptor, .asociado { border: 1px solid #111; border-top: 0; padding: 8pt; }
   table { width: 100%; border-collapse: collapse; }
   .items { margin-top: 12pt; }
   .items th { border-bottom: 1px solid #111; text-align: left; padding: 4pt; font-size: 9pt; }

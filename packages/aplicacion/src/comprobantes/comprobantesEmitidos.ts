@@ -57,13 +57,16 @@ export interface RepositorioDeComprobantes {
   /** Los más recientes primero. */
   listar(filtro: FiltroDeComprobantes): Promise<readonly ComprobanteEmitido[]>;
   leer(clave: ClaveDeComprobante): Promise<ComprobanteEmitido | undefined>;
+  /** Las notas de crédito que ajustan esa factura, de la más vieja a la más nueva. */
+  notasDeCreditoDe(factura: ClaveDeComprobante): Promise<readonly ComprobanteEmitido[]>;
 }
 
 const GUARDAR = `
   INSERT INTO comprobantes (
     ambiente, cuit_emisor, tipo, punto_de_venta, numero, fecha, total_en_centavos, receptor,
-    receptor_documento, cae, datos, guardado_en
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    receptor_documento, asociado_tipo, asociado_punto_de_venta, asociado_numero, cae, datos,
+    guardado_en
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (ambiente, cuit_emisor, tipo, punto_de_venta, numero) DO NOTHING
 `;
 
@@ -94,6 +97,19 @@ const LEER = `
   WHERE ambiente = ? AND cuit_emisor = ? AND tipo = ? AND punto_de_venta = ? AND numero = ?
 `;
 
+const NOTAS_DE_CREDITO = TipoComprobante.TODOS.filter(
+  (tipo) => tipo.naturaleza === 'nota_de_credito',
+).map((tipo) => tipo.codigoArca);
+
+const NOTAS_DE_CREDITO_DE = `
+  SELECT punto_de_venta, numero, datos
+  FROM comprobantes
+  WHERE ambiente = ? AND cuit_emisor = ?
+    AND asociado_tipo = ? AND asociado_punto_de_venta = ? AND asociado_numero = ?
+    AND tipo IN (?, ?, ?)
+  ORDER BY fecha, id
+`;
+
 export function crearRepositorioDeComprobantes(
   base: BaseDeDatos,
   ahora: () => number = Date.now,
@@ -109,6 +125,7 @@ export function crearRepositorioDeComprobantes(
     async guardar(emitido) {
       const { comprobante, receptor } = emitido;
       const { autorizacion } = comprobante;
+      const { asociado } = comprobante.datos;
       if (!autorizacion) throw new Error('Solo se guardan comprobantes autorizados.');
 
       await base.ejecutar(GUARDAR, [
@@ -121,6 +138,9 @@ export function crearRepositorioDeComprobantes(
         comprobante.totales.total.centavos,
         receptor.nombre ?? null,
         documentoDe(receptor.identificacion) ?? null,
+        asociado?.tipo.codigoArca ?? null,
+        asociado?.puntoDeVenta ?? null,
+        asociado?.numero ?? null,
         autorizacion.cae,
         aTextoGuardado(emitido),
         ahora(),
@@ -141,6 +161,18 @@ export function crearRepositorioDeComprobantes(
         numero,
       ]);
       return rearmar(filas, ambiente, emisor)[0];
+    },
+
+    async notasDeCreditoDe({ ambiente, emisor, tipo, puntoDeVenta, numero }) {
+      const filas = await base.consultar(NOTAS_DE_CREDITO_DE, [
+        ambiente,
+        emisor.datos.cuit.valor,
+        tipo.codigoArca,
+        puntoDeVenta,
+        numero,
+        ...NOTAS_DE_CREDITO,
+      ]);
+      return rearmar(filas, ambiente, emisor);
     },
   };
 }

@@ -37,6 +37,14 @@ export interface Autorizacion {
   readonly vencimiento: FechaCalendario;
 }
 
+/** La factura que ajusta una nota de crédito o de débito. Se informa a ARCA en CbtesAsoc. */
+export interface ComprobanteAsociado {
+  readonly tipo: TipoComprobante;
+  readonly puntoDeVenta: number;
+  readonly numero: number;
+  readonly fechaDeEmision: FechaCalendario;
+}
+
 export interface DatosComprobante {
   readonly tipo: TipoComprobante;
   readonly receptor: CondicionIvaReceptor;
@@ -46,6 +54,8 @@ export interface DatosComprobante {
   readonly fechaDeEmision: FechaCalendario;
   readonly concepto: Concepto;
   readonly periodoDeServicio?: PeriodoDeServicio;
+  /** Obligatorio en las notas de crédito y débito. Una factura no lleva. */
+  readonly asociado?: ComprobanteAsociado;
 }
 
 export type MotivoComprobanteInvalido =
@@ -57,6 +67,10 @@ export type MotivoComprobanteInvalido =
   | 'periodo_de_servicio_no_corresponde'
   | 'periodo_de_servicio_invertido'
   | 'vencimiento_de_pago_anterior_a_emision'
+  | 'falta_comprobante_asociado'
+  | 'asociado_no_corresponde'
+  | 'asociado_de_otro_tipo'
+  | 'anterior_al_asociado'
   | 'cae_invalido'
   | 'ya_autorizado';
 
@@ -86,6 +100,9 @@ export class Comprobante {
 
     const errorDeFechas = validarFechas(datos);
     if (errorDeFechas) return invalido(errorDeFechas);
+
+    const errorDelAsociado = validarAsociado(datos);
+    if (errorDelAsociado) return invalido(errorDelAsociado);
 
     return exito(new Comprobante(datos, calcularTotales(datos)));
   }
@@ -122,6 +139,21 @@ function validarFechas({
   if (periodo.vencimientoDePago.esAnteriorA(fechaDeEmision)) {
     return 'vencimiento_de_pago_anterior_a_emision';
   }
+  return undefined;
+}
+
+/** Una nota ajusta una factura de su misma clase, emitida antes o el mismo día. */
+function validarAsociado({
+  tipo,
+  asociado,
+  fechaDeEmision,
+}: DatosComprobante): MotivoComprobanteInvalido | undefined {
+  if (tipo.naturaleza === 'factura') return asociado ? 'asociado_no_corresponde' : undefined;
+  if (!asociado) return 'falta_comprobante_asociado';
+  if (asociado.tipo.naturaleza !== 'factura' || asociado.tipo.clase !== tipo.clase) {
+    return 'asociado_de_otro_tipo';
+  }
+  if (fechaDeEmision.esAnteriorA(asociado.fechaDeEmision)) return 'anterior_al_asociado';
   return undefined;
 }
 

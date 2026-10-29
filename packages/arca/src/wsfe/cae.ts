@@ -5,6 +5,7 @@ import {
   exito,
   fallo,
   type Comprobante,
+  type Cuit,
   type IdentificacionReceptor,
   type Resultado,
   type TipoComprobante,
@@ -63,8 +64,7 @@ export interface ComprobanteRechazado {
 
 export interface ComprobanteNoSoportado {
   readonly tipo: 'comprobante_no_soportado';
-  /** Las notas de débito y crédito tienen que informar el comprobante que ajustan (#46). */
-  readonly motivo: 'ya_autorizado' | 'requiere_comprobante_asociado';
+  readonly motivo: 'ya_autorizado';
 }
 
 export type ErrorCae = ErrorWsfe | ComprobanteRechazado | ComprobanteNoSoportado;
@@ -73,13 +73,10 @@ const inesperada = fallo<RespuestaInesperada>({ tipo: 'respuesta_inesperada', es
 
 /** Lo que se puede saber sin llamar a ARCA. */
 export function verificarSoportado(comprobante: Comprobante): ComprobanteNoSoportado | undefined {
-  if (comprobante.estaAutorizado()) {
-    return { tipo: 'comprobante_no_soportado', motivo: 'ya_autorizado' };
-  }
-  if (comprobante.datos.tipo.naturaleza !== 'factura') {
-    return { tipo: 'comprobante_no_soportado', motivo: 'requiere_comprobante_asociado' };
-  }
-  return undefined;
+  // Que una nota informe la factura que ajusta ya lo exige el dominio al crearla.
+  return comprobante.estaAutorizado()
+    ? { tipo: 'comprobante_no_soportado', motivo: 'ya_autorizado' }
+    : undefined;
 }
 
 /** FECompUltimoAutorizado: el último número autorizado, o 0 si todavía no se emitió ninguno. */
@@ -137,7 +134,7 @@ export async function solicitarCae(
     'FECAESolicitar',
     autorizacion,
     `<FeCAEReq><FeCabReq>${cabecera}</FeCabReq>` +
-      `<FeDetReq><FECAEDetRequest>${detalle(comprobante, numero)}</FECAEDetRequest></FeDetReq></FeCAEReq>`,
+      `<FeDetReq><FECAEDetRequest>${detalle(comprobante, numero, autorizacion.cuit)}</FECAEDetRequest></FeDetReq></FeCAEReq>`,
     transporte,
     url,
   );
@@ -147,8 +144,8 @@ export async function solicitarCae(
 }
 
 /** Los campos van en el orden que exige el esquema de WSFEv1. */
-function detalle({ datos, totales }: Comprobante, numero: number): string {
-  const periodo = datos.periodoDeServicio;
+function detalle({ datos, totales }: Comprobante, numero: number, cuitEmisor: Cuit): string {
+  const { periodoDeServicio: periodo, asociado } = datos;
   const alicuotas = totales.porAlicuota.map(
     ({ alicuota, neto, iva }) =>
       `<AlicIva>${campo('Id', alicuota.codigoArca)}${campo('BaseImp', neto.aTextoArca())}` +
@@ -179,6 +176,16 @@ function detalle({ datos, totales }: Comprobante, numero: number): string {
     campo('MonId', 'PES'),
     campo('MonCotiz', 1),
     campo('CondicionIVAReceptorId', datos.receptor.codigoArca),
+    // La factura que ajusta una nota es siempre del mismo emisor.
+    asociado
+      ? '<CbtesAsoc><CbteAsoc>' +
+        campo('Tipo', asociado.tipo.codigoArca) +
+        campo('PtoVta', asociado.puntoDeVenta) +
+        campo('Nro', asociado.numero) +
+        campo('Cuit', cuitEmisor.valor) +
+        campo('CbteFch', asociado.fechaDeEmision.aTextoArca()) +
+        '</CbteAsoc></CbtesAsoc>'
+      : '',
     alicuotas.length > 0 ? `<Iva>${alicuotas.join('')}</Iva>` : '',
   ].join('');
 }

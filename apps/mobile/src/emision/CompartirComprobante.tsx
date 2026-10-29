@@ -16,7 +16,7 @@ export function CompartirComprobante({ documento }: { readonly documento: DatosD
 
   const { comprobante, puntoDeVenta, numero, emisor } = documento;
   const sugerido = mensajeSugerido({
-    clase: comprobante.datos.tipo.clase,
+    tipo: comprobante.datos.tipo,
     puntoDeVenta,
     numero,
     total: comprobante.totales.total.formatear(),
@@ -51,7 +51,7 @@ export function CompartirComprobante({ documento }: { readonly documento: DatosD
         loading={compartiendo}
         disabled={compartiendo}
       >
-        Compartir factura
+        Compartir {comprobante.datos.tipo.nombre.toLowerCase()}
       </Boton>
       {noSeCompartio && (
         <Aviso icono="alert-circle-outline" tono="error">

@@ -4,6 +4,12 @@ export type ClaseComprobante = 'A' | 'B' | 'C';
 
 export type Naturaleza = 'factura' | 'nota_de_debito' | 'nota_de_credito';
 
+const NOMBRE: Readonly<Record<Naturaleza, string>> = {
+  factura: 'Factura',
+  nota_de_debito: 'Nota de débito',
+  nota_de_credito: 'Nota de crédito',
+};
+
 /** Tipos de comprobante de WSFEv1. El código es el que define ARCA en FEParamGetTiposCbte. */
 export class TipoComprobante {
   private constructor(
@@ -44,6 +50,16 @@ export class TipoComprobante {
     );
     if (!tipo) throw new Error(`No existe el tipo ${naturaleza} ${clase}`);
     return tipo;
+  }
+
+  /** Sin la clase, que el comprobante impreso muestra aparte: `Factura`, `Nota de crédito`. */
+  get nombre(): string {
+    return NOMBRE[this.naturaleza];
+  }
+
+  /** El nombre con la clase: `Factura B`, `Nota de crédito A`. */
+  get descripcion(): string {
+    return `${this.nombre} ${this.clase}`;
   }
 
   /** Solo la clase A muestra el IVA discriminado en el comprobante impreso. */

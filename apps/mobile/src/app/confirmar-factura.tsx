@@ -1,3 +1,4 @@
+import { numeroCompleto } from '@facturador/arca';
 import type { Receptor } from '@facturador/dominio';
 import { Aviso, Boton, Pantalla, ResumenDeTotales, Tarjeta, Texto, useTema } from '@facturador/ui';
 import { Redirect, Stack, useRouter } from 'expo-router';
@@ -8,6 +9,7 @@ import { emisionPara } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
+import { enUnaFrase } from '../emision/resumenDelComprobante';
 import { ItemsDelComprobante } from '../emision/ItemsDelComprobante';
 import { lineasDelResumen } from '../emision/resumen';
 
@@ -37,8 +39,9 @@ export default function ConfirmarFactura() {
 
   const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
   const { comprobante, receptor } = enCurso;
-  const { tipo, fechaDeEmision } = comprobante.datos;
+  const { tipo, fechaDeEmision, asociado } = comprobante.datos;
   const total = comprobante.totales.total.formatear();
+  const nombre = tipo.nombre.toLowerCase();
 
   const emitir = async () => {
     if (!configurada || enviado.current) return;
@@ -62,7 +65,7 @@ export default function ConfirmarFactura() {
     <Pantalla conEncabezado>
       <Stack.Screen
         options={{
-          title: 'Revisar factura',
+          title: `Revisar ${nombre}`,
           // Mientras se emite no se puede volver: la factura quedaría en un estado incierto a la vista.
           headerBackVisible: !emitiendo,
           gestureEnabled: !emitiendo,
@@ -78,11 +81,17 @@ export default function ConfirmarFactura() {
           </Tarjeta>
 
           <Tarjeta>
-            <Texto variante="subtitulo">Factura {tipo.clase}</Texto>
+            <Texto variante="subtitulo">{tipo.descripcion}</Texto>
             <Texto variante="detalle">
               Punto de venta {String(configurada.emisor.datos.puntoDeVenta)} · Fecha{' '}
               {fechaDeEmision.formatear()}
             </Texto>
+            {asociado && (
+              <Texto variante="detalle">
+                Ajusta la {enUnaFrase(asociado.tipo)}{' '}
+                {numeroCompleto(asociado.puntoDeVenta, asociado.numero)}
+              </Texto>
+            )}
             <ItemsDelComprobante comprobante={comprobante} />
           </Tarjeta>
 
@@ -105,7 +114,9 @@ export default function ConfirmarFactura() {
           )}
 
           <Texto variante="detalle">
-            Una factura emitida no se puede borrar: para anularla hay que hacer una nota de crédito.
+            {tipo.naturaleza === 'factura'
+              ? 'Una factura emitida no se puede borrar: para anularla hay que hacer una nota de crédito.'
+              : 'Una nota de crédito emitida no se puede borrar ni deshacer.'}
           </Texto>
           <Boton
             icon="send-check-outline"
@@ -113,7 +124,7 @@ export default function ConfirmarFactura() {
             loading={emitiendo}
             disabled={emitiendo}
           >
-            {emitiendo ? 'Emitiendo…' : `Emitir factura ${tipo.clase} por ${total}`}
+            {emitiendo ? 'Emitiendo…' : `Emitir ${enUnaFrase(tipo)} por ${total}`}
           </Boton>
         </ScrollView>
       )}

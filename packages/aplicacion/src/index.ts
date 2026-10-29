@@ -11,6 +11,7 @@ export * from './emision/borradorDeFactura';
 export * from './configuracion/configuracion';
 export * from './emision/emision';
 export * from './emision/prepararFactura';
+export * from './emision/prepararNotaDeCredito';
 export * from './bloqueo/bloqueo';
 export * from './registro/registro';
 export * from './alta/guiaDeAlta';

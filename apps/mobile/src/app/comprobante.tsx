@@ -1,7 +1,9 @@
 import type { ComprobanteEmitido } from '@facturador/aplicacion';
-import { TipoComprobante } from '@facturador/dominio';
+import { numeroCompleto } from '@facturador/arca';
+import { saldoAcreditable } from '@facturador/dominio';
 import {
   Aviso,
+  Boton,
   Pantalla,
   ResumenDeTotales,
   Tarjeta,
@@ -9,79 +11,19 @@ import {
   Texto,
   useTema,
 } from '@facturador/ui';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { ScrollView, View } from 'react-native';
 
-import { comprobantesEmitidos, registro } from '../composicion';
-import { useConfiguracion } from '../configuracion/configuracion';
+import { parametrosDe } from '../emision/claveDelComprobante';
 import { CompartirComprobante } from '../emision/CompartirComprobante';
 import { ItemsDelComprobante } from '../emision/ItemsDelComprobante';
 import { lineasDelResumen } from '../emision/resumen';
-import { resumenDelComprobante } from '../emision/resumenDelComprobante';
+import { enUnaFrase, resumenDelComprobante } from '../emision/resumenDelComprobante';
+import { useComprobanteEmitido } from '../emision/useComprobanteEmitido';
 
-const ENTERO = /^\d{1,8}$/;
-
-/** Los parámetros llegan como texto: se validan como cualquier entrada. */
-function claveDe(parametros: Record<string, string | string[] | undefined>) {
-  const { tipo, puntoDeVenta, numero } = parametros;
-  if (typeof tipo !== 'string' || typeof puntoDeVenta !== 'string' || typeof numero !== 'string') {
-    return undefined;
-  }
-  if (!ENTERO.test(tipo) || !ENTERO.test(puntoDeVenta) || !ENTERO.test(numero)) return undefined;
-  const tipoDeComprobante = TipoComprobante.desdeCodigoArca(Number(tipo));
-  return (
-    tipoDeComprobante && {
-      tipo: tipoDeComprobante,
-      puntoDeVenta: Number(puntoDeVenta),
-      numero: Number(numero),
-    }
-  );
-}
-
-type Estado =
-  | { readonly paso: 'cargando' }
-  | { readonly paso: 'listo'; readonly emitido: ComprobanteEmitido }
-  | { readonly paso: 'no_encontrado' };
-
-/** Un comprobante emitido, con todo su detalle, para volver a compartirlo. */
+/** Un comprobante emitido, con todo su detalle, para volver a compartirlo o anularlo. */
 export default function DetalleDelComprobante() {
-  const parametros = useLocalSearchParams();
-  const configuracion = useConfiguracion();
-  const [estado, setEstado] = useState<Estado>({ paso: 'cargando' });
-
-  const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
-  const clave = claveDe(parametros);
-  const { tipo, puntoDeVenta, numero } = clave ?? {};
-
-  useEffect(() => {
-    if (!configurada) return;
-    if (!tipo || puntoDeVenta === undefined || numero === undefined) {
-      setEstado({ paso: 'no_encontrado' });
-      return;
-    }
-    let vigente = true;
-    comprobantesEmitidos
-      .leer({
-        ambiente: configurada.ambiente,
-        emisor: configurada.emisor,
-        tipo,
-        puntoDeVenta,
-        numero,
-      })
-      .then(
-        (emitido) => {
-          if (vigente) setEstado(emitido ? { paso: 'listo', emitido } : { paso: 'no_encontrado' });
-        },
-        (error: unknown) => {
-          registro.error('no se pudo leer el comprobante', error);
-          if (vigente) setEstado({ paso: 'no_encontrado' });
-        },
-      );
-    return () => {
-      vigente = false;
-    };
-  }, [configurada, tipo, puntoDeVenta, numero]);
+  const estado = useComprobanteEmitido();
 
   return (
     <Pantalla conEncabezado>
@@ -91,15 +33,22 @@ export default function DetalleDelComprobante() {
           No se encontró el comprobante.
         </Aviso>
       )}
-      {estado.paso === 'listo' && <Detalle emitido={estado.emitido} />}
+      {estado.paso === 'listo' && <Detalle emitido={estado.emitido} notas={estado.notas} />}
     </Pantalla>
   );
 }
 
-function Detalle({ emitido }: { readonly emitido: ComprobanteEmitido }) {
+function Detalle({
+  emitido,
+  notas,
+}: {
+  readonly emitido: ComprobanteEmitido;
+  readonly notas: readonly ComprobanteEmitido[];
+}) {
   const { espacio } = useTema();
+  const router = useRouter();
   const { comprobante, receptor, emisor, ambiente, puntoDeVenta, numero } = emitido;
-  const { tipo, modoDePrecio } = comprobante.datos;
+  const { tipo, modoDePrecio, asociado } = comprobante.datos;
   const { autorizacion } = comprobante;
 
   return (
@@ -113,6 +62,20 @@ function Detalle({ emitido }: { readonly emitido: ComprobanteEmitido }) {
           },
         })}
       />
+      {asociado && (
+        <Boton
+          variante="texto"
+          icon="file-document-outline"
+          onPress={() => {
+            router.push({
+              pathname: '/comprobante',
+              params: parametrosDe(asociado.tipo, asociado.puntoDeVenta, asociado.numero),
+            });
+          }}
+        >
+          {`Ajusta la ${enUnaFrase(asociado.tipo)} ${numeroCompleto(asociado.puntoDeVenta, asociado.numero)}`}
+        </Boton>
+      )}
       <Tarjeta>
         <Texto variante="etiqueta">
           {tipo.informaIva()
@@ -136,6 +99,66 @@ function Detalle({ emitido }: { readonly emitido: ComprobanteEmitido }) {
           deHomologacion: ambiente === 'homologacion',
         }}
       />
+      {tipo.naturaleza === 'factura' && <NotasDeCredito factura={emitido} notas={notas} />}
     </ScrollView>
+  );
+}
+
+/** Lo que ya se anuló de la factura y el acceso para hacer otra nota mientras quede saldo. */
+function NotasDeCredito({
+  factura,
+  notas,
+}: {
+  readonly factura: ComprobanteEmitido;
+  readonly notas: readonly ComprobanteEmitido[];
+}) {
+  const { espacio } = useTema();
+  const router = useRouter();
+  const { total: saldo } = saldoAcreditable(
+    factura.comprobante,
+    notas.map((nota) => nota.comprobante),
+  );
+
+  return (
+    <View style={{ gap: espacio.medio, marginTop: espacio.normal }}>
+      {notas.length > 0 && <Texto variante="subtitulo">Notas de crédito</Texto>}
+      {notas.map((nota) => (
+        <TarjetaDeComprobante
+          key={String(nota.numero)}
+          {...resumenDelComprobante(nota)}
+          onPress={() => {
+            router.push({
+              pathname: '/comprobante',
+              params: parametrosDe(nota.comprobante.datos.tipo, nota.puntoDeVenta, nota.numero),
+            });
+          }}
+        />
+      ))}
+      {notas.length > 0 && (
+        <Texto variante="detalle">
+          {saldo.esCero()
+            ? 'La factura quedó anulada por completo.'
+            : `Queda ${saldo.formatear()} por acreditar.`}
+        </Texto>
+      )}
+      {!saldo.esCero() && (
+        <Boton
+          variante="secundario"
+          icon="file-undo-outline"
+          onPress={() => {
+            router.push({
+              pathname: '/nota-de-credito',
+              params: parametrosDe(
+                factura.comprobante.datos.tipo,
+                factura.puntoDeVenta,
+                factura.numero,
+              ),
+            });
+          }}
+        >
+          Hacer una nota de crédito
+        </Boton>
+      )}
+    </View>
   );
 }

@@ -151,17 +151,11 @@ export function explicarError(error: ErrorAutorizacion | ErrorParametros): Mensa
         'corregir_comprobante',
       );
     case 'comprobante_no_soportado':
-      return error.motivo === 'ya_autorizado'
-        ? mensaje(
-            'El comprobante ya tiene CAE',
-            'Este comprobante ya fue autorizado por ARCA.',
-            'contactar_soporte',
-          )
-        : mensaje(
-            'Falta el comprobante asociado',
-            'Las notas de crédito y débito tienen que indicar la factura que ajustan.',
-            'corregir_comprobante',
-          );
+      return mensaje(
+        'El comprobante ya tiene CAE',
+        'Este comprobante ya fue autorizado por ARCA.',
+        'contactar_soporte',
+      );
     case 'resultado_incierto':
       return mensaje(
         'No sabemos si ARCA autorizó el comprobante',
