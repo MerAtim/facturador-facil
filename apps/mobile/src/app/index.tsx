@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { useAlta } from '../alta/useAlta';
+import { AvisoDeVencimiento } from '../alta/AvisoDeVencimiento';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useProteccion } from '../seguridad/Bloqueo';
 
@@ -30,6 +31,7 @@ export default function Inicio() {
 
   const configuracion = guia.estado === 'lista' ? guia.configuracion : undefined;
   const pendiente = guia.estado === 'lista' ? guia.alta.actual : undefined;
+  const vigenteHasta = guia.estado === 'lista' ? guia.vigenteHasta : undefined;
 
   return (
     <Pantalla style={[estilos.contenedor, { padding: espacio.normal, gap: espacio.grande }]}>
@@ -64,6 +66,14 @@ export default function Inicio() {
       {configuracion && (
         <View style={[estilos.centrado, { gap: espacio.normal }]}>
           <AvisoDeAmbiente ambiente={configuracion.ambiente} />
+          {vigenteHasta && (
+            <AvisoDeVencimiento
+              vigenteHasta={vigenteHasta}
+              onRenovar={() => {
+                router.push('/certificado');
+              }}
+            />
+          )}
           {!configuracion.emisor.datos.ingresosBrutos && (
             <Aviso icono="information-outline">
               Falta tu número de Ingresos Brutos, que va impreso en cada factura. Cargalo en los
