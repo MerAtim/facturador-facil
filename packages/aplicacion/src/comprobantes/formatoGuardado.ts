@@ -9,6 +9,7 @@ import {
   Emisor,
   FechaCalendario,
   TipoComprobante,
+  type ComprobanteAsociado,
   type CondicionEmisor,
   type Concepto,
   type IdentificacionReceptor,
@@ -24,9 +25,10 @@ import {
  *
  * - 1: el comprobante y el receptor.
  * - 2: suma los datos del emisor al momento de emitir, para rehacer el PDF tal como salió.
+ * - 3: suma la factura que ajusta una nota de crédito o de débito.
  */
-const VERSION = 2;
-const VERSIONES_LEGIBLES: readonly number[] = [1, 2];
+const VERSION = 3;
+const VERSIONES_LEGIBLES: readonly number[] = [1, 2, 3];
 const MODOS_DE_PRECIO: readonly ModoDePrecio[] = ['final', 'neto'];
 const CONCEPTOS: readonly Concepto[] = ['productos', 'servicios', 'productos_y_servicios'];
 const CONDICIONES: readonly CondicionEmisor[] = ['responsable_inscripto', 'monotributo', 'exento'];
@@ -65,6 +67,13 @@ interface Guardado {
     readonly puntoDeVenta: number;
     readonly ingresosBrutos?: string;
   };
+  /** Desde la versión 3, solo en las notas. */
+  readonly asociado?: {
+    readonly tipo: number;
+    readonly puntoDeVenta: number;
+    readonly numero: number;
+    readonly fechaDeEmision: string;
+  };
   readonly cae: string;
   readonly vencimientoDelCae: string;
 }
@@ -78,7 +87,7 @@ export interface Rearmado {
 export function aTextoGuardado({ comprobante, receptor, emisor }: Rearmado): string {
   const { datos, autorizacion } = comprobante;
   const { identificacion, nombre, domicilio } = receptor;
-  const periodo = datos.periodoDeServicio;
+  const { periodoDeServicio: periodo, asociado } = datos;
   const delEmisor = emisor.datos;
   const guardado: Guardado = {
     version: VERSION,
@@ -115,6 +124,14 @@ export function aTextoGuardado({ comprobante, receptor, emisor }: Rearmado): str
       puntoDeVenta: delEmisor.puntoDeVenta,
       ...(delEmisor.ingresosBrutos !== undefined && { ingresosBrutos: delEmisor.ingresosBrutos }),
     },
+    ...(asociado && {
+      asociado: {
+        tipo: asociado.tipo.codigoArca,
+        puntoDeVenta: asociado.puntoDeVenta,
+        numero: asociado.numero,
+        fechaDeEmision: asociado.fechaDeEmision.aTextoArca(),
+      },
+    }),
     cae: autorizacion?.cae ?? '',
     vencimientoDelCae: autorizacion?.vencimiento.aTextoArca() ?? '',
   };
@@ -161,6 +178,7 @@ function rearmar(guardado: Guardado, emisorDeRespaldo: Emisor): Rearmado | undef
   const items = guardado.items.map(rearmarItem);
   const periodo = guardado.periodoDeServicio;
   const periodoDeServicio = periodo && rearmarPeriodo(periodo);
+  const asociado = guardado.asociado && rearmarAsociado(guardado.asociado);
 
   if (
     !tipo ||
@@ -171,7 +189,8 @@ function rearmar(guardado: Guardado, emisorDeRespaldo: Emisor): Rearmado | undef
     !receptor ||
     !emisor ||
     !items.every((item) => item !== undefined) ||
-    (periodo && !periodoDeServicio)
+    (periodo && !periodoDeServicio) ||
+    (guardado.asociado && !asociado)
   ) {
     return undefined;
   }
@@ -185,6 +204,7 @@ function rearmar(guardado: Guardado, emisorDeRespaldo: Emisor): Rearmado | undef
     fechaDeEmision,
     concepto,
     ...(periodoDeServicio && { periodoDeServicio }),
+    ...(asociado && { asociado }),
   });
   const autorizado = creado.ok ? creado.valor.autorizar(guardado.cae, vencimientoDelCae) : creado;
   return autorizado.ok ? { comprobante: autorizado.valor, receptor, emisor } : undefined;
@@ -214,6 +234,18 @@ function rearmarPeriodo(
   const hasta = fecha(guardado.hasta);
   const vencimientoDePago = fecha(guardado.vencimientoDePago);
   return desde && hasta && vencimientoDePago ? { desde, hasta, vencimientoDePago } : undefined;
+}
+
+function rearmarAsociado(
+  guardado: NonNullable<Guardado['asociado']>,
+): ComprobanteAsociado | undefined {
+  const tipo = TipoComprobante.desdeCodigoArca(guardado.tipo);
+  const fechaDeEmision = fecha(guardado.fechaDeEmision);
+  const { puntoDeVenta, numero } = guardado;
+  const enteros = Number.isSafeInteger(puntoDeVenta) && Number.isSafeInteger(numero);
+  return tipo && fechaDeEmision && enteros
+    ? { tipo, puntoDeVenta, numero, fechaDeEmision }
+    : undefined;
 }
 
 function rearmarItem(item: Guardado['items'][number]): ItemComprobante | undefined {

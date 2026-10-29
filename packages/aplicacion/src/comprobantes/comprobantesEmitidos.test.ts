@@ -14,6 +14,7 @@ import {
 } from '@facturador/dominio';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { prepararNotaDeCredito } from '../emision/prepararNotaDeCredito';
 import { crearBaseSqliteDePrueba } from '../persistencia/baseSqliteDePrueba';
 import { migrar } from '../persistencia/migraciones';
 import {
@@ -315,6 +316,70 @@ describe('RepositorioDeComprobantes', () => {
     expect(
       await repositorio.leer({ ...clave, tipo: TipoComprobante.FACTURA_B, numero: 13 }),
     ).toBeUndefined();
+  });
+
+  describe('notas de crédito', () => {
+    const notaDe = (factura: ComprobanteEmitido, numero: number, importe: string) => {
+      const nota = valor(
+        prepararNotaDeCredito({
+          factura,
+          notasPrevias: [],
+          alcance: {
+            tipo: 'parcial',
+            importe,
+            descripcion: 'Descuento',
+            alicuota: AlicuotaIva.VEINTIUNO,
+          },
+          hoy: fecha(2026, 10, 28),
+        }),
+      );
+      return emitido(numero, valor(nota.autorizar('76431234567891', fecha(2026, 11, 7))));
+    };
+    const clave = (numero: number) => ({
+      ambiente: 'homologacion' as const,
+      emisor,
+      tipo: TipoComprobante.FACTURA_A,
+      puntoDeVenta: 3,
+      numero,
+    });
+
+    it('guarda la factura que ajusta y la rearma igual', async () => {
+      const nota = notaDe(emitido(12), 1, '100');
+
+      await repositorio.guardar(nota);
+
+      expect(await listar()).toEqual([nota]);
+      expect(
+        await base.consultar(
+          'SELECT asociado_tipo, asociado_punto_de_venta, asociado_numero FROM comprobantes',
+        ),
+      ).toEqual([{ asociado_tipo: 1, asociado_punto_de_venta: 3, asociado_numero: 12 }]);
+    });
+
+    it('encuentra las notas de una factura, de la más vieja a la más nueva', async () => {
+      const factura = emitido(12);
+      await repositorio.guardar(factura);
+      await repositorio.guardar(emitido(13));
+      await repositorio.guardar(notaDe(factura, 1, '100'));
+      await repositorio.guardar(notaDe(emitido(13), 2, '50'));
+      await repositorio.guardar(notaDe(factura, 3, '200'));
+
+      const notas = await repositorio.notasDeCreditoDe(clave(12));
+
+      expect(notas.map((nota) => nota.numero)).toEqual([1, 3]);
+      expect(await repositorio.notasDeCreditoDe(clave(14))).toEqual([]);
+    });
+
+    it('descarta una nota con el asociado dañado', async () => {
+      await repositorio.guardar(notaDe(emitido(12), 1, '100'));
+      const guardado = JSON.parse(
+        String((await base.consultar('SELECT datos FROM comprobantes'))[0]?.['datos']),
+      ) as Record<string, unknown>;
+      const danado = { ...guardado, asociado: { tipo: 99, puntoDeVenta: 3, numero: 12 } };
+      await base.ejecutar('UPDATE comprobantes SET datos = ?', [JSON.stringify(danado)]);
+
+      expect(await listar()).toEqual([]);
+    });
   });
 
   describe('buscar y filtrar', () => {

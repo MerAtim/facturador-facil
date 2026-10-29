@@ -36,6 +36,16 @@ export const MIGRACIONES: readonly string[] = [
     ),
     receptor = json_extract(datos, '$.receptor.nombre');
   `,
+  // 3: la factura que ajusta cada nota, para encontrar las notas de una factura y su saldo. Antes
+  // de esta versión no se emitían notas, así que no hay nada que completar.
+  `
+  ALTER TABLE comprobantes ADD COLUMN asociado_tipo INTEGER;
+  ALTER TABLE comprobantes ADD COLUMN asociado_punto_de_venta INTEGER;
+  ALTER TABLE comprobantes ADD COLUMN asociado_numero INTEGER;
+  CREATE INDEX comprobantes_por_asociado ON comprobantes (
+    ambiente, cuit_emisor, asociado_tipo, asociado_punto_de_venta, asociado_numero
+  );
+  `,
 ];
 
 export class BaseMasNueva extends Error {

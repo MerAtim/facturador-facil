@@ -88,4 +88,22 @@ describe('migrar', () => {
       { numero: 3, receptor: null, receptor_documento: null },
     ]);
   });
+
+  it('la versión 3 agrega el comprobante asociado, vacío en lo ya guardado', async () => {
+    const base = crearBaseSqliteDePrueba();
+    await migrar(base, MIGRACIONES.slice(0, 2));
+    await base.ejecutar(`
+      INSERT INTO comprobantes (ambiente, cuit_emisor, tipo, punto_de_venta, numero, fecha,
+        total_en_centavos, cae, datos, guardado_en)
+      VALUES ('homologacion', '20111111112', 6, 1, 1, '20261027', 100, 'x', '{}', 0)
+    `);
+
+    await migrar(base);
+
+    expect(
+      await base.consultar(
+        'SELECT asociado_tipo, asociado_punto_de_venta, asociado_numero FROM comprobantes',
+      ),
+    ).toEqual([{ asociado_tipo: null, asociado_punto_de_venta: null, asociado_numero: null }]);
+  });
 });
