@@ -7,6 +7,8 @@ import { useAlta } from '../alta/useAlta';
 import { AvisoDeVencimiento } from '../alta/AvisoDeVencimiento';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useProteccion } from '../seguridad/Bloqueo';
+import { AvisoDeVersion } from '../version/AvisoDeVersion';
+import { useVersion } from '../version/useVersion';
 
 const PENDIENTE: Readonly<Record<PasoDeAlta, string>> = {
   datos: 'cargar tus datos de emisor',
@@ -21,6 +23,7 @@ export default function Inicio() {
   const { espacio } = useTema();
   const [guia] = useAlta();
   const protegida = useProteccion();
+  const desactualizada = useVersion() === 'desactualizada';
 
   const irALaGuia = () => {
     router.push('/alta');
@@ -75,6 +78,7 @@ export default function Inicio() {
 
         {configuracion && (
           <View style={[estilos.centrado, { gap: espacio.normal }]}>
+            {desactualizada && <AvisoDeVersion />}
             <AvisoDeAmbiente ambiente={configuracion.ambiente} />
             {vigenteHasta && (
               <AvisoDeVencimiento
@@ -98,19 +102,25 @@ export default function Inicio() {
             )}
             <View style={[estilos.accesos, { gap: espacio.medio }]}>
               {pendiente && (
-                <Boton icon="arrow-right" onPress={irALaGuia}>
+                <Boton
+                  variante={desactualizada ? 'secundario' : 'principal'}
+                  icon="arrow-right"
+                  onPress={irALaGuia}
+                >
                   Seguir con la puesta en marcha
                 </Boton>
               )}
-              <Boton
-                variante={pendiente ? 'secundario' : 'principal'}
-                icon="plus"
-                onPress={() => {
-                  router.push('/nueva-factura');
-                }}
-              >
-                Nueva factura
-              </Boton>
+              {!desactualizada && (
+                <Boton
+                  variante={pendiente ? 'secundario' : 'principal'}
+                  icon="plus"
+                  onPress={() => {
+                    router.push('/nueva-factura');
+                  }}
+                >
+                  Nueva factura
+                </Boton>
+              )}
               <Boton
                 variante="secundario"
                 icon="file-document-multiple-outline"

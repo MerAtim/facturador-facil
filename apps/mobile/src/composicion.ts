@@ -6,6 +6,7 @@ import {
   crearRegistroDeAlta,
   crearRepositorioDeClientes,
   crearRepositorioDeProductos,
+  crearControlDeVersion,
   importarClientesFrecuentes,
   salidaDeConsola,
   type Configuracion,
@@ -30,11 +31,13 @@ import {
   type ProveedorDeTickets,
 } from '@facturador/arca';
 import type { Cuit, Resultado } from '@facturador/dominio';
+import Constants from 'expo-constants';
 
 import { almacenDeClavesDelDispositivo } from './arca/almacenDeClavesDelDispositivo';
 import { almacenLocalDelDispositivo } from './infraestructura/almacenLocalDelDispositivo';
 import { almacenSeguroDelDispositivo } from './infraestructura/almacenSeguroDelDispositivo';
 import { baseDeDatosDelDispositivo } from './infraestructura/baseDeDatosDelDispositivo';
+import { versionPublicada } from './infraestructura/versionPublicada';
 
 /**
  * El único lugar donde los casos de uso se conectan con los adaptadores del dispositivo y de ARCA.
@@ -49,6 +52,11 @@ export const productos = crearRepositorioDeProductos(baseDeDatosDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
 export const registroDeAlta = crearRegistroDeAlta(almacenLocalDelDispositivo);
 export const comprobantesEmitidos = crearRepositorioDeComprobantes(baseDeDatosDelDispositivo);
+export const controlDeVersion = crearControlDeVersion({
+  instalada: Constants.expoConfig?.version ?? '',
+  publicada: versionPublicada,
+  almacen: almacenLocalDelDispositivo,
+});
 
 export type EmisionWsfe = Emision<CaeOtorgado, ErrorAutorizacion>;
 

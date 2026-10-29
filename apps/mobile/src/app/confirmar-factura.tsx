@@ -5,13 +5,14 @@ import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView } from 'react-native';
 
-import { emisionPara } from '../composicion';
+import { controlDeVersion, emisionPara } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
 import { enUnaFrase } from '../emision/resumenDelComprobante';
 import { ItemsDelComprobante } from '../emision/ItemsDelComprobante';
 import { lineasDelResumen } from '../emision/resumen';
+import { AvisoDeVersion } from '../version/AvisoDeVersion';
 
 /**
  * Última revisión antes de emitir: un comprobante autorizado no se puede borrar, solo anular con
@@ -23,6 +24,7 @@ export default function ConfirmarFactura() {
   const configuracion = useConfiguracion();
   const [emitiendo, setEmitiendo] = useState(false);
   const [sinCertificado, setSinCertificado] = useState(false);
+  const [desactualizada, setDesactualizada] = useState(false);
   // El estado tarda un render en deshabilitar el botón: la referencia frena un segundo toque rápido.
   const enviado = useRef(false);
 
@@ -48,6 +50,14 @@ export default function ConfirmarFactura() {
     enviado.current = true;
     setEmitiendo(true);
     setSinCertificado(false);
+
+    // Se pregunta acá y no solo en el inicio: la app pudo quedar abierta desde antes del bloqueo.
+    if ((await controlDeVersion.consultar()) === 'desactualizada') {
+      enviado.current = false;
+      setEmitiendo(false);
+      setDesactualizada(true);
+      return;
+    }
 
     const emision = await emisionPara(configurada);
     if (!emision) {
@@ -97,6 +107,7 @@ export default function ConfirmarFactura() {
 
           <ResumenDeTotales lineas={lineasDelResumen(tipo, comprobante.totales)} total={total} />
 
+          {desactualizada && <AvisoDeVersion />}
           {sinCertificado && (
             <Aviso icono="alert-circle-outline" tono="error">
               Para emitir falta cargar el certificado de ARCA.
@@ -122,7 +133,7 @@ export default function ConfirmarFactura() {
             icon="send-check-outline"
             onPress={() => void emitir()}
             loading={emitiendo}
-            disabled={emitiendo}
+            disabled={emitiendo || desactualizada}
           >
             {emitiendo ? 'Emitiendo…' : `Emitir ${enUnaFrase(tipo)} por ${total}`}
           </Boton>
