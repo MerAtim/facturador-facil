@@ -6,7 +6,7 @@ export * from './persistencia/migraciones';
 export * from './comprobantes/comprobantesEmitidos';
 export * from './comprobantes/busquedaDeComprobantes';
 export * from './preferencias/preferencias';
-export * from './receptores/receptoresFrecuentes';
+export * from './clientes/clientes';
 export * from './emision/borradorDeFactura';
 export * from './configuracion/configuracion';
 export * from './emision/emision';

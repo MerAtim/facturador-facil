@@ -2,7 +2,7 @@ import type { Comprobante, Emisor, Receptor, Resultado } from '@facturador/domin
 
 import type { RepositorioDeComprobantes } from '../comprobantes/comprobantesEmitidos';
 import type { Ambiente } from '../configuracion/configuracion';
-import type { ReceptoresFrecuentes } from '../receptores/receptoresFrecuentes';
+import type { RepositorioDeClientes } from '../clientes/clientes';
 import type { Registro } from '../registro/registro';
 
 /** Lo que tiene que devolver un autorizador para poder guardar el comprobante. */
@@ -28,7 +28,7 @@ export interface Emision<Autorizado extends ComprobanteNumerado, Error> {
 export interface DependenciasDeEmision<Autorizado extends ComprobanteNumerado, Error> {
   readonly autorizador: AutorizadorDeComprobantes<Autorizado, Error>;
   readonly comprobantes: RepositorioDeComprobantes;
-  readonly receptoresFrecuentes: ReceptoresFrecuentes;
+  readonly clientes: RepositorioDeClientes;
   readonly registro: Registro;
   readonly ambiente: Ambiente;
   /** Sus datos se guardan con cada comprobante, tal como estaban al emitirlo. */
@@ -42,7 +42,7 @@ export interface DependenciasDeEmision<Autorizado extends ComprobanteNumerado, E
 export function crearEmision<Autorizado extends ComprobanteNumerado, Error>({
   autorizador,
   comprobantes,
-  receptoresFrecuentes,
+  clientes,
   registro,
   ambiente,
   emisor,
@@ -71,8 +71,8 @@ export function crearEmision<Autorizado extends ComprobanteNumerado, Error>({
 
       const { identificacion, condicion, nombre, domicilio } = receptor;
       if (resultado.ok && identificacion.tipo === 'cuit') {
-        // Recordarlo es un extra: si falla, la factura igual quedó emitida.
-        await receptoresFrecuentes
+        // Un CUIT nuevo queda como cliente. Es un extra: si falla, la factura igual quedó emitida.
+        await clientes
           .registrarUso({
             cuit: identificacion.cuit,
             condicion,

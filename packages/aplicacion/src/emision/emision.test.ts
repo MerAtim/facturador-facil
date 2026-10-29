@@ -21,12 +21,8 @@ import {
 } from '../comprobantes/comprobantesEmitidos';
 import { crearBaseSqliteDePrueba } from '../persistencia/baseSqliteDePrueba';
 import { migrar } from '../persistencia/migraciones';
-import { AlmacenEnMemoria } from '../puertos/almacenEnMemoria';
 import type { Registro } from '../registro/registro';
-import {
-  crearReceptoresFrecuentes,
-  type ReceptoresFrecuentes,
-} from '../receptores/receptoresFrecuentes';
+import { crearRepositorioDeClientes, type RepositorioDeClientes } from '../clientes/clientes';
 import {
   crearEmision,
   type AutorizadorDeComprobantes,
@@ -114,6 +110,12 @@ async function comprobantesEnBase() {
   return crearRepositorioDeComprobantes(base);
 }
 
+async function clientesEnBase() {
+  const base = crearBaseSqliteDePrueba();
+  await migrar(base);
+  return crearRepositorioDeClientes(base);
+}
+
 async function emisionCon(
   respuesta: Resultado<ComprobanteNumerado, string>,
   cambios: Partial<DependenciasDeEmision<ComprobanteNumerado, string>> = {},
@@ -123,7 +125,7 @@ async function emisionCon(
   const dependencias: DependenciasDeEmision<ComprobanteNumerado, string> = {
     autorizador,
     comprobantes: await comprobantesEnBase(),
-    receptoresFrecuentes: crearReceptoresFrecuentes(new AlmacenEnMemoria()),
+    clientes: await clientesEnBase(),
     registro,
     ambiente: 'homologacion',
     emisor,
@@ -168,12 +170,12 @@ describe('crearEmision', () => {
     expect(errores).toEqual(['no se pudo guardar el comprobante emitido']);
   });
 
-  it('si ARCA autoriza, recuerda al receptor con CUIT', async () => {
+  it('si ARCA autoriza, el receptor con CUIT queda como cliente', async () => {
     const { emision, dependencias } = await emisionCon(exito(autorizado));
 
     await emision.emitir(comprobante, conCuit);
 
-    const [recordado] = await dependencias.receptoresFrecuentes.listar();
+    const [recordado] = await dependencias.clientes.frecuentes(8);
     expect(recordado?.cuit.valor).toBe('30712345671');
     expect(recordado?.nombre).toBe('Ferretería Sur');
     expect(recordado?.domicilio).toBe('Belgrano 123, Rosario');
@@ -184,7 +186,7 @@ describe('crearEmision', () => {
 
     await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(fallo('rechazado'));
     expect(await listarGuardados(dependencias.comprobantes)).toEqual([]);
-    expect(await dependencias.receptoresFrecuentes.listar()).toEqual([]);
+    expect(await dependencias.clientes.todos()).toEqual([]);
   });
 
   it('al consumidor final sin identificar no hay nada que recordar', async () => {
@@ -192,15 +194,15 @@ describe('crearEmision', () => {
 
     await emision.emitir(comprobante, CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
 
-    expect(await dependencias.receptoresFrecuentes.listar()).toEqual([]);
+    expect(await dependencias.clientes.todos()).toEqual([]);
   });
 
-  it('si no se puede recordar al receptor, la emisión igual sale bien', async () => {
-    const roto: ReceptoresFrecuentes = {
-      listar: () => Promise.resolve([]),
+  it('si no se puede guardar el cliente, la emisión igual sale bien', async () => {
+    const roto: RepositorioDeClientes = {
+      ...(await clientesEnBase()),
       registrarUso: () => Promise.reject(new Error('bloqueado')),
     };
-    const { emision } = await emisionCon(exito(autorizado), { receptoresFrecuentes: roto });
+    const { emision } = await emisionCon(exito(autorizado), { clientes: roto });
 
     await expect(emision.emitir(comprobante, conCuit)).resolves.toEqual(exito(autorizado));
   });

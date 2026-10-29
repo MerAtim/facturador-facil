@@ -15,7 +15,7 @@ import {
   type Ambiente,
   type RepositorioDeConfiguracion,
 } from '../configuracion/configuracion';
-import type { ReceptorConCuit, ReceptoresFrecuentes } from '../receptores/receptoresFrecuentes';
+import type { Cliente, RepositorioDeClientes } from '../clientes/clientes';
 
 export const LARGO_MINIMO_DE_LA_CONTRASENA = 10;
 
@@ -49,7 +49,7 @@ export interface LogoDelRespaldo {
 
 export interface DependenciasDelRespaldo {
   readonly configuracion: RepositorioDeConfiguracion;
-  readonly receptores: ReceptoresFrecuentes;
+  readonly clientes: RepositorioDeClientes;
   readonly comprobantes: RepositorioDeComprobantes;
   readonly logo: LogoDelRespaldo;
   readonly cifrado: CifradoDeRespaldos;
@@ -72,7 +72,8 @@ export interface Restaurado {
   readonly comprobantes: number;
   /** Los que no pasaron las validaciones y no se guardaron. */
   readonly descartados: number;
-  readonly receptores: number;
+  /** Los clientes del respaldo que no estaban en el teléfono. */
+  readonly clientes: number;
   readonly logo: boolean;
 }
 
@@ -114,7 +115,7 @@ interface Contenido {
 const AMBIENTES: readonly Ambiente[] = ['homologacion', 'produccion'];
 
 export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
-  const { configuracion, receptores, comprobantes, logo, cifrado, ahora } = dependencias;
+  const { configuracion, clientes, comprobantes, logo, cifrado, ahora } = dependencias;
 
   return {
     async crear(contrasena) {
@@ -125,9 +126,9 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
       if (!actual) return fallo({ tipo: 'sin_configuracion' });
 
       const { emisor } = actual;
-      const [emitidos, frecuentes, base64] = await Promise.all([
+      const [emitidos, todosLosClientes, base64] = await Promise.all([
         comprobantes.todosDelEmisor(emisor),
-        receptores.listar(),
+        clientes.todos(),
         logo.leer().catch(() => undefined),
       ]);
       const contenido: Contenido = {
@@ -135,7 +136,7 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
         creadoEn: ahora().toISOString(),
         cuit: emisor.datos.cuit.valor,
         configuracion: configuracionATexto(actual),
-        receptores: frecuentes.map(({ cuit, condicion, nombre, domicilio }) => ({
+        receptores: todosLosClientes.map(({ cuit, condicion, nombre, domicilio }) => ({
           cuit: cuit.valor,
           condicion: condicion.codigoArca,
           ...(nombre !== undefined && { nombre }),
@@ -174,12 +175,14 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
       const emisor = (actual ?? delRespaldo).emisor;
 
       const guardados = await restaurarComprobantes(contenido, emisor, comprobantes);
-      const conCuit = contenido.receptores.flatMap((guardado) => {
-        const receptor = aReceptor(guardado);
-        return receptor ? [receptor] : [];
-      });
-      // Del menos usado al más usado, así el más usado queda primero.
-      for (const receptor of [...conCuit].reverse()) await receptores.registrarUso(receptor);
+      let clientesNuevos = 0;
+      for (const guardado of contenido.receptores) {
+        const cliente = aCliente(guardado);
+        // Un cliente que ya está en el teléfono conserva sus datos.
+        if (!cliente || (await clientes.leer(cliente.cuit))) continue;
+        await clientes.guardar(cliente);
+        clientesNuevos++;
+      }
 
       let conLogo = false;
       if (
@@ -197,7 +200,7 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
         configuracion: !actual,
         comprobantes: guardados,
         descartados: contenido.comprobantes.length - guardados,
-        receptores: conCuit.length,
+        clientes: clientesNuevos,
         logo: conLogo,
       });
     },
@@ -224,7 +227,7 @@ async function restaurarComprobantes(
   return guardados;
 }
 
-function aReceptor(guardado: Contenido['receptores'][number]): ReceptorConCuit | undefined {
+function aCliente(guardado: Contenido['receptores'][number]): Cliente | undefined {
   const cuit = typeof guardado.cuit === 'string' ? Cuit.crear(guardado.cuit) : undefined;
   const condicion =
     typeof guardado.condicion === 'number'
