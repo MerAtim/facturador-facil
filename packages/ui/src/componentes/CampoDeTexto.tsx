@@ -11,6 +11,7 @@ export function CampoDeTexto({
   numerico = false,
   multilinea = false,
   datoPersonal = false,
+  secreto = false,
   error,
 }: {
   readonly etiqueta: string;
@@ -27,6 +28,8 @@ export function CampoDeTexto({
    * proponga después en otras apps.
    */
   readonly datoPersonal?: boolean;
+  /** Una contraseña: no se ve lo que se escribe y el teclado no la sugiere. */
+  readonly secreto?: boolean;
   readonly error?: string | undefined;
 }) {
   return (
@@ -39,7 +42,8 @@ export function CampoDeTexto({
         autoFocus={autoFocus}
         keyboardType={numerico ? 'number-pad' : 'default'}
         multiline={multilinea}
-        {...(datoPersonal && {
+        secureTextEntry={secreto}
+        {...((datoPersonal || secreto) && {
           autoCorrect: false,
           spellCheck: false,
           autoComplete: 'off' as const,
