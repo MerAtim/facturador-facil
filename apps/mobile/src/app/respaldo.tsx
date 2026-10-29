@@ -27,9 +27,9 @@ export default function Respaldo() {
         keyboardShouldPersistTaps="handled"
       >
         <Texto variante="cuerpo">
-          El respaldo guarda tus datos de emisor, tus clientes, tus comprobantes y tu logo en un
-          archivo cifrado con una contraseña. Sirve para recuperarlos si cambiás de teléfono. No
-          incluye el certificado de ARCA: en el teléfono nuevo vas a pedir otro.
+          El respaldo guarda tus datos de emisor, tus clientes, tu catálogo, tus comprobantes y tu
+          logo en un archivo cifrado con una contraseña. Sirve para recuperarlos si cambiás de
+          teléfono. No incluye el certificado de ARCA: en el teléfono nuevo vas a pedir otro.
         </Texto>
         <CrearRespaldo />
         <RestaurarRespaldo />
@@ -224,6 +224,7 @@ function resumen(restaurado: Restaurado): string {
   const partes = [
     cantidad(restaurado.comprobantes, 'comprobante', 'comprobantes'),
     cantidad(restaurado.clientes, 'cliente nuevo', 'clientes nuevos'),
+    cantidad(restaurado.productos, 'producto nuevo', 'productos nuevos'),
     ...(restaurado.configuracion ? ['tus datos de emisor'] : []),
     ...(restaurado.logo ? ['tu logo'] : []),
   ];

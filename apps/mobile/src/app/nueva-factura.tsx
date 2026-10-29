@@ -4,6 +4,8 @@ import {
   totalesDelBorrador,
   type ProblemaDeLaFactura,
   type BorradorDeItem,
+  itemDelProducto,
+  type Producto,
 } from '@facturador/aplicacion';
 import {
   AlicuotaIva,
@@ -28,7 +30,8 @@ import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { preferencias } from '../composicion';
+import { CatalogoEnLaFactura } from '../catalogo/CatalogoEnLaFactura';
+import { preferencias, productos } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { EditorDeItem } from '../emision/EditorDeItem';
@@ -107,6 +110,25 @@ export default function NuevaFactura() {
     ]);
   };
 
+  /** Un producto del catálogo completa el ítem vacío, si lo hay, o agrega uno nuevo. */
+  const agregarDelCatalogo = (producto: Producto) => {
+    setItems((actuales) => {
+      const ultimo = actuales.at(-1);
+      const borrador = itemDelProducto(producto, {
+        modo: modoDePrecio,
+        informaIva: tipo.informaIva(),
+        alicuotaPorDefecto: ultimo?.borrador.alicuota ?? AlicuotaIva.VEINTIUNO,
+      });
+      if (ultimo?.borrador.descripcion.trim() === '' && ultimo.borrador.precio === '') {
+        return [...actuales.slice(0, -1), { clave: ultimo.clave, borrador }];
+      }
+      ultimaClave.current += 1;
+      return [...actuales, { clave: ultimaClave.current, borrador }];
+    });
+    // Que suba en el catálogo es un extra: si falla, el ítem igual se agregó.
+    if (producto.id !== undefined) productos.registrarUso(producto.id).catch(() => undefined);
+  };
+
   const quitarItem = (clave: number) => {
     setItems((actuales) => actuales.filter((item) => item.clave !== clave));
   };
@@ -178,6 +200,7 @@ export default function NuevaFactura() {
             <Boton variante="texto" icon="plus" onPress={agregarItem}>
               Agregar ítem
             </Boton>
+            <CatalogoEnLaFactura conIva={tipo.informaIva()} onElegir={agregarDelCatalogo} />
           </View>
 
           <ResumenDeTotales

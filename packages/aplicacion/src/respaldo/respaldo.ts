@@ -1,6 +1,10 @@
 import {
+  AlicuotaIva,
   CondicionIvaReceptor,
   Cuit,
+  Dinero,
+  UnidadDeMedida,
+  type ModoDePrecio,
   exito,
   fallo,
   type Emisor,
@@ -15,6 +19,7 @@ import {
   type Ambiente,
   type RepositorioDeConfiguracion,
 } from '../configuracion/configuracion';
+import { crearProducto, type Producto, type RepositorioDeProductos } from '../catalogo/productos';
 import type { Cliente, RepositorioDeClientes } from '../clientes/clientes';
 
 export const LARGO_MINIMO_DE_LA_CONTRASENA = 10;
@@ -50,6 +55,7 @@ export interface LogoDelRespaldo {
 export interface DependenciasDelRespaldo {
   readonly configuracion: RepositorioDeConfiguracion;
   readonly clientes: RepositorioDeClientes;
+  readonly productos: RepositorioDeProductos;
   readonly comprobantes: RepositorioDeComprobantes;
   readonly logo: LogoDelRespaldo;
   readonly cifrado: CifradoDeRespaldos;
@@ -74,6 +80,8 @@ export interface Restaurado {
   readonly descartados: number;
   /** Los clientes del respaldo que no estaban en el teléfono. */
   readonly clientes: number;
+  /** Los productos del catálogo que no estaban en el teléfono. */
+  readonly productos: number;
   readonly logo: boolean;
 }
 
@@ -109,13 +117,22 @@ interface Contenido {
     readonly numero: number;
     readonly datos: string;
   }[];
+  /** Desde que existe el catálogo: los respaldos anteriores no lo traen. */
+  readonly productos?: readonly {
+    readonly descripcion: string;
+    readonly precioEnCentavos: number;
+    readonly modoDePrecio: string;
+    readonly alicuota?: number;
+    readonly unidad: string;
+  }[];
   readonly logo?: string;
 }
 
 const AMBIENTES: readonly Ambiente[] = ['homologacion', 'produccion'];
+const MODOS: readonly ModoDePrecio[] = ['final', 'neto'];
 
 export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
-  const { configuracion, clientes, comprobantes, logo, cifrado, ahora } = dependencias;
+  const { configuracion, clientes, productos, comprobantes, logo, cifrado, ahora } = dependencias;
 
   return {
     async crear(contrasena) {
@@ -126,9 +143,10 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
       if (!actual) return fallo({ tipo: 'sin_configuracion' });
 
       const { emisor } = actual;
-      const [emitidos, todosLosClientes, base64] = await Promise.all([
+      const [emitidos, todosLosClientes, catalogo, base64] = await Promise.all([
         comprobantes.todosDelEmisor(emisor),
         clientes.todos(),
+        productos.todos(),
         logo.leer().catch(() => undefined),
       ]);
       const contenido: Contenido = {
@@ -148,6 +166,13 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
           puntoDeVenta: emitido.puntoDeVenta,
           numero: emitido.numero,
           datos: aTextoGuardado(emitido),
+        })),
+        productos: catalogo.map(({ descripcion, precio, modoDePrecio, alicuota, unidad }) => ({
+          descripcion,
+          precioEnCentavos: precio.centavos,
+          modoDePrecio,
+          ...(alicuota && { alicuota: alicuota.codigoArca }),
+          unidad: unidad.clave,
         })),
         ...(base64 !== undefined && { logo: base64 }),
       };
@@ -184,6 +209,8 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
         clientesNuevos++;
       }
 
+      const productosNuevos = await restaurarProductos(contenido, productos);
+
       let conLogo = false;
       if (
         contenido.logo !== undefined &&
@@ -201,6 +228,7 @@ export function crearRespaldo(dependencias: DependenciasDelRespaldo): Respaldo {
         comprobantes: guardados,
         descartados: contenido.comprobantes.length - guardados,
         clientes: clientesNuevos,
+        productos: productosNuevos,
         logo: conLogo,
       });
     },
@@ -225,6 +253,51 @@ async function restaurarComprobantes(
     guardados++;
   }
   return guardados;
+}
+
+/** Un producto con la misma descripción que uno del teléfono ya está: conserva el del teléfono. */
+async function restaurarProductos(
+  contenido: Contenido,
+  productos: RepositorioDeProductos,
+): Promise<number> {
+  const clave = (descripcion: string) =>
+    descripcion.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const presentes = new Set((await productos.todos()).map((p) => clave(p.descripcion)));
+  let nuevos = 0;
+  for (const guardado of contenido.productos ?? []) {
+    const producto = aProducto(guardado);
+    if (!producto || presentes.has(clave(producto.descripcion))) continue;
+    await productos.guardar(producto);
+    presentes.add(clave(producto.descripcion));
+    nuevos++;
+  }
+  return nuevos;
+}
+
+function aProducto(guardado: NonNullable<Contenido['productos']>[number]): Producto | undefined {
+  if (typeof guardado !== 'object' || typeof guardado.precioEnCentavos !== 'number') {
+    return undefined;
+  }
+  const precio = Dinero.desdeCentavos(guardado.precioEnCentavos);
+  const modoDePrecio = MODOS.find((modo) => modo === guardado.modoDePrecio);
+  const alicuota =
+    typeof guardado.alicuota === 'number'
+      ? AlicuotaIva.desdeCodigoArca(guardado.alicuota)
+      : undefined;
+  const unidad =
+    typeof guardado.unidad === 'string' ? UnidadDeMedida.desdeClave(guardado.unidad) : undefined;
+  if (!precio.ok || !modoDePrecio || !unidad || typeof guardado.descripcion !== 'string') {
+    return undefined;
+  }
+  // Pasa por las mismas validaciones que lo cargado en pantalla.
+  const creado = crearProducto({
+    descripcion: guardado.descripcion,
+    precio: precio.valor.aTextoArca().replace('.', ','),
+    modoDePrecio,
+    ...(alicuota && { alicuota }),
+    unidad,
+  });
+  return creado.ok ? creado.valor : undefined;
 }
 
 function aCliente(guardado: Contenido['receptores'][number]): Cliente | undefined {
