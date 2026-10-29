@@ -14,3 +14,4 @@ export * from './contribuyente/dni';
 export * from './contribuyente/emisor';
 export * from './contribuyente/identificacionReceptor';
 export * from './comprobantes/validacionesDeEnvio';
+export * from './comprobantes/saldoAcreditable';
