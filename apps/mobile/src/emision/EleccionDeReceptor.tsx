@@ -1,38 +1,24 @@
-import type { ReceptorConCuit } from '@facturador/aplicacion';
-import {
-  CONSUMIDOR_FINAL_SIN_IDENTIFICAR,
-  CondicionIvaReceptor,
-  Cuit,
-  LARGO_MAXIMO_DOMICILIO,
-  type Receptor,
-} from '@facturador/dominio';
-import {
-  Boton,
-  CampoDeCuit,
-  CampoDeTexto,
-  cuitCompleto,
-  Fichas,
-  Selector,
-  Texto,
-  useTema,
-  type Ficha,
-  type Opcion,
-} from '@facturador/ui';
+import type { Cliente } from '@facturador/aplicacion';
+import { CONSUMIDOR_FINAL_SIN_IDENTIFICAR, type Cuit, type Receptor } from '@facturador/dominio';
+import { CampoDeTexto, Fichas, Texto, useTema, type Ficha } from '@facturador/ui';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
-import { receptoresFrecuentes } from '../composicion';
-import { MENSAJE_DE_CUIT } from '../contribuyente/mensajesDeCuit';
+import { FilaDeCliente } from '../clientes/FilaDeCliente';
+import { FormularioDeCliente } from '../clientes/FormularioDeCliente';
+import { clientes } from '../composicion';
 
 const CONSUMIDOR_FINAL = 'consumidor_final';
+const BUSCAR = 'buscar';
 const OTRO_CUIT = 'otro_cuit';
 
-const CONDICIONES: readonly Opcion<string>[] = CondicionIvaReceptor.TODAS.map((condicion) => ({
-  valor: String(condicion.codigoArca),
-  etiqueta: condicion.descripcion,
-}));
+/** Los que entran cómodos como fichas; el resto se encuentra buscando. */
+const FRECUENTES_A_LA_VISTA = 8;
+const RESULTADOS_DE_LA_BUSQUEDA = 5;
 
-const conCuit = ({ cuit, condicion, nombre, domicilio }: ReceptorConCuit): Receptor => ({
+type Modo = 'fichas' | typeof BUSCAR | typeof OTRO_CUIT;
+
+const comoReceptor = ({ cuit, condicion, nombre, domicilio }: Cliente): Receptor => ({
   identificacion: { tipo: 'cuit', cuit },
   condicion,
   ...(nombre ? { nombre } : {}),
@@ -43,8 +29,8 @@ const cuitDe = (receptor: Receptor): Cuit | undefined =>
   receptor.identificacion.tipo === 'cuit' ? receptor.identificacion.cuit : undefined;
 
 /**
- * Elección del receptor con el menor esfuerzo: consumidor final y los receptores frecuentes están
- * a un toque; un CUIT nuevo se carga ahí mismo y se valida apenas se completa.
+ * Elección del receptor con el menor esfuerzo: consumidor final y los clientes frecuentes están a
+ * un toque, los demás se buscan, y un CUIT nuevo se carga ahí mismo y se valida apenas se completa.
  */
 export function EleccionDeReceptor({
   receptor,
@@ -54,37 +40,41 @@ export function EleccionDeReceptor({
   readonly onCambiar: (receptor: Receptor) => void;
 }) {
   const { espacio } = useTema();
-  const [recordados, setRecordados] = useState<readonly ReceptorConCuit[]>([]);
-  const [cargandoOtro, setCargandoOtro] = useState(false);
+  const [frecuentes, setFrecuentes] = useState<readonly Cliente[]>([]);
+  const [modo, setModo] = useState<Modo>('fichas');
 
   useEffect(() => {
-    void receptoresFrecuentes.listar().then(setRecordados);
+    clientes.frecuentes(FRECUENTES_A_LA_VISTA).then(setFrecuentes, () => undefined);
   }, []);
 
   const cuitElegido = cuitDe(receptor);
-  // Si el receptor elegido no quedó entre los frecuentes (por ejemplo, el almacén falló), igual se ve.
+  // El elegido se ve aunque no esté entre los frecuentes, por ejemplo si salió de la búsqueda.
   const visibles =
-    cuitElegido && !recordados.some((r) => r.cuit.esIgualA(cuitElegido))
-      ? [{ cuit: cuitElegido, condicion: receptor.condicion, ...textosDe(receptor) }, ...recordados]
-      : recordados;
+    cuitElegido && !frecuentes.some((c) => c.cuit.esIgualA(cuitElegido))
+      ? [{ cuit: cuitElegido, condicion: receptor.condicion, ...textosDe(receptor) }, ...frecuentes]
+      : frecuentes;
 
   const fichas: readonly Ficha<string>[] = [
     { valor: CONSUMIDOR_FINAL, etiqueta: 'Consumidor final', icono: 'account' },
-    ...visibles.map((r) => ({ valor: r.cuit.valor, etiqueta: r.nombre ?? r.cuit.formateado() })),
+    ...visibles.map((c) => ({ valor: c.cuit.valor, etiqueta: c.nombre ?? c.cuit.formateado() })),
+    { valor: BUSCAR, etiqueta: 'Buscar', icono: 'magnify' },
     { valor: OTRO_CUIT, etiqueta: 'Otro CUIT', icono: 'plus' },
   ];
 
-  const elegir = (valor: string) => {
-    setCargandoOtro(valor === OTRO_CUIT);
-    if (valor === CONSUMIDOR_FINAL) onCambiar(CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
-    const recordado = visibles.find((r) => r.cuit.valor === valor);
-    if (recordado) onCambiar(conCuit(recordado));
+  const usar = (cliente: Cliente) => {
+    onCambiar(comoReceptor(cliente));
+    setModo('fichas');
   };
 
-  // Un CUIT nuevo pasa a los frecuentes recién cuando ARCA autoriza una factura para él.
-  const usarNuevo = (nuevo: ReceptorConCuit) => {
-    onCambiar(conCuit(nuevo));
-    setCargandoOtro(false);
+  const elegir = (valor: string) => {
+    if (valor === BUSCAR || valor === OTRO_CUIT) {
+      setModo(valor);
+      return;
+    }
+    setModo('fichas');
+    if (valor === CONSUMIDOR_FINAL) onCambiar(CONSUMIDOR_FINAL_SIN_IDENTIFICAR);
+    const elegido = visibles.find((c) => c.cuit.valor === valor);
+    if (elegido) onCambiar(comoReceptor(elegido));
   };
 
   return (
@@ -92,17 +82,18 @@ export function EleccionDeReceptor({
       <Texto variante="subtitulo">Receptor</Texto>
       <Fichas
         opciones={fichas}
-        valor={cargandoOtro ? OTRO_CUIT : (cuitElegido?.valor ?? CONSUMIDOR_FINAL)}
+        valor={modo === 'fichas' ? (cuitElegido?.valor ?? CONSUMIDOR_FINAL) : modo}
         onCambiar={elegir}
       />
-      {cargandoOtro ? (
-        <FormularioDeCuit onListo={usarNuevo} />
-      ) : (
-        cuitElegido && (
-          <Texto variante="detalle">
-            CUIT {cuitElegido.formateado()} · {receptor.condicion.descripcion}
-          </Texto>
-        )
+      {modo === BUSCAR && <BuscadorDeClientes onElegir={usar} />}
+      {/* Un CUIT nuevo queda como cliente recién cuando ARCA autoriza una factura para él. */}
+      {modo === OTRO_CUIT && (
+        <FormularioDeCliente textoDelBoton="Usar este receptor" onListo={usar} />
+      )}
+      {modo === 'fichas' && cuitElegido && (
+        <Texto variante="detalle">
+          CUIT {cuitElegido.formateado()} · {receptor.condicion.descripcion}
+        </Texto>
       )}
     </View>
   );
@@ -112,63 +103,51 @@ function textosDe({ nombre, domicilio }: Receptor) {
   return { ...(nombre ? { nombre } : {}), ...(domicilio ? { domicilio } : {}) };
 }
 
-function FormularioDeCuit({ onListo }: { readonly onListo: (receptor: ReceptorConCuit) => void }) {
+function BuscadorDeClientes({ onElegir }: { readonly onElegir: (cliente: Cliente) => void }) {
   const { espacio } = useTema();
   const [texto, setTexto] = useState('');
-  const [condicion, setCondicion] = useState(CondicionIvaReceptor.RESPONSABLE_INSCRIPTO);
-  const [nombre, setNombre] = useState('');
-  const [domicilio, setDomicilio] = useState('');
+  const [encontrados, setEncontrados] = useState<readonly Cliente[]>([]);
 
-  const resultado = cuitCompleto(texto) ? Cuit.crear(texto) : undefined;
-  const cuit = resultado?.ok ? resultado.valor : undefined;
-  const error = resultado && !resultado.ok ? MENSAJE_DE_CUIT[resultado.error.motivo] : undefined;
+  useEffect(() => {
+    // Si se sigue escribiendo antes de que llegue la respuesta, la respuesta vieja se descarta.
+    let vigente = true;
+    clientes.buscar(texto, RESULTADOS_DE_LA_BUSQUEDA).then(
+      (resultado) => {
+        if (vigente) setEncontrados(resultado);
+      },
+      () => undefined,
+    );
+    return () => {
+      vigente = false;
+    };
+  }, [texto]);
 
   return (
-    <View style={{ gap: espacio.medio }}>
-      <CampoDeCuit
+    <View style={{ gap: espacio.chico }}>
+      <CampoDeTexto
+        etiqueta="Nombre o CUIT del cliente"
+        datoPersonal
         valor={texto}
         onCambiar={setTexto}
-        error={error}
-        valido={cuit !== undefined}
+        maximo={60}
         autoFocus
       />
-      <Selector
-        etiqueta="Condición frente al IVA"
-        opciones={CONDICIONES}
-        valor={String(condicion.codigoArca)}
-        onCambiar={(codigo) => {
-          setCondicion(CondicionIvaReceptor.desdeCodigoArca(Number(codigo)) ?? condicion);
-        }}
-      />
-      <CampoDeTexto
-        etiqueta="Nombre o razón social (opcional)"
-        datoPersonal
-        valor={nombre}
-        onCambiar={setNombre}
-        maximo={60}
-      />
-      <CampoDeTexto
-        etiqueta="Domicilio (lo pide la factura A)"
-        datoPersonal
-        valor={domicilio}
-        onCambiar={setDomicilio}
-        maximo={LARGO_MAXIMO_DOMICILIO}
-      />
-      <Boton
-        variante="secundario"
-        disabled={!cuit}
-        onPress={() => {
-          if (!cuit) return;
-          onListo({
-            cuit,
-            condicion,
-            ...(nombre.trim() ? { nombre: nombre.trim() } : {}),
-            ...(domicilio.trim() ? { domicilio: domicilio.trim() } : {}),
-          });
-        }}
-      >
-        Usar este receptor
-      </Boton>
+      {encontrados.map((cliente) => (
+        <FilaDeCliente
+          key={cliente.cuit.valor}
+          cliente={cliente}
+          onPress={() => {
+            onElegir(cliente);
+          }}
+        />
+      ))}
+      {encontrados.length === 0 && (
+        <Texto variante="detalle">
+          {texto.trim() === ''
+            ? 'Todavía no hay clientes guardados.'
+            : 'No hay clientes que coincidan. Cargalo con "Otro CUIT".'}
+        </Texto>
+      )}
     </View>
   );
 }

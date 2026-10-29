@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 
+import { importarClientesDeAntes } from '../composicion';
 import { ProveedorDeBloqueo } from '../seguridad/Bloqueo';
 import { protegerLaPantalla } from '../seguridad/privacidadEnPantalla';
 import { protegerElTeclado } from '../seguridad/tecladoPrivado';
@@ -12,6 +13,7 @@ export default function LayoutRaiz() {
   useEffect(() => {
     void protegerLaPantalla();
     protegerElTeclado();
+    importarClientesDeAntes();
   }, []);
 
   return (

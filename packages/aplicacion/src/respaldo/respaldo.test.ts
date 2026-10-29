@@ -14,6 +14,7 @@ import {
 } from '@facturador/dominio';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { crearRepositorioDeClientes, type Cliente } from '../clientes/clientes';
 import {
   crearRepositorioDeComprobantes,
   type ComprobanteEmitido,
@@ -25,7 +26,6 @@ import {
 import { crearBaseSqliteDePrueba } from '../persistencia/baseSqliteDePrueba';
 import { migrar } from '../persistencia/migraciones';
 import { AlmacenEnMemoria } from '../puertos/almacenEnMemoria';
-import { crearReceptoresFrecuentes } from '../receptores/receptoresFrecuentes';
 import { crearRespaldo, type CifradoDeRespaldos, type Respaldo } from './respaldo';
 
 const valor = <T>(resultado: { ok: true; valor: T } | { ok: false }): T => {
@@ -122,7 +122,7 @@ async function telefono(configuracion?: Configuracion, logoInicial?: string) {
   const almacen = new AlmacenEnMemoria();
   const repositorios = {
     configuracion: crearRepositorioDeConfiguracion(almacen),
-    receptores: crearReceptoresFrecuentes(almacen),
+    clientes: crearRepositorioDeClientes(base),
     comprobantes: crearRepositorioDeComprobantes(base),
   };
   if (configuracion) await repositorios.configuracion.guardar(configuracion);
@@ -151,12 +151,12 @@ describe('respaldo', () => {
     await viejo.comprobantes.guardar(emitido(1, 'homologacion'));
     await viejo.comprobantes.guardar(emitido(2));
     await viejo.comprobantes.guardar(emitido(3));
-    await viejo.receptores.registrarUso({
+    await viejo.clientes.registrarUso({
       cuit: valor(Cuit.crear('30712345671')),
       condicion: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
       nombre: 'Ferretería Sur',
     });
-    await viejo.receptores.registrarUso({
+    await viejo.clientes.registrarUso({
       cuit: valor(Cuit.crear('20123456786')),
       condicion: CondicionIvaReceptor.MONOTRIBUTO,
     });
@@ -187,13 +187,15 @@ describe('respaldo', () => {
 
     expect(restaurado).toEqual({
       ok: true,
-      valor: { configuracion: true, comprobantes: 3, descartados: 0, receptores: 2, logo: true },
+      valor: { configuracion: true, comprobantes: 3, descartados: 0, clientes: 2, logo: true },
     });
     expect(await nuevo.configuracion.leer()).toEqual({ emisor: juana, ambiente: 'produccion' });
     expect(await nuevo.comprobantes.todosDelEmisor(juana)).toEqual(
       await viejo.comprobantes.todosDelEmisor(juana),
     );
-    expect(await nuevo.receptores.listar()).toEqual(await viejo.receptores.listar());
+    const porCuit = (clientes: readonly Cliente[]) =>
+      [...clientes].sort((a, b) => a.cuit.valor.localeCompare(b.cuit.valor));
+    expect(porCuit(await nuevo.clientes.todos())).toEqual(porCuit(await viejo.clientes.todos()));
     expect(nuevo.logo.actual).toBe('iVBORw0KGgo=');
   });
 

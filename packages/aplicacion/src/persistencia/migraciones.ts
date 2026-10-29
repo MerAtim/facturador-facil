@@ -46,6 +46,21 @@ export const MIGRACIONES: readonly string[] = [
     ambiente, cuit_emisor, asociado_tipo, asociado_punto_de_venta, asociado_numero
   );
   `,
+  // 4: los clientes. `busqueda` es el nombre en minúsculas y sin tildes, para encontrarlo como se
+  // escriba; los usos ordenan los frecuentes.
+  `
+  CREATE TABLE clientes (
+    cuit TEXT PRIMARY KEY,
+    condicion INTEGER NOT NULL,
+    nombre TEXT,
+    domicilio TEXT,
+    busqueda TEXT,
+    usos INTEGER NOT NULL DEFAULT 0,
+    ultimo_uso INTEGER,
+    creado_en INTEGER NOT NULL
+  );
+  CREATE INDEX clientes_por_uso ON clientes (usos DESC, ultimo_uso DESC);
+  `,
 ];
 
 export class BaseMasNueva extends Error {

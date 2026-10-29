@@ -45,6 +45,6 @@ export function interpretarBusqueda(texto: string): BusquedaInterpretada | undef
 }
 
 /** `%`, `_` y la barra de escape pierden su significado en `LIKE ... ESCAPE '\'`. */
-function escaparComodines(texto: string): string {
+export function escaparComodines(texto: string): string {
   return texto.replace(/[\\%_]/g, (caracter) => `\\${caracter}`);
 }
