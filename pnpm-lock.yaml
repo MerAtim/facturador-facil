@@ -58,6 +58,9 @@ importers:
       '@facturador/dominio':
         specifier: workspace:*
         version: link:../../packages/dominio
+      '@facturador/respaldo':
+        specifier: workspace:*
+        version: link:../../packages/respaldo
       '@facturador/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -227,6 +230,25 @@ importers:
       '@facturador/config':
         specifier: workspace:*
         version: link:../config
+
+  packages/respaldo:
+    dependencies:
+      '@facturador/aplicacion':
+        specifier: workspace:*
+        version: link:../aplicacion
+      '@facturador/dominio':
+        specifier: workspace:*
+        version: link:../dominio
+      '@noble/ciphers':
+        specifier: 2.4.0
+        version: 2.4.0
+    devDependencies:
+      '@facturador/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 26.6.5
+        version: 26.6.5
 
   packages/ui:
     dependencies:
@@ -1046,6 +1068,10 @@ packages:
 
   '@material/material-color-utilities@0.3.0':
     resolution: {integrity: sha512-ztmtTd6xwnuh2/xu+Vb01btgV8SQWYCaK56CkRK8gEkWe5TuDyBcYJ0wgkMRn+2VcE9KUmhvkz+N9GHrqw/C0g==}
+
+  '@noble/ciphers@2.4.0':
+    resolution: {integrity: sha512-AnjFn0Jv92laAkvMrghlFZq4qQCIN/4DxFV/eooqtC2YTjB7kBeLMS2T9KJX4Dn+ZVXLOwK0lSgqDtx9gvxtiw==}
+    engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@2.4.0':
     resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
@@ -5096,6 +5122,8 @@ snapshots:
   '@keyv/serialize@1.1.1': {}
 
   '@material/material-color-utilities@0.3.0': {}
+
+  '@noble/ciphers@2.4.0': {}
 
   '@noble/hashes@2.4.0': {}
 

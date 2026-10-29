@@ -28,6 +28,9 @@ export default function Inicio() {
   const irALaGuia = () => {
     router.push('/alta');
   };
+  const irAlRespaldo = () => {
+    router.push('/respaldo');
+  };
 
   const configuracion = guia.estado === 'lista' ? guia.configuracion : undefined;
   const pendiente = guia.estado === 'lista' ? guia.alta.actual : undefined;
@@ -59,6 +62,9 @@ export default function Inicio() {
           </Texto>
           <Boton icon="arrow-right" onPress={irALaGuia}>
             Empezar
+          </Boton>
+          <Boton variante="texto" icon="backup-restore" onPress={irAlRespaldo}>
+            Restaurar un respaldo
           </Boton>
         </View>
       )}
@@ -119,6 +125,9 @@ export default function Inicio() {
             }}
           >
             Certificado
+          </Boton>
+          <Boton variante="texto" onPress={irAlRespaldo}>
+            Respaldo
           </Boton>
           {!pendiente && (
             <Boton variante="texto" onPress={irALaGuia}>

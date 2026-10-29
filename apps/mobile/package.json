@@ -16,6 +16,7 @@
     "@facturador/arca": "workspace:*",
     "@facturador/documentos": "workspace:*",
     "@facturador/dominio": "workspace:*",
+    "@facturador/respaldo": "workspace:*",
     "@facturador/ui": "workspace:*",
     "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.27",
