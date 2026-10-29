@@ -19,6 +19,8 @@ export type EstadoDeLaGuia =
       readonly configuracion: Configuracion | undefined;
       readonly progreso: ProgresoDeAlta;
       readonly alta: EstadoDeAlta;
+      /** Cuándo vence el certificado cargado, para avisar con tiempo. */
+      readonly vigenteHasta?: Date;
     };
 
 async function leer(): Promise<EstadoDeLaGuia> {
@@ -41,7 +43,13 @@ async function leer(): Promise<EstadoDeLaGuia> {
     conCertificado: certificado !== undefined,
     progreso,
   });
-  return { estado: 'lista', configuracion, progreso, alta };
+  return {
+    estado: 'lista',
+    configuracion,
+    progreso,
+    alta,
+    ...(certificado && { vigenteHasta: certificado.vigenteHasta }),
+  };
 }
 
 /**

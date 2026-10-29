@@ -1,4 +1,4 @@
-import type { Ambiente } from '@facturador/aplicacion';
+import { avisoDeVencimiento, type Ambiente } from '@facturador/aplicacion';
 import {
   aliasDeClave,
   crearPedidoDeCertificado,
@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import { AvisoDeVencimiento } from '../alta/AvisoDeVencimiento';
 import { almacenDeClavesDelDispositivo } from '../arca/almacenDeClavesDelDispositivo';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
@@ -29,6 +30,14 @@ const DONDE_SUBIRLO: Readonly<Record<Ambiente, string>> = {
     'En ARCA, entrá con tu clave fiscal a "WSASS - Autogestión Certificados Homologación", creá un certificado nuevo y pegá o subí el pedido.',
   produccion:
     'En ARCA, entrá con tu clave fiscal a "Administración de Certificados Digitales", agregá un alias y subí el archivo del pedido.',
+};
+
+/** Renovar es pedir otro certificado con la misma clave, para el mismo alias de ARCA. */
+const DONDE_RENOVARLO: Readonly<Record<Ambiente, string>> = {
+  homologacion:
+    'En ARCA, entrá con tu clave fiscal a "WSASS - Autogestión Certificados Homologación", creá un certificado nuevo y pegá o subí el pedido.',
+  produccion:
+    'En ARCA, entrá con tu clave fiscal a "Administración de Certificados Digitales", elegí el alias que ya usás con la app, tocá "Agregar certificado" y subí el pedido. Con el mismo alias no hace falta volver a autorizar la factura electrónica.',
 };
 
 const COMO_CARGARLO: Readonly<Record<Ambiente, string>> = {
@@ -116,6 +125,12 @@ export default function Certificado() {
   }, [alias]);
 
   if (configuracion.estado === 'lista' && !configurada) return <Redirect href="/configuracion" />;
+
+  // Cerca del vencimiento, o ya vencido, se muestran los pasos para renovarlo.
+  const renovar =
+    certificado !== undefined &&
+    avisoDeVencimiento(certificado.vigenteHasta, new Date()).tipo !== 'vigente';
+  const mostrarPedido = !certificado || renovar;
 
   const compartir = async (pem: string, datos: Titular) => {
     setNoSeCompartio(false);
@@ -248,7 +263,9 @@ export default function Certificado() {
               <Texto variante="cuerpo">
                 Vence el {FechaCalendario.enArgentina(certificado.vigenteHasta).formatear()}.
               </Texto>
-              {botonesDeCarga(titular)}
+              <AvisoDeVencimiento vigenteHasta={certificado.vigenteHasta} />
+              {/* Al renovar, la carga va al final de los pasos. */}
+              {!renovar && botonesDeCarga(titular)}
             </Tarjeta>
           ) : (
             <Texto variante="cuerpo">
@@ -263,19 +280,19 @@ export default function Certificado() {
             </Aviso>
           )}
 
-          {!certificado && pedido.paso === 'sin_clave' && (
+          {mostrarPedido && pedido.paso === 'sin_clave' && (
             <Boton icon="key-plus" onPress={() => void pedir(titular)}>
               Generar pedido de certificado
             </Boton>
           )}
 
-          {!certificado && pedido.paso === 'generando' && (
+          {mostrarPedido && pedido.paso === 'generando' && (
             <Boton loading disabled>
               Generando la clave…
             </Boton>
           )}
 
-          {!certificado && pedido.paso === 'fallo' && (
+          {mostrarPedido && pedido.paso === 'fallo' && (
             <>
               <Aviso icono="alert-circle-outline" tono="error">
                 No se pudo generar el pedido. Verificá que el teléfono tenga bloqueo de pantalla y
@@ -285,10 +302,12 @@ export default function Certificado() {
             </>
           )}
 
-          {!certificado && pedido.paso === 'listo' && (
+          {mostrarPedido && pedido.paso === 'listo' && (
             <View style={{ gap: espacio.medio }}>
-              <Texto variante="subtitulo">Tu pedido está listo</Texto>
-              <Texto variante="cuerpo">1. Mandalo a tu computadora o guardalo.</Texto>
+              <Texto variante="subtitulo">
+                {renovar ? 'Para renovarlo' : 'Tu pedido está listo'}
+              </Texto>
+              <Texto variante="cuerpo">1. Mandá el pedido a tu computadora o guardalo.</Texto>
               <Boton
                 variante="secundario"
                 icon="share-variant"
@@ -304,7 +323,9 @@ export default function Certificado() {
               <Boton variante="texto" icon="content-copy" onPress={() => void copiar(pedido.pem)}>
                 {copiado ? 'Copiado' : 'Copiar como texto'}
               </Boton>
-              <Texto variante="cuerpo">2. {DONDE_SUBIRLO[titular.ambiente]}</Texto>
+              <Texto variante="cuerpo">
+                2. {(renovar ? DONDE_RENOVARLO : DONDE_SUBIRLO)[titular.ambiente]}
+              </Texto>
               <Texto variante="cuerpo">3. {COMO_CARGARLO[titular.ambiente]}</Texto>
               {botonesDeCarga(titular)}
             </View>
