@@ -277,7 +277,11 @@ describe('crearAutorizadorWsfe', () => {
   it('no consulta a ARCA por un comprobante que no puede enviar', async () => {
     const { arca, autorizador } = preparar();
 
-    const resultado = await autorizador.autorizar(facturaC(TipoComprobante.NOTA_DE_CREDITO_C), 1);
+    const yaAutorizada = valor(
+      facturaC().autorizar('76431234567890', valor(FechaCalendario.crear(2026, 11, 6))),
+    );
+
+    const resultado = await autorizador.autorizar(yaAutorizada, 1);
 
     expect(tipo(resultado)).toBe('comprobante_no_soportado');
     expect(arca.metodos).toEqual([]);

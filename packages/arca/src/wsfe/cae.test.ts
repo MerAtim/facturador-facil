@@ -367,16 +367,52 @@ describe('solicitarCae', () => {
     expect(enviado.cuerpo).toBe('');
   });
 
-  it('no envía notas de crédito sin el comprobante asociado', async () => {
-    const resultado = await solicitar(
-      { ...facturaC, tipo: TipoComprobante.NOTA_DE_CREDITO_C },
-      grabacion('caeFacturaC'),
-    ).resultado;
+  it('informa la factura que ajusta una nota, después de la condición del receptor', async () => {
+    const notaB: DatosComprobante = {
+      ...facturaB,
+      tipo: TipoComprobante.NOTA_DE_CREDITO_B,
+      asociado: {
+        tipo: TipoComprobante.FACTURA_B,
+        puntoDeVenta: 1,
+        numero: 102,
+        fechaDeEmision: fecha(2026, 10, 20),
+      },
+    };
+    const { resultado, enviado } = solicitar(notaB, grabacion('caeFacturaB'));
+    await resultado;
 
-    expect(resultado).toEqual({
-      ok: false,
-      error: { tipo: 'comprobante_no_soportado', motivo: 'requiere_comprobante_asociado' },
-    });
+    expect(enviado.cuerpo).toContain('<CbteTipo>8</CbteTipo>');
+    expect(enviado.cuerpo).toContain(
+      '<CondicionIVAReceptorId>5</CondicionIVAReceptorId><CbtesAsoc><CbteAsoc><Tipo>6</Tipo>' +
+        '<PtoVta>1</PtoVta><Nro>102</Nro><Cuit>20123456786</Cuit><CbteFch>20261020</CbteFch>' +
+        '</CbteAsoc></CbtesAsoc><Iva>',
+    );
+  });
+
+  it('registra el CAE de una nota de crédito', async () => {
+    const notaB: DatosComprobante = {
+      ...facturaB,
+      tipo: TipoComprobante.NOTA_DE_CREDITO_B,
+      fechaDeEmision: fecha(2026, 10, 28),
+      asociado: {
+        tipo: TipoComprobante.FACTURA_B,
+        puntoDeVenta: 1,
+        numero: 4,
+        fechaDeEmision: fecha(2026, 10, 28),
+      },
+    };
+
+    const resultado = valor(await solicitar(notaB, grabacion('caeNotaDeCreditoB')).resultado);
+
+    expect(resultado.numero).toBe(1);
+    expect(resultado.comprobante.autorizacion?.cae).toBe('86431028721649');
+  });
+
+  it('una factura no informa comprobantes asociados', async () => {
+    const { resultado, enviado } = solicitar(facturaB, grabacion('caeFacturaB'));
+    await resultado;
+
+    expect(enviado.cuerpo).not.toContain('CbtesAsoc');
   });
 
   it.each([0, 100_000_000, 1.5])('no acepta el número %s', async (numero) => {
