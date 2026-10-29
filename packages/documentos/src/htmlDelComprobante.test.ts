@@ -7,6 +7,7 @@ import {
   Emisor,
   FechaCalendario,
   TipoComprobante,
+  UnidadDeMedida,
   type Receptor,
 } from '@facturador/dominio';
 import { describe, expect, it } from 'vitest';
@@ -121,6 +122,19 @@ describe('htmlDelComprobante', () => {
     expect(html).toContain('Total</td><td class="numero">$ 800,00');
     expect(html).not.toContain('IVA contenido');
     expect(html).not.toContain('Neto gravado');
+  });
+
+  it('muestra cada cantidad con su unidad', () => {
+    const comprobante = autorizado({
+      items: [
+        { ...item('Pintura', '1.000'), unidad: UnidadDeMedida.LITROS },
+        item('Pincel', '500'),
+      ],
+    });
+    const html = htmlDelComprobante(documento({ comprobante }));
+
+    expect(html).toContain('<td class="numero">1 L</td>');
+    expect(html).toContain('<td class="numero">1 unidad</td>');
   });
 
   it('una factura no muestra comprobante asociado', () => {
