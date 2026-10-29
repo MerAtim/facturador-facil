@@ -6,7 +6,7 @@ Qué protege Facturador Fácil, de quién y cómo. Sirve para revisar cada cambi
 
 ## Alcance y supuestos
 
-* La app corre en el teléfono del contribuyente y habla directamente con ARCA, sin servidor propio ([ADR 0002](../adr/0002_local_first_y_claves_en_dispositivo.md)).
+* La app corre en el teléfono del contribuyente y habla directamente con ARCA, sin servidor propio ([ADR 0002](../adr/0002_local_first_y_claves_en_dispositivo.md)). Además lee del repositorio la versión mínima vigente, sin enviar datos.
 * El sistema operativo no está comprometido. Un teléfono con root o jailbreak queda fuera del modelo: ahí ninguna protección de la app es confiable.
 * ARCA y su infraestructura TLS son confiables.
 * Fuera de alcance por ahora: sincronización entre teléfonos, padrón de ARCA (#30), publicación en tiendas (#63).
@@ -108,7 +108,7 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 | Amenaza | Mitigación | Estado |
 | --- | --- | --- |
 | La app tiene permisos de más | Solo internet, biometría y vibración; almacenamiento, galería, cámara, micrófono y dibujar sobre otras apps bloqueados | Cumple |
-| Una versión vulnerable sigue en uso | Versión mínima obligatoria | Pendiente, #135 |
+| Una versión vulnerable sigue en uso | Versión mínima publicada en el repositorio: por debajo, la app no emite. Sin conexión vale la última conocida | Cumple |
 
 ## Riesgos aceptados
 
@@ -129,13 +129,13 @@ Según [OWASP MASVS v2](https://mas.owasp.org/MASVS/). Los controles de resilien
 | MASVS-AUTH-1 | Protocolos de autenticación seguros | Cumple: WSAA con CMS firmado en el teléfono |
 | MASVS-AUTH-2 | Autenticación local según la plataforma | Cumple: biometría o credencial del sistema |
 | MASVS-AUTH-3 | Autenticación adicional para operaciones sensibles | Cumple: confirmación explícita antes de emitir; el desbloqueo se renueva tras la espera |
-| MASVS-NETWORK-1 | Todo el tráfico va cifrado | Cumple: solo HTTPS hacia ARCA |
+| MASVS-NETWORK-1 | Todo el tráfico va cifrado | Cumple: solo HTTPS, hacia ARCA y hacia el repositorio |
 | MASVS-NETWORK-2 | Fijación de identidad de los servidores | No aplica en L1; riesgo aceptado |
 | MASVS-PLATFORM-1 | Comunicación entre apps segura | Cumple: deep links neutralizados; los archivos se comparten por la hoja del sistema |
 | MASVS-PLATFORM-2 | WebViews seguras | Cumple: el PDF se arma sin scripts y con política de contenido |
 | MASVS-PLATFORM-3 | Interfaz segura | Cumple: capturas bloqueadas y vista previa oculta |
 | MASVS-CODE-1 | Plataforma actualizada | Cumple: SDK de Expo vigente; la actualización a SDK 58 está en #102 |
-| MASVS-CODE-2 | Mecanismo para forzar actualizaciones | Pendiente, #135 |
+| MASVS-CODE-2 | Mecanismo para forzar actualizaciones | Cumple: versión mínima obligatoria para emitir |
 | MASVS-CODE-3 | Sin componentes con vulnerabilidades conocidas | Parcial: avisos de herramientas de desarrollo ignorados con justificación, en revisión en #88 |
 | MASVS-CODE-4 | Validación de toda entrada no confiable | Cumple: certificados, imágenes, respuestas de ARCA y datos guardados |
 | MASVS-PRIVACY-1 | Acceso mínimo a datos | Cumple: sin servidor propio ni analítica; permisos mínimos |
