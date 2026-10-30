@@ -189,6 +189,8 @@ jobs:
           # los flujos, se le avisa cada cinco segundos que la cara coincide: desbloquea como una persona.
           xcrun simctl spawn "$simulador" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
           xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit.enrollmentChanged
+          # El driver de Maestro se instala antes de empezar con los avisos, para que no compitan.
+          maestro --device "$simulador" hierarchy > /dev/null
           while true; do
             xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match
             sleep 5
