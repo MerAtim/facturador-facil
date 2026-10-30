@@ -11,7 +11,7 @@ appId: com.facturadorfacil.app.pruebas
       - extendedWaitUntil:
           visible: Nueva factura
           timeout: 15000
-        optional: true
+          optional: true
       - runFlow:
           when:
             notVisible: Nueva factura
