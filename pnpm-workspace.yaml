@@ -32,6 +32,9 @@ auditConfig:
     # decode-uri-component en expo-router: mitigado por src/app/+native-intent.ts, que descarta
     # toda URL externa antes de que se decodifique. La versión parcheada es solo ESM e incompatible.
     - GHSA-vcc3-ghjq-m6fr
+    # decode-uri-component en expo-router, reemplazo cuadrático: misma mitigación que el anterior. El
+    # parche, 0.5.1, es de la línea solo ESM y salió el 2026-10-23.
+    - GHSA-qr28-fpjm-wq7f
     # zod 3 en @expo/cli: solo corre en desarrollo, no viaja en la app. El parche existe solo en zod 4,
     # incompatible con la versión que usa Expo.
     - GHSA-mrhx-c7xc-m3w5
