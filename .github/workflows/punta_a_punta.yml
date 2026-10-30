@@ -111,3 +111,106 @@ jobs:
             ${{ runner.temp }}/maestro.xml
             ~/.maestro/tests
           retention-days: 7
+
+  # El mismo recorrido en un iPhone simulado: compila los módulos nativos de iOS y prueba la clave
+  # en el Keychain sin cuenta de Apple ni iPhone (#93).
+  flujos-ios:
+    name: Flujos de emisión en iOS
+    # Experimental mientras se estabiliza (#93): se lanza a mano y, si falla, la corrida no se marca
+    # como fallida ni manda avisos. El resultado se revisa en el log de este trabajo.
+    if: github.event_name == 'workflow_dispatch'
+    continue-on-error: true
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_DOBLE_DE_ARCA: si
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # Expo SDK 57 no compila con Xcode 26.3 o anterior (expo/expo#49941). Se fija la versión para
+      # que una actualización de la imagen no cambie el compilador sin aviso.
+      - name: Elegir Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+
+      # Firma local, la que usa Xcode para el simulador: no hace falta una cuenta de Apple. Sin firma,
+      # la app no tiene permiso para usar el Keychain y no puede leer el almacén seguro ni su clave.
+      - name: Compilar el build de pruebas
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform ios
+          cd ios
+          espacio=$(ls -d *.xcworkspace)
+          xcodebuild -workspace "$espacio" -scheme "${espacio%.xcworkspace}" \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/ios" -quiet \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
+
+      - name: Instalar Maestro
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip"
+          echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | shasum -a 256 --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME"
+          echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Correr los flujos
+        env:
+          # En el CI el driver de Maestro tarda en instalarse en el simulador: se le dan 4 minutos.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 240000
+        run: |
+          simulador=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          dispositivos = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for v in dispositivos.values() for d in v if d["name"].startswith("iPhone")))')
+          xcrun simctl boot "$simulador"
+          xcrun simctl bootstatus "$simulador"
+          xcrun simctl install "$simulador" "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app
+          # La app pide desbloquearse al abrir. Se registra una cara en el simulador y, mientras corren
+          # los flujos, se le avisa cada cinco segundos que la cara coincide: desbloquea como una persona.
+          xcrun simctl spawn "$simulador" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
+          xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit.enrollmentChanged
+          # El driver de Maestro se instala antes de empezar con los avisos, para que no compitan.
+          maestro --device "$simulador" hierarchy > /dev/null
+          # Un aviso que falla no corta el bucle; cada intento queda en un registro que va al reporte.
+          while true; do
+            if xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match; then
+              echo "$(date +%T) aviso enviado" >> "$RUNNER_TEMP/face_id.log"
+            else
+              echo "$(date +%T) aviso falló" >> "$RUNNER_TEMP/face_id.log"
+            fi
+            sleep 5
+          done &
+          # Un reintento, como en Android: una falla de la app falla las dos veces.
+          maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro \
+            || maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
+
+      - name: Guardar el reporte
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reporte-de-maestro-ios
+          path: |
+            ${{ runner.temp }}/maestro.xml
+            ${{ runner.temp }}/face_id.log
+            ~/.maestro/tests
+          retention-days: 7
