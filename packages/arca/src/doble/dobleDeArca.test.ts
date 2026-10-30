@@ -17,6 +17,7 @@ import { URLS } from '../ambiente';
 import { crearCertificadoDePrueba, crearFirmadorDePrueba } from '../criptografia/paraPruebas';
 import { crearProveedorDeTickets, type ProveedorDeTickets } from '../wsaa/proveedorDeTickets';
 import { crearAutorizadorWsfe } from '../wsfe/autorizadorWsfe';
+import { consultarPadron } from '../padron/padron';
 import { consultarComprobante } from '../wsfe/cae';
 import { verificarAlta } from '../wsfe/verificacionDelAlta';
 import { crearDobleDeArca } from './dobleDeArca';
@@ -124,6 +125,22 @@ describe('crearDobleDeArca', () => {
 
     expect(consultado?.numero).toBe(otorgado.numero);
     expect(consultado?.totalEnCentavos).toBe(121_000);
+  });
+
+  it('en el padrón, todo CUIT es un responsable inscripto', async () => {
+    const { tickets, transporte } = preparar();
+    const consultado = valor(Cuit.crear('27333333339'));
+
+    const contribuyente = valor(
+      await consultarPadron({ ambiente: 'homologacion', cuit, tickets, transporte }, consultado),
+    );
+
+    expect(contribuyente).toEqual({
+      nombre: 'CLIENTE INSCRIPTO SA',
+      domicilio: 'CALLE FALSA 123, ROSARIO, SANTA FE',
+      condicion: CondicionIvaReceptor.RESPONSABLE_INSCRIPTO,
+      activo: true,
+    });
   });
 
   it('no responde a otros servicios', async () => {

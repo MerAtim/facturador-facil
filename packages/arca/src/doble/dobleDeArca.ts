@@ -21,14 +21,15 @@ interface Autorizado {
 
 /**
  * ARCA de homologación simulado, para las pruebas de punta a punta: da tickets a cualquier firma,
- * numera correlativo por punto de venta y tipo, y autoriza todo comprobante. Responde con la misma
- * forma que los servicios reales, así la app lo usa sin saberlo.
+ * numera correlativo por punto de venta y tipo, autoriza todo comprobante y en el padrón todo CUIT
+ * es un responsable inscripto. Responde con la misma forma que los servicios reales, así la app lo
+ * usa sin saberlo.
  *
  * Nunca forma parte de un build que se publica: ver apps/mobile/src/composicion.ts.
  */
 export function crearDobleDeArca({ ahora = () => new Date() } = {}): Transporte {
   const autorizados: Autorizado[] = [];
-  const { wsaa, wsfe } = URLS.homologacion;
+  const { wsaa, wsfe, padron } = URLS.homologacion;
 
   const ultimo = (puntoDeVenta: number, tipo: number) =>
     autorizados
@@ -141,6 +142,9 @@ export function crearDobleDeArca({ ahora = () => new Date() } = {}): Transporte 
     if (!metodo) return Promise.resolve(error(400));
 
     if (url === wsaa && metodo.nombre === 'loginCms') return Promise.resolve(ok(ticket()));
+    if (url === padron && metodo.nombre === 'getPersona_v2') {
+      return Promise.resolve(ok(personaInscripta(buscar(metodo, 'idPersona')?.texto ?? '')));
+    }
 
     const responder = url === wsfe ? wsfePorMetodo[metodo.nombre] : undefined;
     if (!responder) return Promise.resolve(error(404));
@@ -160,6 +164,18 @@ export function crearDobleDeArca({ ahora = () => new Date() } = {}): Transporte 
 const sobre = (cuerpo: string) =>
   '<?xml version="1.0" encoding="utf-8"?>' +
   `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>${cuerpo}</soap:Body></soap:Envelope>`;
+
+/** En el padrón, todo CUIT es una sociedad activa inscripta en IVA. */
+const personaInscripta = (cuit: string) =>
+  sobre(
+    '<ns2:getPersona_v2Response xmlns:ns2="http://a5.soap.ws.server.puc.sr/"><personaReturn>' +
+      '<datosGenerales><razonSocial>CLIENTE INSCRIPTO SA</razonSocial>' +
+      '<domicilioFiscal><direccion>CALLE FALSA 123</direccion><localidad>ROSARIO</localidad>' +
+      '<descripcionProvincia>SANTA FE</descripcionProvincia></domicilioFiscal>' +
+      `<estadoClave>ACTIVO</estadoClave>${campo('idPersona', cuit)}</datosGenerales>` +
+      '<datosRegimenGeneral><impuesto><idImpuesto>30</idImpuesto></impuesto></datosRegimenGeneral>' +
+      '</personaReturn></ns2:getPersona_v2Response>',
+  );
 
 const ok = (cuerpo: string): RespuestaHttp => ({ estado: 200, cuerpo });
 const error = (estado: number): RespuestaHttp => ({ estado, cuerpo: '' });
