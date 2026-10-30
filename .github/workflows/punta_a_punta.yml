@@ -174,6 +174,9 @@ jobs:
           echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
 
       - name: Correr los flujos
+        env:
+          # En el CI el driver de Maestro tarda en instalarse en el simulador: se le dan 4 minutos.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 240000
         run: |
           simulador=$(xcrun simctl list devices available --json | python3 -c '
           import json, sys
@@ -183,12 +186,12 @@ jobs:
           xcrun simctl bootstatus "$simulador"
           xcrun simctl install "$simulador" "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app
           # La app pide desbloquearse al abrir. Se registra una cara en el simulador y, mientras corren
-          # los flujos, se le avisa cada dos segundos que la cara coincide: desbloquea como una persona.
+          # los flujos, se le avisa cada cinco segundos que la cara coincide: desbloquea como una persona.
           xcrun simctl spawn "$simulador" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
           xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit.enrollmentChanged
           while true; do
             xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match
-            sleep 2
+            sleep 5
           done &
           # Un reintento, como en Android: una falla de la app falla las dos veces.
           maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro \
