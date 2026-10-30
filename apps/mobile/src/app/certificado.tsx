@@ -17,13 +17,14 @@ import { File, Paths } from 'expo-file-system';
 import { Redirect, Stack } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 
 import { AvisoDeVencimiento } from '../alta/AvisoDeVencimiento';
 import { almacenDeClavesDelDispositivo } from '../arca/almacenDeClavesDelDispositivo';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { almacenDeCertificados, olvidarEmisiones, registro, registroDeAlta } from '../composicion';
+import { useProteccion } from '../seguridad/Bloqueo';
 
 const DONDE_SUBIRLO: Readonly<Record<Ambiente, string>> = {
   homologacion:
@@ -94,6 +95,7 @@ export default function Certificado() {
   const [certificado, setCertificado] = useState<CertificadoGuardado>();
   const [cargando, setCargando] = useState(false);
   const [rechazo, setRechazo] = useState<string>();
+  const protegida = useProteccion();
 
   const configurada = configuracion.estado === 'lista' ? configuracion.configuracion : undefined;
   const titular: Titular | undefined = configurada && {
@@ -280,7 +282,9 @@ export default function Certificado() {
             </Aviso>
           )}
 
-          {mostrarPedido && pedido.paso === 'sin_clave' && (
+          {mostrarPedido && pedido.paso === 'sin_clave' && !protegida && <FaltaElBloqueo />}
+
+          {mostrarPedido && pedido.paso === 'sin_clave' && protegida && (
             <Boton icon="key-plus" onPress={() => void pedir(titular)}>
               Generar pedido de certificado
             </Boton>
@@ -333,5 +337,34 @@ export default function Certificado() {
         </ScrollView>
       )}
     </Pantalla>
+  );
+}
+
+/**
+ * La clave solo firma con el teléfono desbloqueado, y en Android 9 a 14 el sistema no la crea si
+ * no hay bloqueo de pantalla. Se explica antes de intentarlo, en lugar de mostrar un error.
+ */
+function FaltaElBloqueo() {
+  const { espacio } = useTema();
+  return (
+    <View style={{ gap: espacio.chico }}>
+      <Aviso icono="shield-lock-outline" tono="error">
+        Para crear la clave, el teléfono tiene que tener bloqueo de pantalla: un PIN, un patrón o tu
+        huella. Así nadie puede emitir facturas en tu nombre si lo pierde.
+      </Aviso>
+      {/* iOS no deja abrir directamente los ajustes del código. */}
+      {Platform.OS === 'android' && (
+        <Boton
+          icon="cog-outline"
+          onPress={() => {
+            Linking.sendIntent('android.settings.SECURITY_SETTINGS').catch(() =>
+              Linking.openSettings(),
+            );
+          }}
+        >
+          Configurar el bloqueo
+        </Boton>
+      )}
+    </View>
   );
 }

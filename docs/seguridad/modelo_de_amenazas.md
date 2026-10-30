@@ -60,7 +60,7 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 | Amenaza | Mitigación | Estado |
 | --- | --- | --- |
 | Alguien con el teléfono desbloqueado abre la app y emite | Desbloqueo con la biometría o el PIN del sistema al abrir y al volver después de la espera elegida; el sistema limita los intentos. Sin bloqueo de pantalla, la app lo advierte | Cumple |
-| Se usa la clave privada con el teléfono bloqueado | iOS: `WhenUnlockedThisDeviceOnly`. Android 9 o posterior: `setUnlockedDeviceRequired`. Si la firma falla, no se envía nada a ARCA y se puede reintentar | Cumple |
+| Se usa la clave privada con el teléfono bloqueado | iOS: `WhenUnlockedThisDeviceOnly`. Android 9 o posterior: `setUnlockedDeviceRequired`. Por eso la clave solo se crea con bloqueo de pantalla configurado. Si la firma falla, no se envía nada a ARCA y se puede reintentar | Cumple |
 | Se carga un certificado ajeno o de otro ambiente | Se valida el emisor ARCA del ambiente, el CUIT, que corresponda a la clave del teléfono y la vigencia | Cumple |
 | Un servidor falso se hace pasar por ARCA | TLS validado por el sistema; nunca se desactiva. URLs fijas en el código | Cumple |
 | El ARCA simulado de las pruebas llega a un build publicado y da CAE falsos | Solo se incluye con una variable fijada al compilar; el CI comprueba en cada PR que el bundle publicado no lo tenga. Además solo atiende las direcciones de homologación | Cumple |

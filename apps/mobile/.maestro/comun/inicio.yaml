@@ -1,0 +1,6 @@
+# Recién instalada, la app genera la clave y el certificado de prueba antes de mostrar el inicio.
+appId: com.facturadorfacil.app.pruebas
+---
+- extendedWaitUntil:
+    visible: Nueva factura
+    timeout: 60000
