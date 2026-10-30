@@ -98,7 +98,9 @@ jobs:
           script: |
             adb install apps/mobile/android/app/build/outputs/apk/release/app-release.apk
             sleep 15
-            maestro test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
+            # Un reintento: a veces el emulador se desconecta de Maestro al abrir el primer flujo. Una
+            # falla de la app falla las dos veces.
+            maestro test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro || maestro test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
 
       - name: Guardar el reporte
         if: failure()
