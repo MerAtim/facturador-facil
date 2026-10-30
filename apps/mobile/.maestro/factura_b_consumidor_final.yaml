@@ -1,0 +1,27 @@
+# Factura B a consumidor final, contra el arca simulado del build de pruebas.
+appId: com.facturadorfacil.app.pruebas
+---
+- launchApp:
+    clearState: true
+- tapOn: Nueva factura
+- assertVisible: Factura B
+- tapOn: Descripción
+- inputText: Mantenimiento
+- assertVisible: Mantenimiento
+# El campo agrupa los miles mientras se escribe: con tres cifras no hay reagrupamiento a mitad.
+- tapOn: '0,00'
+- eraseText
+- inputText: '121'
+- scrollUntilVisible:
+    element: Revisar factura
+- assertVisible: '\$.100,00'
+- tapOn: Revisar factura
+- assertVisible: Consumidor Final
+- scrollUntilVisible:
+    element: 'Emitir factura B por \$.121,00'
+- tapOn: 'Emitir factura B por \$.121,00'
+- extendedWaitUntil:
+    visible: Factura emitida
+    timeout: 30000
+- assertVisible: 00001-00000001
+- assertVisible: CAE

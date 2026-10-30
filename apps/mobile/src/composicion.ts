@@ -29,20 +29,35 @@ import {
   type ErrorAutorizacion,
   type FallaDeVerificacion,
   type ProveedorDeTickets,
+  type Transporte,
 } from '@facturador/arca';
 import type { Cuit, Resultado } from '@facturador/dominio';
 import Constants from 'expo-constants';
 
 import { almacenDeClavesDelDispositivo } from './arca/almacenDeClavesDelDispositivo';
+import { repositorioDeConfiguracion } from './configuracion/configuracion';
 import { almacenLocalDelDispositivo } from './infraestructura/almacenLocalDelDispositivo';
 import { almacenSeguroDelDispositivo } from './infraestructura/almacenSeguroDelDispositivo';
 import { baseDeDatosDelDispositivo } from './infraestructura/baseDeDatosDelDispositivo';
 import { versionPublicada } from './infraestructura/versionPublicada';
+import type * as ModoDePrueba from './pruebas/modoDePrueba';
 
 /**
  * El único lugar donde los casos de uso se conectan con los adaptadores del dispositivo y de ARCA.
  * Las pantallas piden lo que necesitan acá y no arman infraestructura por su cuenta.
  */
+
+/**
+ * Solo el build de las pruebas de punta a punta define esta variable. En los demás, la condición es
+ * falsa al compilar y el empaquetador descarta la rama: el doble de ARCA no llega a la app.
+ */
+const modoDePrueba =
+  process.env.EXPO_PUBLIC_DOBLE_DE_ARCA === 'si'
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports -- import condicional al compilar
+      (require('./pruebas/modoDePrueba') as typeof ModoDePrueba)
+    : undefined;
+
+const transporte: Transporte = modoDePrueba?.transporteDePrueba ?? transporteFetch;
 
 /** En producción solo quedan errores, sin su detalle. */
 export const registro = crearRegistro({ produccion: !__DEV__, salida: salidaDeConsola });
@@ -85,7 +100,7 @@ async function ticketsPara(ambiente: Configuracion['ambiente'], cuit: Cuit, serv
     servicio,
     certificado: certificado.der,
     firmador: firmadorDeClave(almacenDeClavesDelDispositivo, aliasDeClave(titular)),
-    transporte: transporteFetch,
+    transporte,
     almacen: almacenSeguroDelDispositivo,
   });
   proveedoresDeTickets.set(clave, tickets);
@@ -111,7 +126,7 @@ export async function emisionPara({
       ambiente,
       cuit,
       tickets,
-      transporte: transporteFetch,
+      transporte,
       almacen: almacenSeguroDelDispositivo,
     }),
     comprobantes: comprobantesEmitidos,
@@ -133,7 +148,7 @@ export async function verificarAltaDe({
   const { cuit, puntoDeVenta } = emisor.datos;
   const tickets = await ticketsPara(ambiente, cuit);
   if (!tickets) return undefined;
-  return verificarAlta({ ambiente, cuit, puntoDeVenta, tickets, transporte: transporteFetch });
+  return verificarAlta({ ambiente, cuit, puntoDeVenta, tickets, transporte });
 }
 
 /** Los datos de un CUIT según el padrón de ARCA. Sin certificado, devuelve undefined. */
@@ -144,7 +159,7 @@ export async function consultarPadronDe(
   const { cuit } = emisor.datos;
   const tickets = await ticketsPara(ambiente, cuit, SERVICIO_DEL_PADRON);
   if (!tickets) return undefined;
-  return consultarPadron({ ambiente, cuit, tickets, transporte: transporteFetch }, consultado);
+  return consultarPadron({ ambiente, cuit, tickets, transporte }, consultado);
 }
 
 /** Al cambiar el certificado, lo armado con el anterior ya no sirve. */
@@ -159,3 +174,10 @@ export function importarClientesDeAntes(): void {
     registro.error('no se pudieron importar los clientes frecuentes', error);
   });
 }
+
+/** En el build de las pruebas, el emisor de prueba; en los demás, undefined. */
+export const preparacionDePrueba = modoDePrueba?.prepararEmisorDePrueba({
+  configuracion: repositorioDeConfiguracion,
+  certificados: almacenDeCertificados,
+  claves: almacenDeClavesDelDispositivo,
+});

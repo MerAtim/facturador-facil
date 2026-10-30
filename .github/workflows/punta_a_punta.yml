@@ -1,0 +1,111 @@
+name: Punta a punta
+
+# Solo cuando cambia algo que viaja en la app: un cambio de documentación no lo necesita.
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/punta_a_punta.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: punta-a-punta-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAESTRO_VERSION: 2.11.0
+  MAESTRO_SHA256: 5384593cb4e7a106489e75a821d157dd43f4e438df6bc308b72e82c685e1283a
+
+jobs:
+  flujos:
+    name: Flujos de emisión
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # El arca simulado da CAE falsos: si llegara a un build publicado sería grave.
+      - name: El bundle publicado no incluye el arca simulado
+        working-directory: apps/mobile
+        run: |
+          npx expo export --platform android --no-bytecode --output-dir "$RUNNER_TEMP/publicado"
+          if grep -rqE 'Comercio de Prueba|VE9LRU4=' "$RUNNER_TEMP/publicado"; then
+            echo '::error::El bundle publicado incluye el arca simulado'
+            exit 1
+          fi
+
+      - name: Compilar el build de pruebas
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_DOBLE_DE_ARCA: si
+        run: |
+          npx expo prebuild --platform android --no-install
+          cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Instalar Maestro
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip"
+          echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME"
+          echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Correr los flujos
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        # En Android 9 a 14 la clave del certificado no se puede crear sin bloqueo de pantalla, y el
+        # emulador no tiene. El problema y su arreglo están en #155.
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          ram-size: 4096M
+          script: |
+            adb install apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            sleep 15
+            maestro test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
+
+      - name: Guardar el reporte
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reporte-de-maestro
+          path: |
+            ${{ runner.temp }}/maestro.xml
+            ~/.maestro/tests
+          retention-days: 7

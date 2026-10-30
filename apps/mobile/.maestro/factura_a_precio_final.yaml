@@ -1,0 +1,40 @@
+# Factura A a un responsable inscripto: el padrón completa al cliente y, con precio final, la app
+# discrimina neto e IVA.
+appId: com.facturadorfacil.app.pruebas
+---
+- launchApp:
+    clearState: true
+- tapOn: Nueva factura
+- tapOn: Otro CUIT
+- tapOn: 20-12345678-6
+- inputText: '27333333339'
+# Enter cierra el teclado: así el botón queda quieto antes de tocarlo.
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: CLIENTE INSCRIPTO SA
+    timeout: 15000
+- assertVisible: CALLE FALSA 123, ROSARIO, SANTA FE
+- tapOn: Usar este receptor
+- assertVisible: Factura A
+- tapOn: Precio final
+- tapOn: Descripción
+- inputText: Consultoria
+- assertVisible: Consultoria
+- tapOn: '0,00'
+- eraseText
+- inputText: '121'
+- scrollUntilVisible:
+    element: Revisar factura
+- tapOn: Revisar factura
+- assertVisible: 'CUIT 27-33333333-9 · IVA Responsable Inscripto'
+- assertVisible: '\$.100,00'
+- assertVisible: 'IVA.21.%'
+- assertVisible: '\$.21,00'
+- scrollUntilVisible:
+    element: 'Emitir factura A por \$.121,00'
+- tapOn: 'Emitir factura A por \$.121,00'
+- extendedWaitUntil:
+    visible: Factura emitida
+    timeout: 30000
+- assertVisible: Factura A
+- assertVisible: 00001-00000001
