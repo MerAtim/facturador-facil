@@ -94,8 +94,10 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
+          ram-size: 4096M
           script: |
             adb install apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            sleep 15
             maestro test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
 
       - name: Guardar el reporte
