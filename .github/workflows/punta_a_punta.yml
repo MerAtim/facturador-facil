@@ -140,6 +140,13 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
+      # Expo SDK 57 necesita Swift 6.2, que viene con Xcode 26; la imagen trae otro por defecto.
+      - name: Elegir Xcode 26
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
       # Sin firma: el simulador no la necesita y así no hace falta una cuenta de Apple.
       - name: Compilar el build de pruebas
         working-directory: apps/mobile
