@@ -2,14 +2,27 @@ import { ProveedorDeTema, useTema } from '@facturador/ui';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-import { importarClientesDeAntes } from '../composicion';
+import { importarClientesDeAntes, preparacionDePrueba, registro } from '../composicion';
 import { ProveedorDeBloqueo } from '../seguridad/Bloqueo';
 import { protegerLaPantalla } from '../seguridad/privacidadEnPantalla';
 import { protegerElTeclado } from '../seguridad/tecladoPrivado';
 
 export default function LayoutRaiz() {
+  // Solo el build de las pruebas espera algo: cargar el emisor de prueba antes de la primera pantalla.
+  const [preparada, setPreparada] = useState(preparacionDePrueba === undefined);
+
+  useEffect(() => {
+    preparacionDePrueba
+      ?.catch((error: unknown) => {
+        registro.error('no se pudo preparar el emisor de prueba', error);
+      })
+      .finally(() => {
+        setPreparada(true);
+      });
+  }, []);
+
   useEffect(() => {
     void protegerLaPantalla();
     protegerElTeclado();
@@ -18,9 +31,7 @@ export default function LayoutRaiz() {
 
   return (
     <ProveedorDeTema>
-      <ProveedorDeBloqueo>
-        <Navegacion />
-      </ProveedorDeBloqueo>
+      <ProveedorDeBloqueo>{preparada && <Navegacion />}</ProveedorDeBloqueo>
     </ProveedorDeTema>
   );
 }

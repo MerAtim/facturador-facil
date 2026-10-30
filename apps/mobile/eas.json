@@ -22,6 +22,12 @@
       "environment": "preview",
       "android": { "buildType": "apk" }
     },
+    "punta_a_punta": {
+      "extends": "base",
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_DOBLE_DE_ARCA": "si" },
+      "android": { "buildType": "apk" }
+    },
     "produccion": {
       "extends": "base",
       "distribution": "store",
