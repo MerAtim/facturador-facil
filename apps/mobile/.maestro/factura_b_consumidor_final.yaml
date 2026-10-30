@@ -3,15 +3,20 @@ appId: com.facturadorfacil.app.pruebas
 ---
 - launchApp:
     clearState: true
+- runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
 - assertVisible: Factura B
-- tapOn: Descripción
-- inputText: Mantenimiento
-- assertVisible: Mantenimiento
+- runFlow:
+    file: comun/escribir.yaml
+    env:
+      CAMPO: Descripción
+      TEXTO: Mantenimiento
 # El campo agrupa los miles mientras se escribe: con tres cifras no hay reagrupamiento a mitad.
-- tapOn: '0,00'
-- eraseText
-- inputText: '121'
+- runFlow:
+    file: comun/escribir.yaml
+    env:
+      CAMPO: '0,00'
+      TEXTO: '121'
 - scrollUntilVisible:
     element: Revisar factura
 - assertVisible: '\$.100,00'
