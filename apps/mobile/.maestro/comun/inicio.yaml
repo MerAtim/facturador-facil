@@ -1,6 +1,16 @@
 # Recién instalada, la app genera la clave y el certificado de prueba antes de mostrar el inicio.
+# Si el teléfono tiene código, como el simulador de iOS, la app pide desbloquearse primero.
 appId: com.facturadorfacil.app.pruebas
 ---
+- extendedWaitUntil:
+    visible: 'Nueva factura|Enter iPhone Passcode.*'
+    timeout: 60000
+- runFlow:
+    when:
+      visible: 'Enter iPhone Passcode.*'
+    commands:
+      - inputText: '1234'
+      - pressKey: Enter
 - extendedWaitUntil:
     visible: Nueva factura
     timeout: 60000
