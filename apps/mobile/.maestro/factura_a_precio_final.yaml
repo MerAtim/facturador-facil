@@ -6,20 +6,31 @@ appId: com.facturadorfacil.app.pruebas
     clearState: true
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
+# Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube al receptor.
+- scrollUntilVisible:
+    element: Otro CUIT
+    direction: UP
+- waitForAnimationToEnd
 - tapOn: Otro CUIT
 - runFlow:
     file: comun/escribir.yaml
     env:
       CAMPO: 20-12345678-6
       TEXTO: '27333333339'
-- extendedWaitUntil:
-    visible: CLIENTE INSCRIPTO SA
+# Con el teclado abierto, los datos que completa el padrón pueden quedar más abajo.
+- scrollUntilVisible:
+    element: CLIENTE INSCRIPTO SA
     timeout: 15000
-- assertVisible: CALLE FALSA 123, ROSARIO, SANTA FE
+- scrollUntilVisible:
+    element: CALLE FALSA 123, ROSARIO, SANTA FE
 - scrollUntilVisible:
     element: Usar este receptor
+- waitForAnimationToEnd
 - tapOn: Usar este receptor
-- assertVisible: Factura A
+- scrollUntilVisible:
+    element: Factura A
+    direction: UP
+- waitForAnimationToEnd
 - tapOn: Precio final
 - runFlow:
     file: comun/escribir.yaml
@@ -33,6 +44,7 @@ appId: com.facturadorfacil.app.pruebas
       TEXTO: '121'
 - scrollUntilVisible:
     element: Revisar factura
+- waitForAnimationToEnd
 - tapOn: Revisar factura
 - assertVisible: 'CUIT 27-33333333-9 · IVA Responsable Inscripto'
 - assertVisible: '\$.100,00'
@@ -40,6 +52,7 @@ appId: com.facturadorfacil.app.pruebas
 - assertVisible: '\$.21,00'
 - scrollUntilVisible:
     element: 'Emitir factura A por \$.121,00'
+- waitForAnimationToEnd
 - tapOn: 'Emitir factura A por \$.121,00'
 - extendedWaitUntil:
     visible: Factura emitida

@@ -5,7 +5,11 @@ appId: com.facturadorfacil.app.pruebas
     clearState: true
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
-- assertVisible: Factura B
+# Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube a ver el tipo.
+- scrollUntilVisible:
+    element: Factura B
+    direction: UP
+- waitForAnimationToEnd
 - runFlow:
     file: comun/escribir.yaml
     env:
@@ -19,11 +23,13 @@ appId: com.facturadorfacil.app.pruebas
       TEXTO: '121'
 - scrollUntilVisible:
     element: Revisar factura
+- waitForAnimationToEnd
 - assertVisible: '\$.100,00'
 - tapOn: Revisar factura
 - assertVisible: Consumidor Final
 - scrollUntilVisible:
     element: 'Emitir factura B por \$.121,00'
+- waitForAnimationToEnd
 - tapOn: 'Emitir factura B por \$.121,00'
 - extendedWaitUntil:
     visible: Factura emitida
