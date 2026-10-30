@@ -1,25 +1,6 @@
 # Recién instalada, la app genera la clave y el certificado de prueba antes de mostrar el inicio.
-# En iOS el simulador tiene código y la app pide desbloquearse al abrir, como en un iPhone real.
 appId: com.facturadorfacil.app.pruebas
 ---
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      # El pedido de código es una ventana del sistema que Maestro no lee: se espera un momento y,
-      # si el inicio no aparece, se escribe en el campo del código, que queda a un tercio de la altura.
-      - extendedWaitUntil:
-          visible: Nueva factura
-          timeout: 15000
-          optional: true
-      - runFlow:
-          when:
-            notVisible: Nueva factura
-          commands:
-            - tapOn:
-                point: 50%,30%
-            - inputText: '1234'
-            - pressKey: Enter
 - extendedWaitUntil:
     visible: Nueva factura
     timeout: 60000

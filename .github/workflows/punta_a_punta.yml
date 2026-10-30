@@ -116,8 +116,10 @@ jobs:
   # en el Keychain sin cuenta de Apple ni iPhone (#93).
   flujos-ios:
     name: Flujos de emisión en iOS
-    # Se lanza a mano mientras se estabiliza (#93): así no falla en cada PR.
+    # Experimental mientras se estabiliza (#93): se lanza a mano y, si falla, la corrida no se marca
+    # como fallida ni manda avisos. El resultado se revisa en el log de este trabajo.
     if: github.event_name == 'workflow_dispatch'
+    continue-on-error: true
     runs-on: macos-26
     timeout-minutes: 90
     env:
@@ -180,6 +182,14 @@ jobs:
           xcrun simctl boot "$simulador"
           xcrun simctl bootstatus "$simulador"
           xcrun simctl install "$simulador" "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app
+          # La app pide desbloquearse al abrir. Se registra una cara en el simulador y, mientras corren
+          # los flujos, se le avisa cada dos segundos que la cara coincide: desbloquea como una persona.
+          xcrun simctl spawn "$simulador" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
+          xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit.enrollmentChanged
+          while true; do
+            xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match
+            sleep 2
+          done &
           # Un reintento, como en Android: una falla de la app falla las dos veces.
           maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro \
             || maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
