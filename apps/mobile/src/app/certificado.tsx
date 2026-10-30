@@ -10,7 +10,7 @@ import {
   type Titular,
 } from '@facturador/arca';
 import { FechaCalendario } from '@facturador/dominio';
-import { Aviso, Boton, Pantalla, Tarjeta, Texto, useTema } from '@facturador/ui';
+import { Aviso, Boton, Cargando, Pantalla, Tarjeta, Texto, useTema } from '@facturador/ui';
 import * as Clipboard from 'expo-clipboard';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
@@ -255,6 +255,7 @@ export default function Certificado() {
   return (
     <Pantalla conEncabezado>
       <Stack.Screen options={{ title: 'Certificado' }} />
+      {configuracion.estado === 'cargando' && <Cargando />}
       {titular && (
         <ScrollView contentContainerStyle={{ padding: espacio.normal, gap: espacio.normal }}>
           <AvisoDeAmbiente ambiente={titular.ambiente} />

@@ -1,6 +1,7 @@
 export * from './componentes/Aviso';
 export * from './componentes/Boton';
 export * from './componentes/BotonDeIcono';
+export * from './componentes/Cargando';
 export * from './componentes/CampoDeCantidad';
 export * from './componentes/CampoDeCuit';
 export * from './componentes/CampoDeFecha';
