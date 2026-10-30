@@ -74,6 +74,14 @@ export function ProveedorDeBloqueo({ children }: { readonly children: ReactNode 
         salioA.current = Date.now();
         return;
       }
+      // Quien vuelve de configurar el bloqueo en los ajustes tiene que poder seguir sin reiniciar.
+      // No se pide desbloquear: hasta recién el teléfono no tenía protección.
+      if (siguiente === 'active' && estado === 'sin_proteccion') {
+        void LocalAuthentication.getEnrolledLevelAsync().then((nivel) => {
+          if (nivel !== LocalAuthentication.SecurityLevel.NONE) setEstado('desbloqueada');
+        });
+        return;
+      }
       if (siguiente !== 'active' || estado !== 'desbloqueada') return;
       void preferencias.esperaDeBloqueo().then((espera) => {
         if (debeBloquear(salioA.current, Date.now(), espera)) setEstado('bloqueada');

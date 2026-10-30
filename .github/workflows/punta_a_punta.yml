@@ -87,8 +87,8 @@ jobs:
 
       - name: Correr los flujos
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        # En Android 9 a 14 la clave del certificado no se puede crear sin bloqueo de pantalla, y el
-        # emulador no tiene. El problema y su arreglo están en #155.
+        # En Android 9 a 14 la clave del certificado necesita bloqueo de pantalla (#155) y el emulador
+        # no tiene: el emisor de prueba solo se puede preparar desde Android 15.
         with:
           api-level: 35
           arch: x86_64
