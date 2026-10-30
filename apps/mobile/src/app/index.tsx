@@ -1,5 +1,5 @@
 import type { PasoDeAlta } from '@facturador/aplicacion';
-import { Aviso, Boton, Pantalla, Texto, useTema } from '@facturador/ui';
+import { Aviso, Boton, Cargando, Pantalla, Texto, useTema } from '@facturador/ui';
 import { Stack, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -47,6 +47,8 @@ export default function Inicio() {
         ]}
       >
         <Texto variante="titulo">Facturador Fácil</Texto>
+
+        {guia.estado === 'cargando' && <Cargando />}
 
         {!protegida && (
           <Aviso icono="shield-alert-outline" tono="error">

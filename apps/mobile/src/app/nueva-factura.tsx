@@ -19,6 +19,7 @@ import {
 import {
   Aviso,
   Boton,
+  Cargando,
   Pantalla,
   ResumenDeTotales,
   SelectorSegmentado,
@@ -155,6 +156,7 @@ export default function NuevaFactura() {
   return (
     <Pantalla conEncabezado>
       <Stack.Screen options={{ title: 'Nueva factura' }} />
+      {configuracion.estado === 'cargando' && <Cargando />}
       {configurada && (
         <ScrollView
           contentContainerStyle={[

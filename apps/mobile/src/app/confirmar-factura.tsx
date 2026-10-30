@@ -1,6 +1,15 @@
 import { numeroCompleto } from '@facturador/arca';
 import type { Receptor } from '@facturador/dominio';
-import { Aviso, Boton, Pantalla, ResumenDeTotales, Tarjeta, Texto, useTema } from '@facturador/ui';
+import {
+  Aviso,
+  Boton,
+  Cargando,
+  Pantalla,
+  ResumenDeTotales,
+  Tarjeta,
+  Texto,
+  useTema,
+} from '@facturador/ui';
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView } from 'react-native';
@@ -81,6 +90,7 @@ export default function ConfirmarFactura() {
           gestureEnabled: !emitiendo,
         }}
       />
+      {configuracion.estado === 'cargando' && <Cargando />}
       {configurada && (
         <ScrollView contentContainerStyle={{ padding: espacio.normal, gap: espacio.normal }}>
           <AvisoDeAmbiente ambiente={configurada.ambiente} />
