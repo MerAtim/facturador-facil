@@ -75,6 +75,7 @@ Al terminar, EAS da un enlace y un QR para instalar el APK en cualquier Android.
 | --- | --- | --- |
 | `desarrollo` | Desarrollar en un teléfono físico con Metro, como en el emulador | APK con el cliente de desarrollo |
 | `prueba` | Probar la app tal como la va a usar alguien, en homologación | APK de distribución interna |
+| `punta_a_punta` | Correr las pruebas de punta a punta, con ARCA simulado | APK que se instala como otra app |
 | `produccion` | Publicar en las tiendas | AAB firmado, con número de versión que sube solo |
 
 * **Solo se compila lo commiteado.** `requireCommit` hace que EAS rechace un build con cambios sin commitear, así no viaja código local de prueba.
@@ -82,6 +83,18 @@ Al terminar, EAS da un enlace y un QR para instalar el APK en cualquier Android.
 * **iOS** necesita una cuenta de Apple Developer y registrar cada iPhone de prueba con `npx eas-cli device:create`.
 
 Por seguridad, pnpm solo instala versiones publicadas hace al menos 14 días (`minimumReleaseAge` en `pnpm-workspace.yaml`).
+
+### Pruebas de punta a punta
+
+Los flujos de emisión se prueban con [Maestro](https://maestro.mobile.dev) en `apps/mobile/.maestro`. Corren contra un build de pruebas que usa un ARCA simulado y arranca con un emisor de prueba: no dependen de ARCA ni de un certificado.
+
+Ese build se instala como `com.facturadorfacil.app.pruebas`, al lado de la app real y sin compartir sus datos. Para correrlos en un emulador, se instala el APK del perfil `punta_a_punta` y:
+
+```
+maestro test apps/mobile/.maestro
+```
+
+En cada PR que toca la app, el workflow `Punta a punta` compila ese build, corre los flujos en un emulador y comprueba que el bundle publicado no incluya el ARCA simulado.
 
 ## Documentación
 

@@ -1,0 +1,35 @@
+# Factura A a un responsable inscripto, cargando el precio final: la app discrimina neto e IVA.
+appId: com.facturadorfacil.app.pruebas
+---
+- launchApp:
+    clearState: true
+- tapOn: Nueva factura
+- tapOn: Otro CUIT
+- tapOn: 20-12345678-6
+- inputText: '27333333339'
+- tapOn: Nombre o razón social.*
+- inputText: Cliente Inscripto
+- tapOn: Domicilio.*
+- inputText: Calle Falsa 123
+- tapOn: Usar este receptor
+- assertVisible: Factura A
+- tapOn: Precio final
+- tapOn: Descripción
+- inputText: Consultoria
+- tapOn: '0,00'
+- inputText: '1210'
+- scrollUntilVisible:
+    element: Revisar factura
+- tapOn: Revisar factura
+- assertVisible: 'CUIT 27-33333333-9 · IVA Responsable Inscripto'
+- assertVisible: '\$.1\.000,00'
+- assertVisible: 'IVA.21.%'
+- assertVisible: '\$.210,00'
+- scrollUntilVisible:
+    element: 'Emitir factura A por \$.1\.210,00'
+- tapOn: 'Emitir factura A por \$.1\.210,00'
+- extendedWaitUntil:
+    visible: Factura emitida
+    timeout: 30000
+- assertVisible: Factura A
+- assertVisible: 00001-00000001

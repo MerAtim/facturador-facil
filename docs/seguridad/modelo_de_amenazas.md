@@ -63,6 +63,7 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 | Se usa la clave privada con el teléfono bloqueado | iOS: `WhenUnlockedThisDeviceOnly`. Android 9 o posterior: `setUnlockedDeviceRequired`. Si la firma falla, no se envía nada a ARCA y se puede reintentar | Cumple |
 | Se carga un certificado ajeno o de otro ambiente | Se valida el emisor ARCA del ambiente, el CUIT, que corresponda a la clave del teléfono y la vigencia | Cumple |
 | Un servidor falso se hace pasar por ARCA | TLS validado por el sistema; nunca se desactiva. URLs fijas en el código | Cumple |
+| El ARCA simulado de las pruebas llega a un build publicado y da CAE falsos | Solo se incluye con una variable fijada al compilar; el CI comprueba en cada PR que el bundle publicado no lo tenga. Además solo atiende las direcciones de homologación | Cumple |
 | Alguien toma la cuenta de GitHub o Expo y publica un build | Segundo factor y custodia del keystore | Pendiente, #134 |
 
 ### Manipulación
