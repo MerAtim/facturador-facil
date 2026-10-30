@@ -191,8 +191,13 @@ jobs:
           xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit.enrollmentChanged
           # El driver de Maestro se instala antes de empezar con los avisos, para que no compitan.
           maestro --device "$simulador" hierarchy > /dev/null
+          # Un aviso que falla no corta el bucle; cada intento queda en un registro que va al reporte.
           while true; do
-            xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match
+            if xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match; then
+              echo "$(date +%T) aviso enviado" >> "$RUNNER_TEMP/face_id.log"
+            else
+              echo "$(date +%T) aviso falló" >> "$RUNNER_TEMP/face_id.log"
+            fi
             sleep 5
           done &
           # Un reintento, como en Android: una falla de la app falla las dos veces.
@@ -206,5 +211,6 @@ jobs:
           name: reporte-de-maestro-ios
           path: |
             ${{ runner.temp }}/maestro.xml
+            ${{ runner.temp }}/face_id.log
             ~/.maestro/tests
           retention-days: 7
