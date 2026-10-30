@@ -16,7 +16,8 @@ export default function LayoutRaiz() {
   useEffect(() => {
     preparacionDePrueba
       ?.catch((error: unknown) => {
-        registro.error('no se pudo preparar el emisor de prueba', error);
+        // Solo en el build de pruebas: el mensaje dice el paso y no lleva datos reales.
+        registro.error(error instanceof Error ? error.message : 'emisor de prueba', error);
       })
       .finally(() => {
         setPreparada(true);
