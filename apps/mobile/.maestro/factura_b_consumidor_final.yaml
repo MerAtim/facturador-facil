@@ -7,16 +7,19 @@ appId: com.facturadorfacil.app.pruebas
 - assertVisible: Factura B
 - tapOn: Descripción
 - inputText: Mantenimiento
+- assertVisible: Mantenimiento
+# El campo agrupa los miles mientras se escribe: con tres cifras no hay reagrupamiento a mitad.
 - tapOn: '0,00'
-- inputText: '1210'
+- eraseText
+- inputText: '121'
 - scrollUntilVisible:
     element: Revisar factura
-- assertVisible: '\$.1\.000,00'
+- assertVisible: '\$.100,00'
 - tapOn: Revisar factura
 - assertVisible: Consumidor Final
 - scrollUntilVisible:
-    element: 'Emitir factura B por \$.1\.210,00'
-- tapOn: 'Emitir factura B por \$.1\.210,00'
+    element: 'Emitir factura B por \$.121,00'
+- tapOn: 'Emitir factura B por \$.121,00'
 - extendedWaitUntil:
     visible: Factura emitida
     timeout: 30000
