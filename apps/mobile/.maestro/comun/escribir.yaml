@@ -1,0 +1,13 @@
+# Escribe en un campo aunque el teclado lo tape: lo trae a la vista, espera a que la pantalla quede
+# quieta y a que el teclado termine de abrirse, y recién entonces borra y escribe.
+appId: com.facturadorfacil.app.pruebas
+---
+- scrollUntilVisible:
+    element: ${CAMPO}
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn: ${CAMPO}
+- waitForAnimationToEnd
+- eraseText
+- inputText: ${TEXTO}
+- waitForAnimationToEnd
