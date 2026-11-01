@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { AppState, Platform, StyleSheet, View } from 'react-native';
 
 import { preferencias } from '../composicion';
 
@@ -62,6 +62,12 @@ export function ProveedorDeBloqueo({ children }: { readonly children: ReactNode 
   }, []);
 
   useEffect(() => {
+    // Solo el build de pruebas: el simulador de iOS pide un desbloqueo que una prueba no puede
+    // resolver. La condición se resuelve al compilar y no existe en los builds publicados.
+    if (process.env.EXPO_PUBLIC_DOBLE_DE_ARCA === 'si' && Platform.OS === 'ios') {
+      setEstado('desbloqueada');
+      return;
+    }
     void LocalAuthentication.getEnrolledLevelAsync().then((nivel) => {
       setEstado(nivel === LocalAuthentication.SecurityLevel.NONE ? 'sin_proteccion' : 'bloqueada');
     });

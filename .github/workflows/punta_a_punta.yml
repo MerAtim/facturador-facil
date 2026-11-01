@@ -174,9 +174,6 @@ jobs:
           echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
 
       - name: Correr los flujos
-        env:
-          # En el CI el driver de Maestro tarda en instalarse en el simulador: se le dan 4 minutos.
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: 240000
         run: |
           simulador=$(xcrun simctl list devices available --json | python3 -c '
           import json, sys
@@ -185,21 +182,6 @@ jobs:
           xcrun simctl boot "$simulador"
           xcrun simctl bootstatus "$simulador"
           xcrun simctl install "$simulador" "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app
-          # La app pide desbloquearse al abrir. Se registra una cara en el simulador y, mientras corren
-          # los flujos, se le avisa cada cinco segundos que la cara coincide: desbloquea como una persona.
-          xcrun simctl spawn "$simulador" notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
-          xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit.enrollmentChanged
-          # El driver de Maestro se instala antes de empezar con los avisos, para que no compitan.
-          maestro --device "$simulador" hierarchy > /dev/null
-          # Un aviso que falla no corta el bucle; cada intento queda en un registro que va al reporte.
-          while true; do
-            if xcrun simctl spawn "$simulador" notifyutil -p com.apple.BiometricKit_Sim.pearl.match; then
-              echo "$(date +%T) aviso enviado" >> "$RUNNER_TEMP/face_id.log"
-            else
-              echo "$(date +%T) aviso falló" >> "$RUNNER_TEMP/face_id.log"
-            fi
-            sleep 5
-          done &
           # Un reintento, como en Android: una falla de la app falla las dos veces.
           maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro \
             || maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
@@ -211,6 +193,5 @@ jobs:
           name: reporte-de-maestro-ios
           path: |
             ${{ runner.temp }}/maestro.xml
-            ${{ runner.temp }}/face_id.log
             ~/.maestro/tests
           retention-days: 7
