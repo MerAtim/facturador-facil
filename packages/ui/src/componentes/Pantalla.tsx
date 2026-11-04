@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { Keyboard, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
@@ -24,7 +31,7 @@ export function Pantalla({
   readonly conEncabezado?: boolean;
 }) {
   const { colores } = useTema();
-  const contenido = useRef<View>(null);
+  const contenido = useRef<ComponentRef<typeof View>>(null);
   const tapado = useAltoTapadoPorElTeclado(contenido);
   return (
     <SafeAreaView
@@ -39,7 +46,7 @@ export function Pantalla({
 }
 
 /** Cuánto del contenido queda debajo del teclado abierto, en puntos. */
-function useAltoTapadoPorElTeclado(contenido: RefObject<View | null>): number {
+function useAltoTapadoPorElTeclado(contenido: RefObject<ComponentRef<typeof View> | null>): number {
   const [alto, setAlto] = useState(0);
 
   useEffect(() => {
