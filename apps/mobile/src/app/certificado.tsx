@@ -140,7 +140,7 @@ export default function Certificado() {
       // El pedido no es secreto: tiene la clave pública y los datos del contribuyente.
       const archivo = new File(Paths.cache, nombreDelArchivoDePedido(datos));
       if (archivo.exists) archivo.delete();
-      archivo.write(pem);
+      await archivo.write(pem);
       await Sharing.shareAsync(archivo.uri, {
         mimeType: 'application/pkcs10',
         dialogTitle: 'Pedido de certificado',
