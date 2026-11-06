@@ -26,6 +26,8 @@ import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { AntesDeEmpezar } from '../alta/AntesDeEmpezar';
+import { AbrirElSitioDeArca } from '../alta/sitioDeArca';
 import { useAlta } from '../alta/useAlta';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { registro, registroDeAlta, verificarAltaDe } from '../composicion';
@@ -126,6 +128,8 @@ export default function Alta() {
   const { configuracion, progreso, alta } = guia;
   // Sin elegir, queda abierto el paso donde se retoma.
   const pasoAbierto = abierto === undefined ? alta.actual : abierto;
+  // Los datos de emisor no cuentan: todavía no se hizo nada en ARCA.
+  const sinEmpezar = alta.pasos.every(({ paso, hecho }) => paso === 'datos' || !hecho);
 
   const alternar = (paso: PasoDeAlta) => {
     setAbierto(pasoAbierto === paso ? null : paso);
@@ -221,8 +225,9 @@ export default function Alta() {
       case 'autorizacion':
         return (
           <>
-            <Texto variante="cuerpo">En el sitio de ARCA, desde la computadora:</Texto>
+            <Texto variante="cuerpo">En el sitio de ARCA:</Texto>
             <Recorrido paradas={AUTORIZACION[configuracion.ambiente]} />
+            <AbrirElSitioDeArca />
             <Texto variante="detalle">{AYUDA_DE_AUTORIZACION[configuracion.ambiente]}</Texto>
             <MarcaDePaso
               hecho={progreso.autorizacion}
@@ -239,6 +244,7 @@ export default function Alta() {
               facturar en el sitio de ARCA no sirve.
             </Texto>
             <Recorrido paradas={puntoDeVentaEnArca(puntoDeVenta, condicion)} />
+            <AbrirElSitioDeArca />
             <Texto variante="detalle">
               Si el {String(puntoDeVenta)} ya está ocupado, creá otro y cambiá el número en tus
               datos de emisor.
@@ -273,11 +279,24 @@ export default function Alta() {
           <Aviso icono="check-decagram-outline">
             Todo listo: ARCA confirmó que podés facturar desde la app.
           </Aviso>
+        ) : sinEmpezar ? (
+          <AntesDeEmpezar />
         ) : (
-          <Texto variante="cuerpo">
-            Una sola vez, para que ARCA te deje facturar desde la app. Podés dejarlo y seguir
-            después: la app recuerda en qué paso quedaste.
-          </Texto>
+          <>
+            <Texto variante="cuerpo">
+              Una sola vez, para que ARCA te deje facturar desde la app. Podés dejarlo y seguir
+              después: la app recuerda en qué paso quedaste.
+            </Texto>
+            <Boton
+              variante="texto"
+              icon="shield-check-outline"
+              onPress={() => {
+                router.push('/sobre-el-certificado');
+              }}
+            >
+              Qué puede hacer el certificado
+            </Boton>
+          </>
         )}
 
         {alta.pasos.map(({ paso, hecho }: EstadoDePaso, indice) => (

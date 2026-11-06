@@ -186,7 +186,7 @@ export default function Comprobantes() {
                 ? 'No hay comprobantes que coincidan.'
                 : 'Todavía no emitiste comprobantes desde este teléfono.'}
             </Texto>
-          ) : null
+          ) : undefined
         }
         ListFooterComponent={
           estado.paso === 'listo' && estado.lista.length === limite ? (
@@ -198,7 +198,7 @@ export default function Comprobantes() {
             >
               Mostrar más
             </Boton>
-          ) : null
+          ) : undefined
         }
       />
     </Pantalla>

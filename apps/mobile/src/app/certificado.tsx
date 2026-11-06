@@ -14,12 +14,13 @@ import { Aviso, Boton, Cargando, Pantalla, Tarjeta, Texto, useTema } from '@fact
 import * as Clipboard from 'expo-clipboard';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
 import { Linking, Platform, ScrollView, View } from 'react-native';
 
 import { AvisoDeVencimiento } from '../alta/AvisoDeVencimiento';
+import { AbrirElSitioDeArca } from '../alta/sitioDeArca';
 import { almacenDeClavesDelDispositivo } from '../arca/almacenDeClavesDelDispositivo';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
@@ -88,6 +89,7 @@ type Pedido =
 
 export default function Certificado() {
   const { espacio } = useTema();
+  const router = useRouter();
   const configuracion = useConfiguracion();
   const [pedido, setPedido] = useState<Pedido>({ paso: 'sin_clave' });
   const [copiado, setCopiado] = useState(false);
@@ -140,7 +142,7 @@ export default function Certificado() {
       // El pedido no es secreto: tiene la clave pública y los datos del contribuyente.
       const archivo = new File(Paths.cache, nombreDelArchivoDePedido(datos));
       if (archivo.exists) archivo.delete();
-      archivo.write(pem);
+      await archivo.write(pem);
       await Sharing.shareAsync(archivo.uri, {
         mimeType: 'application/pkcs10',
         dialogTitle: 'Pedido de certificado',
@@ -271,10 +273,21 @@ export default function Certificado() {
               {!renovar && botonesDeCarga(titular)}
             </Tarjeta>
           ) : (
-            <Texto variante="cuerpo">
-              Para facturar, ARCA te da un certificado a partir de un pedido que genera la app. La
-              clave del pedido se crea en este teléfono y nunca sale de él.
-            </Texto>
+            <>
+              <Texto variante="cuerpo">
+                Para facturar, ARCA te da un certificado a partir de un pedido que genera la app. La
+                clave del pedido se crea en este teléfono y nunca sale de él.
+              </Texto>
+              <Boton
+                variante="texto"
+                icon="shield-check-outline"
+                onPress={() => {
+                  router.push('/sobre-el-certificado');
+                }}
+              >
+                Qué puede hacer el certificado
+              </Boton>
+            </>
           )}
 
           {rechazo !== undefined && (
@@ -312,7 +325,9 @@ export default function Certificado() {
               <Texto variante="subtitulo">
                 {renovar ? 'Para renovarlo' : 'Tu pedido está listo'}
               </Texto>
-              <Texto variante="cuerpo">1. Mandá el pedido a tu computadora o guardalo.</Texto>
+              <Texto variante="cuerpo">
+                1. Guardá el pedido en el teléfono, o mandalo a donde vayas a entrar a ARCA.
+              </Texto>
               <Boton
                 variante="secundario"
                 icon="share-variant"
@@ -331,6 +346,7 @@ export default function Certificado() {
               <Texto variante="cuerpo">
                 2. {(renovar ? DONDE_RENOVARLO : DONDE_SUBIRLO)[titular.ambiente]}
               </Texto>
+              <AbrirElSitioDeArca />
               <Texto variante="cuerpo">3. {COMO_CARGARLO[titular.ambiente]}</Texto>
               {botonesDeCarga(titular)}
             </View>
