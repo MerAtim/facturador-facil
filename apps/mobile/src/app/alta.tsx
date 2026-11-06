@@ -1,16 +1,21 @@
-import type {
-  Ambiente,
-  Configuracion,
-  EstadoDePaso,
-  PasoDeAlta,
-  PasoEnArca,
+import {
+  tramoDelPaso,
+  tramosDeAlta,
+  type Ambiente,
+  type Configuracion,
+  type EstadoDeTramo,
+  type PasoDeAlta,
+  type PasoEnArca,
+  type TramoDeAlta,
 } from '@facturador/aplicacion';
 import {
   explicarVerificacion,
+  NOMBRE_DEL_CERTIFICADO,
   type EtapaDeVerificacion,
   type MensajeDeVerificacion,
+  type Titular,
 } from '@facturador/arca';
-import type { CondicionEmisor } from '@facturador/dominio';
+import { FechaCalendario, type CondicionEmisor } from '@facturador/dominio';
 import {
   Aviso,
   Boton,
@@ -22,30 +27,41 @@ import {
   useTema,
   type ParadaDelRecorrido,
 } from '@facturador/ui';
+import * as Clipboard from 'expo-clipboard';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AntesDeEmpezar } from '../alta/AntesDeEmpezar';
+import { BotonesDeCarga, useCargaDeCertificado } from '../alta/cargaDeCertificado';
+import {
+  GuardarElPedido,
+  PrepararElPedido,
+  usePedidoDeCertificado,
+} from '../alta/pedidoDeCertificado';
 import { AbrirElSitioDeArca } from '../alta/sitioDeArca';
 import { useAlta } from '../alta/useAlta';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { registro, registroDeAlta, verificarAltaDe } from '../composicion';
 
-const TITULOS: Readonly<Record<PasoDeAlta, string>> = {
+const TITULOS_DE_TRAMO: Readonly<Record<TramoDeAlta, string>> = {
   datos: 'Tus datos de emisor',
-  certificado: 'Certificado de ARCA',
-  autorizacion: 'Autorizar la factura electrónica',
-  punto_de_venta: 'Punto de venta web service',
+  arca: 'En el sitio de ARCA',
   verificacion: 'Verificar con ARCA',
 };
 
-const RESUMENES: Readonly<Record<PasoDeAlta, string>> = {
+const RESUMENES_DE_TRAMO: Readonly<Record<TramoDeAlta, string>> = {
   datos: 'Razón social, CUIT, condición y punto de venta.',
-  certificado: 'Identifica a la app ante ARCA. Su clave no sale del teléfono.',
-  autorizacion: 'Permite que el certificado facture con tu CUIT.',
-  punto_de_venta: 'El número con el que se emiten las facturas desde la app.',
+  arca: 'Una sola visita, con tu clave fiscal.',
   verificacion: 'Prueba todo junto, sin emitir nada.',
+};
+
+type PasoEnElSitio = Exclude<PasoDeAlta, 'datos' | 'verificacion'>;
+
+const TITULOS_EN_ARCA: Readonly<Record<PasoEnElSitio, string>> = {
+  punto_de_venta: 'Crear el punto de venta',
+  certificado: 'Pedir el certificado',
+  autorizacion: 'Autorizar la factura electrónica',
 };
 
 const ETAPAS: readonly EtapaDeVerificacion[] = ['conexion', 'acceso', 'punto_de_venta'];
@@ -57,43 +73,71 @@ const SISTEMA_DEL_PUNTO_DE_VENTA: Readonly<Record<CondicionEmisor, string>> = {
   exento: 'RECE para aplicativo y web services',
 };
 
-const AUTORIZACION: Readonly<Record<Ambiente, readonly ParadaDelRecorrido[]>> = {
-  homologacion: [
-    { texto: 'Entrá al sitio de ARCA con tu clave fiscal' },
-    { texto: 'WSASS - Autogestión Certificados Homologación' },
-    { texto: 'Crear autorización a servicio' },
-    { texto: 'Nombre simbólico del DN', valor: 'El que elegiste al crear el certificado' },
-    { texto: 'CUIT representada', valor: 'La tuya' },
-    { texto: 'Servicio', valor: 'wsfe - Facturación Electrónica' },
-    { texto: 'Crear autorización de acceso' },
-  ],
-  produccion: [
-    { texto: 'Entrá al sitio de ARCA con tu clave fiscal' },
-    { texto: 'Administrador de Relaciones de Clave Fiscal' },
-    { texto: 'Nueva Relación' },
-    { texto: 'Buscar', valor: 'ARCA › WebServices › Facturación Electrónica' },
-    { texto: 'Representante', valor: 'Computador fiscal: el alias de tu certificado' },
-    { texto: 'Confirmar' },
-  ],
+/** El alias que se sugiere es el mismo nombre que lleva el pedido, para no inventar otro. */
+const ALIAS = NOMBRE_DEL_CERTIFICADO;
+
+const pedirCertificado = (ambiente: Ambiente): ParadaDelRecorrido[] =>
+  ambiente === 'homologacion'
+    ? [
+        { texto: 'WSASS - Autogestión Certificados Homologación' },
+        { texto: 'Nuevo Certificado' },
+        { texto: 'Nombre simbólico del DN', valor: ALIAS, copiable: true },
+        { texto: 'Solicitud de certificado en formato PKCS#10', valor: 'Pegá el pedido copiado' },
+        { texto: 'Crear DN y obtener certificado' },
+      ]
+    : [
+        { texto: 'Administración de Certificados Digitales' },
+        { texto: 'Agregar alias' },
+        { texto: 'Alias', valor: ALIAS, copiable: true },
+        { texto: 'Archivo', valor: 'El pedido que guardaste' },
+        { texto: 'Agregar alias' },
+        { texto: 'Ver', valor: 'En la fila del alias' },
+        { texto: 'Descargar' },
+      ];
+
+const COMO_CARGARLO: Readonly<Record<Ambiente, string>> = {
+  homologacion:
+    'ARCA te muestra el certificado como texto: copialo entero, desde BEGIN CERTIFICATE hasta END CERTIFICATE, y pegalo acá.',
+  produccion: 'Volvé a la app y cargá el certificado que descargaste.',
 };
+
+const autorizar = (ambiente: Ambiente, cuit: string): ParadaDelRecorrido[] =>
+  ambiente === 'homologacion'
+    ? [
+        { texto: 'WSASS - Autogestión Certificados Homologación' },
+        { texto: 'Crear autorización a servicio' },
+        { texto: 'Nombre simbólico del DN', valor: ALIAS, copiable: true },
+        { texto: 'CUIT representada', valor: cuit, copiable: true },
+        { texto: 'Servicio', valor: 'wsfe - Facturación Electrónica' },
+        { texto: 'Crear autorización de acceso' },
+      ]
+    : [
+        { texto: 'Administrador de Relaciones de Clave Fiscal' },
+        { texto: 'Nueva Relación' },
+        { texto: 'Buscar', valor: 'ARCA › WebServices › Facturación Electrónica' },
+        { texto: 'Representante', valor: `Computador fiscal › ${ALIAS}` },
+        { texto: 'Confirmar' },
+      ];
 
 const AYUDA_DE_AUTORIZACION: Readonly<Record<Ambiente, string>> = {
   homologacion:
     'Si no ves WSASS entre tus servicios, adherilo desde el Administrador de Relaciones de Clave Fiscal.',
-  produccion:
-    'El alias es el nombre que le pusiste al certificado en Administración de Certificados Digitales.',
+  produccion: 'Si le pusiste otro alias al certificado, elegí ese.',
 };
 
-const puntoDeVentaEnArca = (numero: number, condicion: CondicionEmisor): ParadaDelRecorrido[] => [
-  { texto: 'Entrá al sitio de ARCA con tu clave fiscal' },
+const crearPuntoDeVenta = (numero: number, condicion: CondicionEmisor): ParadaDelRecorrido[] => [
   { texto: 'Administración de puntos de venta y domicilios' },
   { texto: 'A/B/M de Puntos de venta' },
   { texto: 'Agregar' },
-  { texto: 'Número', valor: String(numero) },
+  { texto: 'Número', valor: String(numero), copiable: true },
   { texto: 'Sistema', valor: SISTEMA_DEL_PUNTO_DE_VENTA[condicion] },
   { texto: 'Domicilio', valor: 'El de tu actividad' },
   { texto: 'Aceptar' },
 ];
+
+const copiar = (valor: string) => {
+  void Clipboard.setStringAsync(valor);
+};
 
 type Verificacion =
   | { readonly estado: 'sin_hacer' }
@@ -110,8 +154,17 @@ export default function Alta() {
   const router = useRouter();
   const { espacio } = useTema();
   const [guia, recargar] = useAlta();
-  const [abierto, setAbierto] = useState<PasoDeAlta | null>();
+  const [abierto, setAbierto] = useState<TramoDeAlta | null>();
   const [verificacion, setVerificacion] = useState<Verificacion>({ estado: 'sin_hacer' });
+
+  const configuracion = guia.estado === 'lista' ? guia.configuracion : undefined;
+  const titular: Titular | undefined = configuracion && {
+    ambiente: configuracion.ambiente,
+    cuit: configuracion.emisor.datos.cuit,
+    razonSocial: configuracion.emisor.datos.razonSocial,
+  };
+  const pedido = usePedidoDeCertificado(titular);
+  const carga = useCargaDeCertificado(titular, recargar);
 
   if (guia.estado === 'cargando') return <Pantalla conEncabezado>{null}</Pantalla>;
 
@@ -125,21 +178,21 @@ export default function Alta() {
     );
   }
 
-  const { configuracion, progreso, alta } = guia;
-  // Sin elegir, queda abierto el paso donde se retoma.
-  const pasoAbierto = abierto === undefined ? alta.actual : abierto;
+  const { alta, vigenteHasta } = guia;
+  const tramos = tramosDeAlta(alta);
+  const tramoActual = alta.actual && tramoDelPaso(alta.actual);
+  // Sin elegir, queda abierto el tramo donde se retoma.
+  const tramoAbierto = abierto === undefined ? tramoActual : abierto;
   // Los datos de emisor no cuentan: todavía no se hizo nada en ARCA.
   const sinEmpezar = alta.pasos.every(({ paso, hecho }) => paso === 'datos' || !hecho);
 
-  const alternar = (paso: PasoDeAlta) => {
-    setAbierto(pasoAbierto === paso ? null : paso);
+  const alternar = (tramo: TramoDeAlta) => {
+    setAbierto(tramoAbierto === tramo ? null : tramo);
   };
 
   const marcar = async (config: Configuracion, paso: PasoEnArca, hecho: boolean) => {
-    const titular = { ambiente: config.ambiente, cuit: config.emisor.datos.cuit };
-    await registroDeAlta.marcar(titular, paso, hecho);
-    // Al marcarlo, se pasa al siguiente.
-    setAbierto(undefined);
+    const titularDelAlta = { ambiente: config.ambiente, cuit: config.emisor.datos.cuit };
+    await registroDeAlta.marcar(titularDelAlta, paso, hecho);
     recargar();
   };
 
@@ -179,13 +232,87 @@ export default function Alta() {
   };
 
   const irAlPaso = (paso: PasoDeAlta) => {
-    if (paso === 'certificado') router.push('/certificado');
-    else if (paso === 'datos') router.push('/configuracion');
-    else setAbierto(paso);
+    if (paso === 'datos') router.push('/configuracion');
+    else setAbierto(tramoDelPaso(paso));
   };
 
-  const contenido = (paso: PasoDeAlta, hecho: boolean) => {
-    if (paso === 'datos') {
+  const enElSitio = (config: Configuracion, paso: PasoEnElSitio, hecho: boolean) => {
+    switch (paso) {
+      case 'punto_de_venta': {
+        const { puntoDeVenta, condicion } = config.emisor.datos;
+        if (hecho) {
+          return (
+            <MarcaDePaso hecho onMarcar={(valor) => void marcar(config, 'punto_de_venta', valor)} />
+          );
+        }
+        return (
+          <>
+            <Texto variante="cuerpo">
+              Tiene que ser nuevo, solo para la app: el que usás para facturar en el sitio de ARCA
+              no sirve.
+            </Texto>
+            <Recorrido paradas={crearPuntoDeVenta(puntoDeVenta, condicion)} onCopiar={copiar} />
+            <Texto variante="detalle">
+              Si el {String(puntoDeVenta)} ya está ocupado, creá otro y cambiá el número en tus
+              datos de emisor.
+            </Texto>
+            <MarcaDePaso
+              hecho={false}
+              onMarcar={(valor) => void marcar(config, 'punto_de_venta', valor)}
+            />
+          </>
+        );
+      }
+      case 'certificado':
+        if (hecho && vigenteHasta) {
+          return (
+            <>
+              <Texto variante="cuerpo">
+                Cargado. Vence el {FechaCalendario.enArgentina(vigenteHasta).formatear()}.
+              </Texto>
+              <Boton
+                variante="texto"
+                icon="file-certificate-outline"
+                onPress={() => {
+                  router.push('/certificado');
+                }}
+              >
+                Ver el certificado
+              </Boton>
+            </>
+          );
+        }
+        return (
+          <>
+            <Recorrido paradas={pedirCertificado(config.ambiente)} onCopiar={copiar} />
+            <Texto variante="cuerpo">{COMO_CARGARLO[config.ambiente]}</Texto>
+            <BotonesDeCarga carga={carga} ambiente={config.ambiente} hayCertificado={false} />
+          </>
+        );
+      case 'autorizacion':
+        if (hecho) {
+          return (
+            <MarcaDePaso hecho onMarcar={(valor) => void marcar(config, 'autorizacion', valor)} />
+          );
+        }
+        return (
+          <>
+            <Recorrido
+              paradas={autorizar(config.ambiente, config.emisor.datos.cuit.valor)}
+              onCopiar={copiar}
+            />
+            <Texto variante="detalle">{AYUDA_DE_AUTORIZACION[config.ambiente]}</Texto>
+            <MarcaDePaso
+              hecho={false}
+              onMarcar={(valor) => void marcar(config, 'autorizacion', valor)}
+            />
+          </>
+        );
+    }
+  };
+
+  const contenido = ({ tramo, pasos, hecho }: EstadoDeTramo) => {
+    if (tramo === 'datos') {
       return (
         <>
           <Texto variante="cuerpo">Cargalos tal como figuran en ARCA.</Texto>
@@ -203,70 +330,46 @@ export default function Alta() {
     }
     if (!configuracion) return <Texto variante="cuerpo">Primero cargá tus datos de emisor.</Texto>;
 
-    switch (paso) {
-      case 'certificado':
-        return (
-          <>
-            <Texto variante="cuerpo">
-              La app genera un pedido, lo subís a ARCA y cargás el certificado que te da. En la
-              pantalla del certificado están los pasos.
-            </Texto>
-            <Boton
-              variante={hecho ? 'secundario' : 'principal'}
-              icon="file-certificate-outline"
-              onPress={() => {
-                router.push('/certificado');
-              }}
-            >
-              {hecho ? 'Ver el certificado' : 'Ir al certificado'}
-            </Boton>
-          </>
-        );
-      case 'autorizacion':
-        return (
-          <>
-            <Texto variante="cuerpo">En el sitio de ARCA:</Texto>
-            <Recorrido paradas={AUTORIZACION[configuracion.ambiente]} />
-            <AbrirElSitioDeArca />
-            <Texto variante="detalle">{AYUDA_DE_AUTORIZACION[configuracion.ambiente]}</Texto>
-            <MarcaDePaso
-              hecho={progreso.autorizacion}
-              onMarcar={(valor) => void marcar(configuracion, 'autorizacion', valor)}
-            />
-          </>
-        );
-      case 'punto_de_venta': {
-        const { puntoDeVenta, condicion } = configuracion.emisor.datos;
-        return (
-          <>
-            <Texto variante="cuerpo">
-              Tiene que ser un punto de venta nuevo, solo para web service: uno que usás para
-              facturar en el sitio de ARCA no sirve.
-            </Texto>
-            <Recorrido paradas={puntoDeVentaEnArca(puntoDeVenta, condicion)} />
-            <AbrirElSitioDeArca />
-            <Texto variante="detalle">
-              Si el {String(puntoDeVenta)} ya está ocupado, creá otro y cambiá el número en tus
-              datos de emisor.
-            </Texto>
-            <MarcaDePaso
-              hecho={progreso.puntoDeVenta}
-              onMarcar={(valor) => void marcar(configuracion, 'punto_de_venta', valor)}
-            />
-          </>
-        );
-      }
-      case 'verificacion':
-        return (
-          <Verificar
-            configuracion={configuracion}
-            verificacion={verificacion}
-            hecho={hecho}
-            onVerificar={() => void verificar(configuracion)}
-            onIrAlPaso={irAlPaso}
-          />
-        );
+    if (tramo === 'verificacion') {
+      return (
+        <Verificar
+          configuracion={configuracion}
+          verificacion={verificacion}
+          hecho={hecho}
+          onVerificar={() => void verificar(configuracion)}
+          onIrAlPaso={irAlPaso}
+        />
+      );
     }
+
+    const enArca = pasos.flatMap(({ paso, hecho: listo }) =>
+      paso === 'datos' || paso === 'verificacion' ? [] : [{ paso, listo }],
+    );
+    return (
+      <>
+        {vigenteHasta === undefined && (
+          <>
+            <Texto variante="cuerpo">
+              Entrás una vez y hacés todo seguido. Antes, prepará el pedido del certificado y
+              guardalo en el teléfono: lo vas a subir a ARCA.
+            </Texto>
+            <PrepararElPedido pedido={pedido} />
+            <GuardarElPedido pedido={pedido} />
+          </>
+        )}
+        <AbrirElSitioDeArca />
+        {enArca.map(({ paso, listo }, indice) => (
+          <ParteDeLaVisita
+            key={paso}
+            letra={LETRAS[indice] ?? ''}
+            titulo={TITULOS_EN_ARCA[paso]}
+            hecho={listo}
+          >
+            {enElSitio(configuracion, paso, listo)}
+          </ParteDeLaVisita>
+        ))}
+      </>
+    );
   };
 
   return (
@@ -299,20 +402,20 @@ export default function Alta() {
           </>
         )}
 
-        {alta.pasos.map(({ paso, hecho }: EstadoDePaso, indice) => (
+        {tramos.map((estado, indice) => (
           <PasoDeGuia
-            key={paso}
+            key={estado.tramo}
             numero={indice + 1}
-            titulo={TITULOS[paso]}
-            resumen={RESUMENES[paso]}
-            hecho={hecho}
-            actual={paso === alta.actual}
-            abierto={paso === pasoAbierto}
+            titulo={TITULOS_DE_TRAMO[estado.tramo]}
+            resumen={RESUMENES_DE_TRAMO[estado.tramo]}
+            hecho={estado.hecho}
+            actual={estado.tramo === tramoActual}
+            abierto={estado.tramo === tramoAbierto}
             onAlternar={() => {
-              alternar(paso);
+              alternar(estado.tramo);
             }}
           >
-            {contenido(paso, hecho)}
+            {contenido(estado)}
           </PasoDeGuia>
         ))}
 
@@ -328,6 +431,42 @@ export default function Alta() {
         )}
       </ScrollView>
     </Pantalla>
+  );
+}
+
+const LETRAS = ['a', 'b', 'c'] as const;
+
+/** Una de las cosas que se hacen en la visita a ARCA, con su estado a la vista. */
+function ParteDeLaVisita({
+  letra,
+  titulo,
+  hecho,
+  children,
+}: {
+  readonly letra: string;
+  readonly titulo: string;
+  readonly hecho: boolean;
+  readonly children: ReactNode;
+}) {
+  const { colores, espacio } = useTema();
+  return (
+    <View style={{ gap: espacio.medio, paddingTop: espacio.chico }}>
+      <View
+        style={[estilos.etapa, { gap: espacio.chico }]}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={`${letra}. ${titulo}. ${hecho ? 'Hecho' : 'Pendiente'}.`}
+      >
+        <Icono
+          nombre={hecho ? 'check-circle' : 'circle-outline'}
+          color={hecho ? colores.primary : colores.outline}
+        />
+        <Texto variante="subtitulo">
+          {letra}. {titulo}
+        </Texto>
+      </View>
+      {children}
+    </View>
   );
 }
 
