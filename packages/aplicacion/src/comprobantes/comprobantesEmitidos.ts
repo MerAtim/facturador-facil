@@ -11,6 +11,7 @@ import {
 import type { Ambiente } from '../configuracion/configuracion';
 import type { BaseDeDatos, FilaSql, ValorSql } from '../puertos/baseDeDatos';
 import { interpretarBusqueda } from './busquedaDeComprobantes';
+import { totalesDelPeriodo, type TotalesDelPeriodo } from './totalesDelPeriodo';
 import { aTextoGuardado, desdeTextoGuardado } from './formatoGuardado';
 
 /** Un comprobante que ARCA autorizó, con lo necesario para mostrarlo o rehacer su PDF. */
@@ -56,6 +57,8 @@ export interface RepositorioDeComprobantes {
   guardar(emitido: ComprobanteEmitido): Promise<void>;
   /** Los más recientes primero. */
   listar(filtro: FiltroDeComprobantes): Promise<readonly ComprobanteEmitido[]>;
+  /** Lo facturado con ese período y clase, de todos los comprobantes, sin el tope de la lista. */
+  totales(filtro: Omit<FiltroDeComprobantes, 'limite' | 'busqueda'>): Promise<TotalesDelPeriodo>;
   leer(clave: ClaveDeComprobante): Promise<ComprobanteEmitido | undefined>;
   /** Las notas de crédito que ajustan esa factura, de la más vieja a la más nueva. */
   notasDeCreditoDe(factura: ClaveDeComprobante): Promise<readonly ComprobanteEmitido[]>;
@@ -161,6 +164,13 @@ export function crearRepositorioDeComprobantes(
     async listar(filtro) {
       const { ambiente, emisor } = filtro;
       return rearmar(await base.consultar(LISTAR, parametrosDeListar(filtro)), ambiente, emisor);
+    },
+
+    async totales(filtro) {
+      const { ambiente, emisor } = filtro;
+      // En SQLite, un límite negativo es sin límite.
+      const filas = await base.consultar(LISTAR, parametrosDeListar({ ...filtro, limite: -1 }));
+      return totalesDelPeriodo(rearmar(filas, ambiente, emisor));
     },
 
     async leer({ ambiente, emisor, tipo, puntoDeVenta, numero }) {

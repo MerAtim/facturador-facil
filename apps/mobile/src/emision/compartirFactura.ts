@@ -1,3 +1,4 @@
+import { conLimiteDeTiempo } from '@facturador/aplicacion';
 import {
   htmlDelComprobante,
   nombreDelArchivo,
@@ -13,6 +14,12 @@ import { leerLogo } from '../logo/logoDelEmisor';
 const compartidos = new Directory(Paths.cache, 'compartidos');
 
 /**
+ * Un PDF tarda uno o dos segundos. Si el motor web que lo arma se cierra, la promesa no termina
+ * nunca y el botón quedaba cargando para siempre: pasado el plazo se avisa que no salió.
+ */
+const PLAZO_PARA_ARMAR_EL_PDF_MS = 30_000;
+
+/**
  * Convierte el comprobante en PDF y abre la hoja de compartir del sistema con el mensaje para el
  * cliente. El PDF queda en la caché de la app.
  */
@@ -22,9 +29,13 @@ export async function compartirFactura(
 ): Promise<void> {
   // Sin logo, o si no se puede leer, la factura sale igual.
   const logo = await leerLogo().catch(() => undefined);
-  const { uri } = await Print.printToFileAsync({
-    html: htmlDelComprobante(logo === undefined ? documento : { ...documento, logo }),
-  });
+  const { uri } = await conLimiteDeTiempo(
+    Print.printToFileAsync({
+      html: htmlDelComprobante(logo === undefined ? documento : { ...documento, logo }),
+    }),
+    PLAZO_PARA_ARMAR_EL_PDF_MS,
+    'armar el PDF',
+  );
 
   compartidos.create({ intermediates: true, idempotent: true });
   const destino = new File(

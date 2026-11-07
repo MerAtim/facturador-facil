@@ -95,5 +95,6 @@ const estilos = StyleSheet.create({
     paddingVertical: espacio.chico,
   },
   cuerpoDeTexto: { paddingHorizontal: espacio.medio },
-  etiqueta: { flexShrink: 1, textAlign: 'center' },
+  // Android mide mal el ancho con espaciado entre letras y a veces manda la última palabra abajo.
+  etiqueta: { flexShrink: 1, textAlign: 'center', letterSpacing: 0 },
 });
