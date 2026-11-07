@@ -5,8 +5,9 @@ appId: com.facturadorfacil.app.pruebas
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube a ver el tipo.
+# En iOS el tipo y su explicación se leen juntos: 'Factura B, El IVA…'.
 - scrollUntilVisible:
-    element: Factura B
+    element: 'Factura B.*'
     direction: UP
 - waitForAnimationToEnd
 - runFlow:
