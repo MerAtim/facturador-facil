@@ -1,4 +1,6 @@
 import {
+  mensajeParaElContador,
+  SISTEMA_DEL_PUNTO_DE_VENTA,
   tramoDelPaso,
   tramosDeAlta,
   type Ambiente,
@@ -30,7 +32,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useRouter } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, View } from 'react-native';
 
 import { AntesDeEmpezar } from '../alta/AntesDeEmpezar';
 import { BotonesDeCarga, useCargaDeCertificado } from '../alta/cargaDeCertificado';
@@ -65,13 +67,6 @@ const TITULOS_EN_ARCA: Readonly<Record<PasoEnElSitio, string>> = {
 };
 
 const ETAPAS: readonly EtapaDeVerificacion[] = ['conexion', 'acceso', 'punto_de_venta'];
-
-/** En ARCA el sistema del punto de venta depende de la condición frente al IVA. */
-const SISTEMA_DEL_PUNTO_DE_VENTA: Readonly<Record<CondicionEmisor, string>> = {
-  monotributo: 'Factura Electrónica - Monotributo - Web Services',
-  responsable_inscripto: 'RECE para aplicativo y web services',
-  exento: 'RECE para aplicativo y web services',
-};
 
 /** El alias que se sugiere es el mismo nombre que lleva el pedido, para no inventar otro. */
 const ALIAS = NOMBRE_DEL_CERTIFICADO;
@@ -358,6 +353,7 @@ export default function Alta() {
           </>
         )}
         <AbrirElSitioDeArca />
+        {vigenteHasta === undefined && <QueLoHagaTuContador configuracion={configuracion} />}
         {enArca.map(({ paso, listo }, indice) => (
           <ParteDeLaVisita
             key={paso}
@@ -435,6 +431,53 @@ export default function Alta() {
 }
 
 const LETRAS = ['a', 'b', 'c'] as const;
+
+/**
+ * Quien ya administra la clave fiscal puede hacer la visita a ARCA: recibe los pasos en un mensaje
+ * y el pedido aparte, y devuelve el certificado. La clave sigue sin salir del teléfono.
+ */
+function QueLoHagaTuContador({ configuracion }: { readonly configuracion: Configuracion }) {
+  const { espacio } = useTema();
+  const [noSeCompartio, setNoSeCompartio] = useState(false);
+
+  const mandar = async () => {
+    setNoSeCompartio(false);
+    const { ambiente, emisor } = configuracion;
+    const { razonSocial, cuit, condicion, puntoDeVenta } = emisor.datos;
+    try {
+      await Share.share({
+        message: mensajeParaElContador({
+          ambiente,
+          razonSocial,
+          cuit,
+          condicion,
+          puntoDeVenta,
+          alias: ALIAS,
+        }),
+      });
+    } catch (error) {
+      registro.error('no se pudieron compartir los pasos para el contador', error);
+      setNoSeCompartio(true);
+    }
+  };
+
+  return (
+    <View style={{ gap: espacio.chico }}>
+      <Boton variante="texto" icon="account-tie-outline" onPress={() => void mandar()}>
+        Que lo haga tu contador
+      </Boton>
+      <Texto variante="detalle">
+        Le mandás los pasos en un mensaje y, aparte, el pedido. Cuando te devuelva el certificado,
+        lo cargás en el paso b.
+      </Texto>
+      {noSeCompartio && (
+        <Aviso icono="alert-circle-outline" tono="error">
+          No se pudieron compartir los pasos. Probá de nuevo.
+        </Aviso>
+      )}
+    </View>
+  );
+}
 
 /** Una de las cosas que se hacen en la visita a ARCA, con su estado a la vista. */
 function ParteDeLaVisita({
