@@ -21,3 +21,4 @@ export * from './alta/mensajeParaElContador';
 export * from './alta/vencimientoDelCertificado';
 export * from './respaldo/respaldo';
 export * from './version/versionMinima';
+export * from './tiempo/limiteDeTiempo';
