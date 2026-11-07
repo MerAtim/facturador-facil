@@ -1,0 +1,15 @@
+# Abre la app sin datos. En iOS, borrar el estado reinstala la app y tira abajo el driver de
+# Maestro (mobile-dev-inc/Maestro#3368): ahí el CI reinstala la app antes de cada flujo.
+appId: com.facturadorfacil.app.pruebas
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - launchApp:
+          clearState: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - launchApp
