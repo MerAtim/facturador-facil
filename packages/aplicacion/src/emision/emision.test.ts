@@ -19,6 +19,7 @@ import {
   crearRepositorioDeComprobantes,
   type RepositorioDeComprobantes,
 } from '../comprobantes/comprobantesEmitidos';
+import { totalesDelPeriodo } from '../comprobantes/totalesDelPeriodo';
 import { crearBaseSqliteDePrueba } from '../persistencia/baseSqliteDePrueba';
 import { migrar } from '../persistencia/migraciones';
 import type { Registro } from '../registro/registro';
@@ -160,6 +161,7 @@ describe('crearEmision', () => {
     const roto: RepositorioDeComprobantes = {
       guardar: () => Promise.reject(new Error('base bloqueada')),
       listar: () => Promise.resolve([]),
+      totales: () => Promise.resolve(totalesDelPeriodo([])),
       leer: () => Promise.resolve(undefined),
       notasDeCreditoDe: () => Promise.resolve([]),
       todosDelEmisor: () => Promise.resolve([]),

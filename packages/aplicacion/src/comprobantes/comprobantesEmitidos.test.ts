@@ -476,6 +476,17 @@ describe('RepositorioDeComprobantes', () => {
       expect(await numeros({ clase: 'C' })).toEqual([]);
     });
 
+    it('totaliza el período y la clase, sin el tope de la lista', async () => {
+      const totales = (filtro: Partial<FiltroDeComprobantes> = {}) =>
+        repositorio.totales({ ambiente: 'homologacion', emisor, ...filtro });
+
+      expect(await totales()).toMatchObject({ cantidad: 3, totalEnCentavos: 3 * 352_625 });
+      expect(
+        await totales({ clase: 'B', desde: fecha(2026, 10, 1), hasta: fecha(2026, 10, 31) }),
+      ).toMatchObject({ cantidad: 2, totalEnCentavos: 2 * 352_625 });
+      expect(await totales({ clase: 'C' })).toMatchObject({ cantidad: 0, totalEnCentavos: 0 });
+    });
+
     it('combina búsqueda y filtros', async () => {
       expect(
         await numeros({ busqueda: '3.526,25', clase: 'B', desde: fecha(2026, 10, 10) }),
