@@ -12,7 +12,9 @@ export function CampoDeFecha({
   texto,
   valor,
   onCambiar,
+  minima,
   maxima,
+  pista,
   error,
 }: {
   readonly etiqueta: string;
@@ -20,11 +22,17 @@ export function CampoDeFecha({
   /** La fecha que muestra el calendario al abrirse. */
   readonly valor: Date;
   readonly onCambiar: (fecha: Date) => void;
+  readonly minima?: Date;
   readonly maxima?: Date;
+  /** Lo que el lector de pantalla agrega después de la fecha, como el rango permitido. */
+  readonly pista?: string;
   readonly error?: string | undefined;
 }) {
   const [abiertoEnIos, setAbiertoEnIos] = useState(false);
-  const limite = maxima ? { maximumDate: maxima } : {};
+  const limite = {
+    ...(minima && { minimumDate: minima }),
+    ...(maxima && { maximumDate: maxima }),
+  };
 
   const abrir = () => {
     if (Platform.OS !== 'android') {
@@ -47,6 +55,7 @@ export function CampoDeFecha({
         onPress={abrir}
         accessibilityRole="button"
         accessibilityLabel={`${etiqueta}: ${texto}`}
+        {...(pista !== undefined && { accessibilityHint: pista })}
       >
         {/* Se ve como los demás campos, pero el toque y la lectura los recibe el contenedor. */}
         <View

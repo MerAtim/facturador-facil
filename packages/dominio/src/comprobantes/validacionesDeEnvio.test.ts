@@ -13,7 +13,11 @@ import { AlicuotaIva } from '../iva/alicuotaIva';
 import { Comprobante, type DatosComprobante } from './comprobante';
 import { CondicionIvaReceptor } from './condicionIvaReceptor';
 import { TipoComprobante } from './tipoComprobante';
-import { validarParaEnvio, type ContextoDeEnvio } from './validacionesDeEnvio';
+import {
+  diasPermitidosParaLaFecha,
+  validarParaEnvio,
+  type ContextoDeEnvio,
+} from './validacionesDeEnvio';
 
 const valor = <T>(resultado: { ok: true; valor: T } | { ok: false }): T => {
   if (!resultado.ok) throw new Error('Dato de prueba inválido');
@@ -93,6 +97,34 @@ describe('validarParaEnvio', () => {
 
       expect(validarParaEnvio(comprobante(datos), contexto)).toEqual(problemas);
     });
+  });
+
+  describe('orden de las fechas', () => {
+    const conUltima = (dias: number): ContextoDeEnvio => ({
+      ...contexto,
+      ultimaFecha: hoy.sumarDias(dias),
+    });
+
+    it('rechaza una fecha anterior a la del último comprobante', () => {
+      const datos = { fechaDeEmision: hoy.sumarDias(-3) };
+
+      expect(validarParaEnvio(comprobante(datos), conUltima(-2))).toEqual([
+        'fecha_anterior_al_ultimo_comprobante',
+      ]);
+    });
+
+    it('acepta la misma fecha del último comprobante o una posterior', () => {
+      const datos = { fechaDeEmision: hoy.sumarDias(-2) };
+
+      expect(validarParaEnvio(comprobante(datos), conUltima(-2))).toEqual([]);
+      expect(validarParaEnvio(comprobante(), conUltima(-2))).toEqual([]);
+    });
+  });
+
+  it('el margen de días depende de si incluye servicios', () => {
+    expect(diasPermitidosParaLaFecha('productos')).toBe(5);
+    expect(diasPermitidosParaLaFecha('servicios')).toBe(10);
+    expect(diasPermitidosParaLaFecha('productos_y_servicios')).toBe(10);
   });
 
   describe('identificación del receptor', () => {
