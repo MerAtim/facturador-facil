@@ -4,6 +4,7 @@ appId: com.facturadorfacil.app.pruebas
 - runFlow: comun/abrir.yaml
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
+- runFlow: comun/cerrar_teclado.yaml
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube a ver el tipo.
 # En iOS el tipo y su explicación se leen juntos: 'Factura B, El IVA…'.
 - scrollUntilVisible:
@@ -27,7 +28,8 @@ appId: com.facturadorfacil.app.pruebas
 # En iOS cada línea del resumen se lee con su etiqueta: 'Neto, $ 100,00'.
 - assertVisible: '.*\$.100,00'
 - tapOn: Revisar factura
-- assertVisible: Consumidor Final
+# En iOS el receptor se lee junto con sus datos.
+- assertVisible: '.*Consumidor Final.*'
 - scrollUntilVisible:
     element: 'Emitir factura B por \$.121,00'
 - waitForAnimationToEnd

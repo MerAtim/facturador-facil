@@ -1,0 +1,11 @@
+# En iOS el teclado numérico no tiene botón para cerrarlo: abierto, tapa los botones y un toque cae
+# en una tecla. En Android la pantalla se acomoda sola y no hace falta.
+appId: com.facturadorfacil.app.pruebas
+---
+- runFlow:
+    when:
+      platform: iOS
+    optional: true
+    commands:
+      - hideKeyboard
+      - waitForAnimationToEnd

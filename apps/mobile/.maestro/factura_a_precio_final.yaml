@@ -5,6 +5,7 @@ appId: com.facturadorfacil.app.pruebas
 - runFlow: comun/abrir.yaml
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
+- runFlow: comun/cerrar_teclado.yaml
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube al receptor.
 # En pantallas angostas la ficha queda cortada al final de su fila, que se desliza de costado.
 - scrollUntilVisible:
