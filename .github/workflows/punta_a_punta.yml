@@ -181,10 +181,22 @@ jobs:
           print(next(d["udid"] for v in dispositivos.values() for d in v if d["name"].startswith("iPhone")))')
           xcrun simctl boot "$simulador"
           xcrun simctl bootstatus "$simulador"
-          xcrun simctl install "$simulador" "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app
-          # Un reintento, como en Android: una falla de la app falla las dos veces.
-          maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro \
-            || maestro --device "$simulador" test --format junit --output "$RUNNER_TEMP/maestro.xml" apps/mobile/.maestro
+          app=$(ls -d "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app)
+          # Cada flujo arranca con la app recién instalada y el Keychain vacío, en su propia corrida de
+          # Maestro: borrar el estado desde un flujo tira abajo su driver (mobile-dev-inc/Maestro#3368).
+          correr() {
+            xcrun simctl uninstall "$simulador" com.facturadorfacil.app.pruebas || true
+            xcrun simctl keychain "$simulador" reset
+            xcrun simctl install "$simulador" "$app"
+            maestro --device "$simulador" test --format junit \
+              --output "$RUNNER_TEMP/maestro-$(basename "$1" .yaml).xml" "$1"
+          }
+          fallidos=0
+          for flujo in apps/mobile/.maestro/*.yaml; do
+            # Un reintento, como en Android: una falla de la app falla las dos veces.
+            correr "$flujo" || correr "$flujo" || fallidos=$((fallidos + 1))
+          done
+          test "$fallidos" -eq 0
 
       - name: Guardar el reporte
         if: failure()
@@ -192,6 +204,6 @@ jobs:
         with:
           name: reporte-de-maestro-ios
           path: |
-            ${{ runner.temp }}/maestro.xml
+            ${{ runner.temp }}/maestro*.xml
             ~/.maestro/tests
           retention-days: 7

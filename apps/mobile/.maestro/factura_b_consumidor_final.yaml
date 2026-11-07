@@ -1,8 +1,7 @@
 # Factura B a consumidor final, contra el arca simulado del build de pruebas.
 appId: com.facturadorfacil.app.pruebas
 ---
-- launchApp:
-    clearState: true
+- runFlow: comun/abrir.yaml
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube a ver el tipo.

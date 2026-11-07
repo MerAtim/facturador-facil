@@ -2,8 +2,7 @@
 # discrimina neto e IVA.
 appId: com.facturadorfacil.app.pruebas
 ---
-- launchApp:
-    clearState: true
+- runFlow: comun/abrir.yaml
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube al receptor.
