@@ -56,6 +56,25 @@ describe('prepararFactura', () => {
     expect(comprobante.datos.identificacionReceptor.tipo).toBe('sin_identificar');
   });
 
+  it('usa la fecha elegida en lugar de la de hoy', () => {
+    const ayer = hoy.sumarDias(-1);
+    const comprobante = valor(
+      prepararFactura({ ...facturaB([item('100')]), fechaDeEmision: ayer }),
+    );
+
+    expect(comprobante.datos.fechaDeEmision).toBe(ayer);
+  });
+
+  it('no deja una fecha anterior a la del último comprobante', () => {
+    expect(
+      problemas({
+        ...facturaB([item('100')]),
+        fechaDeEmision: hoy.sumarDias(-2),
+        ultimaFecha: hoy.sumarDias(-1),
+      }),
+    ).toEqual([{ tipo: 'envio', problema: 'fecha_anterior_al_ultimo_comprobante' }]);
+  });
+
   it('informa los problemas de todos los ítems juntos', () => {
     expect(problemas(facturaB([item('100', '  '), item('', 'Flete', '0')]))).toEqual([
       { tipo: 'item_sin_descripcion', item: 1 },

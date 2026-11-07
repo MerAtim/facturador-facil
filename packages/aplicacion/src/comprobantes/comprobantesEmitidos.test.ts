@@ -487,6 +487,27 @@ describe('RepositorioDeComprobantes', () => {
       expect(await totales({ clase: 'C' })).toMatchObject({ cantidad: 0, totalEnCentavos: 0 });
     });
 
+    it('da la fecha del último comprobante de cada tipo y punto de venta', async () => {
+      const serie = { ambiente: 'homologacion' as const, emisor, puntoDeVenta: 3 };
+
+      expect(
+        (await repositorio.ultimaFecha({ ...serie, tipo: TipoComprobante.FACTURA_B }))?.formatear(),
+      ).toBe('20/10/2026');
+      expect(
+        (await repositorio.ultimaFecha({ ...serie, tipo: TipoComprobante.FACTURA_A }))?.formatear(),
+      ).toBe('15/09/2026');
+      expect(
+        await repositorio.ultimaFecha({ ...serie, tipo: TipoComprobante.NOTA_DE_CREDITO_B }),
+      ).toBeUndefined();
+      expect(
+        await repositorio.ultimaFecha({
+          ...serie,
+          puntoDeVenta: 4,
+          tipo: TipoComprobante.FACTURA_B,
+        }),
+      ).toBeUndefined();
+    });
+
     it('combina búsqueda y filtros', async () => {
       expect(
         await numeros({ busqueda: '3.526,25', clase: 'B', desde: fecha(2026, 10, 10) }),

@@ -163,6 +163,7 @@ describe('crearEmision', () => {
       listar: () => Promise.resolve([]),
       totales: () => Promise.resolve(totalesDelPeriodo([])),
       leer: () => Promise.resolve(undefined),
+      ultimaFecha: () => Promise.resolve(undefined),
       notasDeCreditoDe: () => Promise.resolve([]),
       todosDelEmisor: () => Promise.resolve([]),
     };
