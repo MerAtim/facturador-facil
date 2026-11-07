@@ -36,3 +36,9 @@ appId: com.facturadorfacil.app.pruebas
     timeout: 30000
 - assertVisible: 00001-00000001
 - assertVisible: CAE
+# La lista de comprobantes suma lo facturado en el período.
+- scrollUntilVisible:
+    element: Volver al inicio
+- tapOn: Volver al inicio
+- tapOn: Comprobantes
+- assertVisible: '.*facturaste \$.121,00 en 1 comprobante\. Neto \$.100,00 · IVA \$.21,00\.'

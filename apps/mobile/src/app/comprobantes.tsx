@@ -1,4 +1,8 @@
-import type { ComprobanteEmitido } from '@facturador/aplicacion';
+import {
+  formatearConSigno,
+  type ComprobanteEmitido,
+  type TotalesDelPeriodo,
+} from '@facturador/aplicacion';
 import { clasesQuePuedeEmitir, FechaCalendario, type ClaseComprobante } from '@facturador/dominio';
 import {
   Aviso,
@@ -6,13 +10,14 @@ import {
   CampoDeTexto,
   Fichas,
   Pantalla,
+  Tarjeta,
   TarjetaDeComprobante,
   Texto,
   useTema,
 } from '@facturador/ui';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import { comprobantesEmitidos, registro } from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
@@ -116,7 +121,42 @@ export default function Comprobantes() {
     };
   }, [configurada, busqueda, periodo, clase, limite]);
 
-  const filtrando = busqueda.trim() !== '' || periodo !== 'todo' || clase !== 'todas';
+  // Los totales no dependen de la búsqueda ni del tope de la lista: son del período y la clase.
+  const [totales, setTotales] = useState<TotalesDelPeriodo>();
+  useEffect(() => {
+    if (!configurada) return;
+    let vigente = true;
+    const hoy = FechaCalendario.enArgentina(new Date());
+    comprobantesEmitidos
+      .totales({
+        ambiente: configurada.ambiente,
+        emisor: configurada.emisor,
+        ...fechasDe(periodo, hoy),
+        ...(clase !== 'todas' && { clase }),
+      })
+      .then(
+        (leidos) => {
+          if (vigente) setTotales(leidos);
+        },
+        (error: unknown) => {
+          registro.error('no se pudieron calcular los totales', error);
+          if (vigente) setTotales(undefined);
+        },
+      );
+    return () => {
+      vigente = false;
+    };
+  }, [configurada, periodo, clase]);
+
+  const buscando = busqueda.trim() !== '';
+  const filtrando = buscando || periodo !== 'todo' || clase !== 'todas';
+  const conIva = configurada?.emisor.datos.condicion === 'responsable_inscripto';
+  const nombreDelFiltro = [
+    PERIODOS.find(({ valor }) => valor === periodo)?.etiqueta ?? '',
+    clases.length > 1 ? (clase === 'todas' ? 'todas las clases' : `clase ${clase}`) : undefined,
+  ]
+    .filter((parte) => parte !== undefined)
+    .join(' · ');
 
   return (
     <Pantalla conEncabezado>
@@ -161,6 +201,10 @@ export default function Comprobantes() {
                 }}
               />
             )}
+            {/* Con una búsqueda, la lista ya no es todo el período y el total confundiría. */}
+            {!buscando && totales && totales.cantidad > 0 && (
+              <ResumenDelPeriodo filtro={nombreDelFiltro} totales={totales} conIva={conIva} />
+            )}
             {estado.paso === 'fallo' && (
               <Aviso icono="alert-circle-outline" tono="error">
                 No se pudieron leer los comprobantes. Volvé a abrir la pantalla.
@@ -204,3 +248,46 @@ export default function Comprobantes() {
     </Pantalla>
   );
 }
+
+/** Cuánto se facturó con el filtro elegido, ya descontadas las notas de crédito. */
+function ResumenDelPeriodo({
+  filtro,
+  totales,
+  conIva,
+}: {
+  readonly filtro: string;
+  readonly totales: TotalesDelPeriodo;
+  readonly conIva: boolean;
+}) {
+  const { colores } = useTema();
+  const total = formatearConSigno(totales.totalEnCentavos);
+  const cantidad =
+    totales.cantidad === 1 ? '1 comprobante' : `${String(totales.cantidad)} comprobantes`;
+  const desglose = conIva
+    ? `Neto ${formatearConSigno(totales.netoEnCentavos)} · IVA ${formatearConSigno(totales.ivaEnCentavos)}`
+    : undefined;
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${filtro}: facturaste ${total} en ${cantidad}.${desglose ? ` ${desglose}.` : ''}`}
+    >
+      <Tarjeta>
+        <View style={estilos.resumen}>
+          <Texto variante="detalle" style={{ color: colores.onSurfaceVariant }}>
+            {filtro}
+          </Texto>
+          <Texto variante="importeDestacado" style={{ color: colores.primary }}>
+            {total}
+          </Texto>
+          <Texto variante="detalle" style={{ color: colores.onSurfaceVariant }}>
+            {desglose ? `${cantidad} · ${desglose}` : cantidad}
+          </Texto>
+        </View>
+      </Tarjeta>
+    </View>
+  );
+}
+
+const estilos = StyleSheet.create({
+  resumen: { gap: 2 },
+});
