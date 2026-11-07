@@ -24,7 +24,8 @@ appId: com.facturadorfacil.app.pruebas
 - scrollUntilVisible:
     element: Revisar factura
 - waitForAnimationToEnd
-- assertVisible: '\$.100,00'
+# En iOS cada línea del resumen se lee con su etiqueta: 'Neto, $ 100,00'.
+- assertVisible: '.*\$.100,00'
 - tapOn: Revisar factura
 - assertVisible: Consumidor Final
 - scrollUntilVisible:
