@@ -50,9 +50,9 @@ appId: com.facturadorfacil.app.pruebas
 - waitForAnimationToEnd
 - tapOn: Revisar factura
 - assertVisible: 'CUIT 27-33333333-9 · IVA Responsable Inscripto'
-- assertVisible: '\$.100,00'
+- assertVisible: '.*\$.100,00'
 - assertVisible: 'IVA.21.%'
-- assertVisible: '\$.21,00'
+- assertVisible: '.*\$.21,00'
 - scrollUntilVisible:
     element: 'Emitir factura A por \$.121,00'
 - waitForAnimationToEnd

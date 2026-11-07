@@ -38,7 +38,8 @@ appId: com.facturadorfacil.app.pruebas
     visible: Factura emitida
     timeout: 30000
 - assertVisible: 00001-00000001
-- assertVisible: CAE
+# En iOS el CAE se lee junto con su número: 'CAE, 7000…'.
+- assertVisible: 'CAE.*'
 # La lista de comprobantes suma lo facturado en el período.
 - scrollUntilVisible:
     element: Volver al inicio
