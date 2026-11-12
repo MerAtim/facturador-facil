@@ -108,7 +108,7 @@ Los límites de confianza son: la red, todo lo que entra desde afuera de la app 
 
 | Amenaza | Mitigación | Estado |
 | --- | --- | --- |
-| La app tiene permisos de más | Solo internet, biometría y vibración; almacenamiento, galería, cámara, micrófono y dibujar sobre otras apps bloqueados | Cumple |
+| La app tiene permisos de más | Solo internet, biometría, vibración y detección de capturas; almacenamiento, galería, cámara, micrófono y dibujar sobre otras apps bloqueados | Cumple |
 | Una versión vulnerable sigue en uso | Versión mínima publicada en el repositorio: por debajo, la app no emite. Sin conexión vale la última conocida | Cumple |
 
 ## Riesgos aceptados

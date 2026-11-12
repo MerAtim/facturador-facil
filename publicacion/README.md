@@ -1,5 +1,8 @@
 # Publicación
 
+* [Política de privacidad](privacidad.md): lo que se publica para los usuarios y las tiendas.
+* [Ficha de la tienda](tienda.md): textos, formularios de seguridad de datos, clasificación y capturas.
+
 ## Versión mínima
 
 La app lee [version-minima.json](version-minima.json) desde la rama `main` antes de emitir. Una versión instalada por debajo de `versionMinima` no emite comprobantes y le pide al usuario que actualice; ver comprobantes, compartirlos y hacer respaldos sigue andando.
