@@ -1,13 +1,14 @@
 # Factura B a consumidor final, contra el arca simulado del build de pruebas.
 appId: com.facturadorfacil.app.pruebas
 ---
-- launchApp:
-    clearState: true
+- runFlow: comun/abrir.yaml
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
+- runFlow: comun/cerrar_teclado.yaml
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube a ver el tipo.
+# En iOS el tipo y su explicación se leen juntos: 'Factura B, El IVA…'.
 - scrollUntilVisible:
-    element: Factura B
+    element: 'Factura B.*'
     direction: UP
 - waitForAnimationToEnd
 - runFlow:
@@ -24,9 +25,11 @@ appId: com.facturadorfacil.app.pruebas
 - scrollUntilVisible:
     element: Revisar factura
 - waitForAnimationToEnd
-- assertVisible: '\$.100,00'
+# En iOS cada línea del resumen se lee con su etiqueta: 'Neto, $ 100,00'.
+- assertVisible: '.*\$.100,00'
 - tapOn: Revisar factura
-- assertVisible: Consumidor Final
+# En iOS el receptor se lee junto con sus datos.
+- assertVisible: '.*Consumidor Final.*'
 - scrollUntilVisible:
     element: 'Emitir factura B por \$.121,00'
 - waitForAnimationToEnd
@@ -35,7 +38,8 @@ appId: com.facturadorfacil.app.pruebas
     visible: Factura emitida
     timeout: 30000
 - assertVisible: 00001-00000001
-- assertVisible: CAE
+# En iOS el CAE se lee junto con su número: 'CAE, 7000…'.
+- assertVisible: 'CAE.*'
 # La lista de comprobantes suma lo facturado en el período.
 - scrollUntilVisible:
     element: Volver al inicio

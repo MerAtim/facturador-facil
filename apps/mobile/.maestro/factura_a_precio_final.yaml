@@ -2,14 +2,16 @@
 # discrimina neto e IVA.
 appId: com.facturadorfacil.app.pruebas
 ---
-- launchApp:
-    clearState: true
+- runFlow: comun/abrir.yaml
 - runFlow: comun/inicio.yaml
 - tapOn: Nueva factura
+- runFlow: comun/cerrar_teclado.yaml
 # Abre con el cursor en el precio y la pantalla desplazada hasta él: se sube al receptor.
+# En pantallas angostas la ficha queda cortada al final de su fila, que se desliza de costado.
 - scrollUntilVisible:
     element: Otro CUIT
     direction: UP
+    visibilityPercentage: 50
 - waitForAnimationToEnd
 - tapOn: Otro CUIT
 - runFlow:
@@ -27,8 +29,9 @@ appId: com.facturadorfacil.app.pruebas
     element: Usar este receptor
 - waitForAnimationToEnd
 - tapOn: Usar este receptor
+# En iOS el tipo y su explicación se leen juntos: 'Factura A, El IVA…'.
 - scrollUntilVisible:
-    element: Factura A
+    element: 'Factura A.*'
     direction: UP
 - waitForAnimationToEnd
 - tapOn: Precio final
@@ -47,9 +50,9 @@ appId: com.facturadorfacil.app.pruebas
 - waitForAnimationToEnd
 - tapOn: Revisar factura
 - assertVisible: 'CUIT 27-33333333-9 · IVA Responsable Inscripto'
-- assertVisible: '\$.100,00'
+- assertVisible: '.*\$.100,00'
 - assertVisible: 'IVA.21.%'
-- assertVisible: '\$.21,00'
+- assertVisible: '.*\$.21,00'
 - scrollUntilVisible:
     element: 'Emitir factura A por \$.121,00'
 - waitForAnimationToEnd
@@ -57,5 +60,5 @@ appId: com.facturadorfacil.app.pruebas
 - extendedWaitUntil:
     visible: Factura emitida
     timeout: 30000
-- assertVisible: Factura A
+- assertVisible: 'Factura A.*'
 - assertVisible: 00001-00000001
