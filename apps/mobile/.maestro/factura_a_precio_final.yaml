@@ -61,4 +61,5 @@ appId: com.facturadorfacil.app.pruebas
     visible: Factura emitida
     timeout: 30000
 - assertVisible: 'Factura A.*'
-- assertVisible: 00001-00000001
+# En iOS el número puede leerse dentro de la tarjeta del comprobante.
+- assertVisible: '.*00001-00000001.*'
