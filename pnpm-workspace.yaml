@@ -20,15 +20,6 @@ overrides:
 # Avisos de seguridad revisados y aceptados. Revisar el 2026-11-23 o cuando se actualice Expo.
 auditConfig:
   ignoreGhsas:
-    # node-forge en @expo/cli: solo corre en desarrollo, no viaja en la app. Sin parche disponible.
-    - GHSA-86w9-cpqp-85rv
-    # Más avisos de node-forge en @expo/cli, también solo de desarrollo. El parche, 1.4.1, salió el
-    # 2026-10-27: el 2026-11-10 cumple 14 días, se fuerza con un override y se quitan de la lista.
-    - GHSA-7wch-p9px-956x
-    - GHSA-jc66-7q78-782g
-    - GHSA-8hrf-8g6f-7xwp
-    - GHSA-hqq3-7jhf-c5jx
-    - GHSA-5x38-2vff-x55p
     # uuid en xcode: herramienta de build de iOS, no usa la función afectada.
     - GHSA-w5hq-g745-h8pq
     # zod 3 en @expo/cli: solo corre en desarrollo, no viaja en la app. El parche existe solo en zod 4,
