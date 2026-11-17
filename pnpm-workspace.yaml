@@ -22,6 +22,9 @@ auditConfig:
   ignoreGhsas:
     # uuid en xcode: herramienta de build de iOS, no usa la función afectada.
     - GHSA-w5hq-g745-h8pq
+    # picomatch en lint-staged y en el empaquetador: solo corre en desarrollo y con patrones que
+    # escribimos nosotros, no viaja en la app. Sin parche disponible (2026-11-17).
+    - GHSA-fc5q-39xc-vjpf
     # zod 3 en @expo/cli: solo corre en desarrollo, no viaja en la app. El parche existe solo en zod 4,
     # incompatible con la versión que usa Expo.
     - GHSA-mrhx-c7xc-m3w5
