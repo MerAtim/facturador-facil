@@ -1,0 +1,12 @@
+# En iOS el teclado numérico no tiene tecla para cerrarse: la app suma "Listo" encima. Abierto, el
+# teclado tapa los botones y un toque cae en una tecla. En Android la pantalla se acomoda sola.
+appId: com.facturadorfacil.app.pruebas
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Listo
+          optional: true
+      - waitForAnimationToEnd

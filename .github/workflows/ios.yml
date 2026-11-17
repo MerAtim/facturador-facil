@@ -1,0 +1,126 @@
+name: iOS
+
+# El recorrido de emisión en un iPhone simulado tarda cerca de una hora: corre cuando cambia la parte
+# nativa de la app o sus dependencias, y cuando se lanza a mano.
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/modules/**'
+      - 'apps/mobile/app.config.ts'
+      - 'apps/mobile/app.json'
+      - 'apps/mobile/package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAESTRO_VERSION: 2.11.0
+  MAESTRO_SHA256: 5384593cb4e7a106489e75a821d157dd43f4e438df6bc308b72e82c685e1283a
+
+jobs:
+  # El mismo recorrido en un iPhone simulado: compila los módulos nativos de iOS y prueba la clave
+  # en el Keychain sin cuenta de Apple ni iPhone (#93).
+  flujos-ios:
+    name: Flujos de emisión en iOS
+    # Maestro en las Mac de GitHub falla a veces por su cuenta, no por la app: si falla, la corrida
+    # no se marca como fallida ni manda avisos. El resultado se revisa en el log de este trabajo.
+    continue-on-error: true
+    runs-on: macos-26
+    timeout-minutes: 120
+    env:
+      EXPO_PUBLIC_DOBLE_DE_ARCA: si
+      # En las Mac de GitHub el driver de Maestro a veces tarda más que el minuto que espera por defecto.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 180000
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # Expo, desde el SDK 57, no compila con Xcode 26.3 o anterior (expo/expo#49941). Se fija la versión para
+      # que una actualización de la imagen no cambie el compilador sin aviso.
+      - name: Elegir Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+
+      # Firma local, la que usa Xcode para el simulador: no hace falta una cuenta de Apple. Sin firma,
+      # la app no tiene permiso para usar el Keychain y no puede leer el almacén seguro ni su clave.
+      - name: Compilar el build de pruebas
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform ios
+          cd ios
+          espacio=$(ls -d *.xcworkspace)
+          xcodebuild -workspace "$espacio" -scheme "${espacio%.xcworkspace}" \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/ios" -quiet \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
+
+      - name: Instalar Maestro
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maestro.zip" \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip"
+          echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | shasum -a 256 --check
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME"
+          echo "$HOME/maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Correr los flujos
+        run: |
+          simulador=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          dispositivos = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for v in dispositivos.values() for d in v if d["name"].startswith("iPhone")))')
+          xcrun simctl boot "$simulador"
+          xcrun simctl bootstatus "$simulador"
+          app=$(ls -d "$RUNNER_TEMP"/ios/Build/Products/Release-iphonesimulator/*.app)
+          # Cada flujo arranca con la app recién instalada y el Keychain vacío, en su propia corrida de
+          # Maestro: borrar el estado desde un flujo tira abajo su driver (mobile-dev-inc/Maestro#3368).
+          correr() {
+            xcrun simctl uninstall "$simulador" com.facturadorfacil.app.pruebas || true
+            xcrun simctl keychain "$simulador" reset
+            xcrun simctl install "$simulador" "$app"
+            # Si el driver se cae, Maestro puede quedar colgado sin terminar: cada intento tiene un tope
+            # y pasado ese tiempo cuenta como fallido. macOS no trae `timeout`; perl corta con una alarma.
+            perl -e 'alarm shift; exec @ARGV' 480 maestro --device "$simulador" test --format junit \
+              --output "$RUNNER_TEMP/maestro-$(basename "$1" .yaml).xml" "$1"
+          }
+          fallidos=0
+          for flujo in apps/mobile/.maestro/*.yaml; do
+            # Dos reintentos: el driver de iOS falla al arrancar más seguido que el de Android. Una falla
+            # de la app falla las tres veces.
+            correr "$flujo" || correr "$flujo" || correr "$flujo" || fallidos=$((fallidos + 1))
+          done
+          test "$fallidos" -eq 0
+
+      - name: Guardar el reporte
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reporte-de-maestro-ios
+          path: |
+            ${{ runner.temp }}/maestro*.xml
+            ~/.maestro/tests
+          retention-days: 7

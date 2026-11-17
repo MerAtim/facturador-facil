@@ -5,6 +5,10 @@ final class ArchivoNoCompartibleException: GenericException<String> {
   override var reason: String { "Solo se comparten archivos de la caché de la app: \(param)" }
 }
 
+final class SinPantallaException: Exception {
+  override var reason: String { "No hay una pantalla desde la cual mostrar la hoja de compartir" }
+}
+
 /// Comparte un archivo con la hoja del sistema junto con un mensaje. Las apps que lo admiten, como
 /// WhatsApp o Mail, usan el mensaje como texto que acompaña al archivo.
 public class CompartirArchivoModule: Module {
@@ -25,7 +29,7 @@ public class CompartirArchivoModule: Module {
       }
 
       guard let presentador = self.appContext?.utilities?.currentViewController() else {
-        promesa.reject(MissingCurrentViewControllerException())
+        promesa.reject(SinPantallaException())
         return
       }
       let hoja = UIActivityViewController(activityItems: [mensaje, url], applicationActivities: nil)
