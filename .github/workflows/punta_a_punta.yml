@@ -124,6 +124,8 @@ jobs:
     timeout-minutes: 90
     env:
       EXPO_PUBLIC_DOBLE_DE_ARCA: si
+      # En las Mac de GitHub el driver de Maestro a veces tarda más que el minuto que espera por defecto.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: 180000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -193,8 +195,9 @@ jobs:
           }
           fallidos=0
           for flujo in apps/mobile/.maestro/*.yaml; do
-            # Un reintento, como en Android: una falla de la app falla las dos veces.
-            correr "$flujo" || correr "$flujo" || fallidos=$((fallidos + 1))
+            # Dos reintentos: el driver de iOS falla al arrancar más seguido que el de Android. Una falla
+            # de la app falla las tres veces.
+            correr "$flujo" || correr "$flujo" || correr "$flujo" || fallidos=$((fallidos + 1))
           done
           test "$fallidos" -eq 0
 
