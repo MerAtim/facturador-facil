@@ -121,7 +121,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     continue-on-error: true
     runs-on: macos-26
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       EXPO_PUBLIC_DOBLE_DE_ARCA: si
       # En las Mac de GitHub el driver de Maestro a veces tarda más que el minuto que espera por defecto.
@@ -146,7 +146,7 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
-      # Expo SDK 57 no compila con Xcode 26.3 o anterior (expo/expo#49941). Se fija la versión para
+      # Expo, desde el SDK 57, no compila con Xcode 26.3 o anterior (expo/expo#49941). Se fija la versión para
       # que una actualización de la imagen no cambie el compilador sin aviso.
       - name: Elegir Xcode
         run: |
@@ -190,7 +190,9 @@ jobs:
             xcrun simctl uninstall "$simulador" com.facturadorfacil.app.pruebas || true
             xcrun simctl keychain "$simulador" reset
             xcrun simctl install "$simulador" "$app"
-            maestro --device "$simulador" test --format junit \
+            # Si el driver se cae, Maestro puede quedar colgado sin terminar: cada intento tiene un tope
+            # y pasado ese tiempo cuenta como fallido. macOS no trae `timeout`; perl corta con una alarma.
+            perl -e 'alarm shift; exec @ARGV' 480 maestro --device "$simulador" test --format junit \
               --output "$RUNNER_TEMP/maestro-$(basename "$1" .yaml).xml" "$1"
           }
           fallidos=0
