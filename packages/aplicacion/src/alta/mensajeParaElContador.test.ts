@@ -56,6 +56,15 @@ describe('mensajeParaElContador', () => {
     expect(mensaje).not.toContain('punto de venta');
   });
 
+  it('para otro dispositivo agrega el certificado al alias y no pide autorizar', () => {
+    const mensaje = mensajeParaElContador(datos({ otroDispositivo: true }));
+
+    expect(mensaje).toContain('crear el punto de venta 7');
+    expect(mensaje).toContain('agregar un certificado al alias "facturadorfacil"');
+    expect(mensaje).toContain('No hace falta otra autorización');
+    expect(mensaje).not.toContain('Administrador de Relaciones');
+  });
+
   it('aclara que el certificado solo sirve en el teléfono del emisor', () => {
     expect(mensajeParaElContador(datos())).toContain('solo funciona en mi teléfono');
   });

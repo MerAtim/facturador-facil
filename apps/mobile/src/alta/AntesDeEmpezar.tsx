@@ -1,10 +1,24 @@
-import { Boton, Tarjeta, Texto } from '@facturador/ui';
+import { Boton, Fichas, Tarjeta, Texto } from '@facturador/ui';
 import { useRouter } from 'expo-router';
 
 import { Punto } from './Punto';
 
+type Dispositivo = 'primero' | 'otro';
+
+const DISPOSITIVOS = [
+  { valor: 'primero' as const, etiqueta: 'No, es el primero' },
+  { valor: 'otro' as const, etiqueta: 'Sí, ya la uso en otro' },
+];
+
 /** Qué se va a hacer y por qué, antes del primer paso: quien entiende el motivo no abandona. */
-export function AntesDeEmpezar() {
+export function AntesDeEmpezar({
+  otroDispositivo,
+  onCambiarDispositivo,
+}: {
+  readonly otroDispositivo: boolean;
+  /** Sin datos de emisor todavía no hay CUIT con el que guardar la respuesta: no se pregunta. */
+  readonly onCambiarDispositivo?: ((otro: boolean) => void) | undefined;
+}) {
   const router = useRouter();
   return (
     <Tarjeta>
@@ -29,6 +43,21 @@ export function AntesDeEmpezar() {
       <Texto variante="cuerpo">
         Podés dejarlo a mitad de camino: la app recuerda en qué paso quedaste.
       </Texto>
+      {onCambiarDispositivo && (
+        <>
+          <Texto variante="etiqueta" accessibilityRole="header">
+            ¿Ya usás la app en otro celular con este CUIT?
+          </Texto>
+          <Fichas<Dispositivo>
+            opciones={DISPOSITIVOS}
+            valor={otroDispositivo ? 'otro' : 'primero'}
+            onCambiar={(elegido) => {
+              onCambiarDispositivo(elegido === 'otro');
+            }}
+            desplazable={false}
+          />
+        </>
+      )}
       <Boton
         variante="texto"
         icon="shield-check-outline"

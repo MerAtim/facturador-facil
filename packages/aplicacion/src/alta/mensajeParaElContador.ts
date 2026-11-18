@@ -17,6 +17,8 @@ export interface DatosParaElContador {
   readonly puntoDeVenta: number;
   /** El alias que se sugiere para el certificado en ARCA. */
   readonly alias: string;
+  /** La app ya se usa en otro dispositivo: el certificado se agrega al alias existente. */
+  readonly otroDispositivo?: boolean;
 }
 
 /**
@@ -31,10 +33,12 @@ export function mensajeParaElContador({
   condicion,
   puntoDeVenta,
   alias,
+  otroDispositivo = false,
 }: DatosParaElContador): string {
   const titular = `${razonSocial}, CUIT ${cuit.formateado()}`;
-  const pasos =
-    ambiente === 'homologacion'
+  const pasos = otroDispositivo
+    ? pasosParaOtroDispositivo({ ambiente, condicion, puntoDeVenta, alias })
+    : ambiente === 'homologacion'
       ? [
           `1. En "WSASS - Autogestión Certificados Homologación", crear un certificado nuevo con el nombre "${alias}" y pegar el pedido que te mando aparte.`,
           `2. En WSASS, crear una autorización a servicio para "${alias}", CUIT representada ${cuit.valor}, servicio wsfe.`,
@@ -53,4 +57,24 @@ export function mensajeParaElContador({
     '',
     'El certificado solo funciona en mi teléfono: la clave que lo acompaña se creó ahí y no se puede copiar.',
   ].join('\n');
+}
+
+/** El alias ya existe y está autorizado: se le agrega el certificado de este dispositivo. */
+function pasosParaOtroDispositivo({
+  ambiente,
+  condicion,
+  puntoDeVenta,
+  alias,
+}: Pick<DatosParaElContador, 'ambiente' | 'condicion' | 'puntoDeVenta' | 'alias'>): string[] {
+  const autorizado = `No hace falta otra autorización: el alias "${alias}" ya la tiene.`;
+  return ambiente === 'homologacion'
+    ? [
+        `1. En "WSASS - Autogestión Certificados Homologación", agregar un certificado al alias "${alias}" con el pedido que te mando aparte. ${autorizado}`,
+        '2. Mandarme el certificado que muestra WSASS.',
+      ]
+    : [
+        `1. En "Administración de puntos de venta y domicilios", crear el punto de venta ${String(puntoDeVenta)} con el sistema "${SISTEMA_DEL_PUNTO_DE_VENTA[condicion]}". Es para otro dispositivo: no tiene que ser uno que ya uso.`,
+        `2. En "Administración de Certificados Digitales", agregar un certificado al alias "${alias}" con el pedido que te mando aparte y descargarlo. ${autorizado}`,
+        '3. Mandarme el archivo del certificado.',
+      ];
 }
