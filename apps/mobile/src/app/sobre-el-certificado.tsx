@@ -43,6 +43,14 @@ export default function SobreElCertificado() {
           </Punto>
         </Seccion>
 
+        <Seccion titulo="Si usás varios celulares">
+          <Punto icono="cellphone-link">
+            Cada uno tiene su propio certificado y su propia clave. Si perdés uno, revocá solo su
+            certificado en &quot;Administración de Certificados Digitales&quot; y los demás siguen
+            funcionando.
+          </Punto>
+        </Seccion>
+
         <Seccion titulo="Si perdés el teléfono o te arrepentís">
           <Punto icono="link-variant-off">
             En el sitio de ARCA, en &quot;Administrador de Relaciones de Clave Fiscal&quot;, borrás

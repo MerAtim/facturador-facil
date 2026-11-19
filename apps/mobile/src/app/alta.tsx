@@ -66,6 +66,13 @@ const TITULOS_EN_ARCA: Readonly<Record<PasoEnElSitio, string>> = {
   autorizacion: 'Autorizar la factura electrónica',
 };
 
+/** En otro dispositivo se crea su propio punto de venta y se suma su certificado al alias. */
+const TITULOS_EN_OTRO_DISPOSITIVO: Readonly<Record<PasoEnElSitio, string>> = {
+  punto_de_venta: 'Crear un punto de venta para este celular',
+  certificado: 'Agregar el certificado de este celular',
+  autorizacion: 'Autorizar la factura electrónica',
+};
+
 const ETAPAS: readonly EtapaDeVerificacion[] = ['conexion', 'acceso', 'punto_de_venta'];
 
 /** El alias que se sugiere es el mismo nombre que lleva el pedido, para no inventar otro. */
@@ -88,6 +95,25 @@ const pedirCertificado = (ambiente: Ambiente): ParadaDelRecorrido[] =>
         { texto: 'Agregar alias' },
         { texto: 'Ver', valor: 'En la fila del alias' },
         { texto: 'Descargar' },
+      ];
+
+/** El alias ya existe y tiene la autorización: se le suma el certificado de este dispositivo. */
+const agregarCertificado = (ambiente: Ambiente): ParadaDelRecorrido[] =>
+  ambiente === 'homologacion'
+    ? [
+        { texto: 'WSASS - Autogestión Certificados Homologación' },
+        { texto: 'Agregar certificado a alias' },
+        { texto: 'Nombre simbólico del DN', valor: ALIAS, copiable: true },
+        { texto: 'Solicitud de certificado en formato PKCS#10', valor: 'Pegá el pedido copiado' },
+        { texto: 'Agregar certificado' },
+      ]
+    : [
+        { texto: 'Administración de Certificados Digitales' },
+        { texto: 'Elegí el alias', valor: ALIAS, copiable: true },
+        { texto: 'Agregar certificado' },
+        { texto: 'Archivo', valor: 'El pedido de este celular' },
+        { texto: 'Agregar certificado' },
+        { texto: 'Descargar', valor: 'El certificado nuevo' },
       ];
 
 const COMO_CARGARLO: Readonly<Record<Ambiente, string>> = {
@@ -173,7 +199,8 @@ export default function Alta() {
     );
   }
 
-  const { alta, vigenteHasta } = guia;
+  const { alta, vigenteHasta, progreso } = guia;
+  const otroDispositivo = progreso.otroDispositivo === true;
   const tramos = tramosDeAlta(alta);
   const tramoActual = alta.actual && tramoDelPaso(alta.actual);
   // Sin elegir, queda abierto el tramo donde se retoma.
@@ -226,6 +253,12 @@ export default function Alta() {
     }
   };
 
+  const indicarOtroDispositivo = async (config: Configuracion, otro: boolean) => {
+    const titularDelAlta = { ambiente: config.ambiente, cuit: config.emisor.datos.cuit };
+    await registroDeAlta.indicarOtroDispositivo(titularDelAlta, otro);
+    recargar();
+  };
+
   const irAlPaso = (paso: PasoDeAlta) => {
     if (paso === 'datos') router.push('/configuracion');
     else setAbierto(tramoDelPaso(paso));
@@ -243,8 +276,9 @@ export default function Alta() {
         return (
           <>
             <Texto variante="cuerpo">
-              Tiene que ser nuevo, solo para la app: el que usás para facturar en el sitio de ARCA
-              no sirve.
+              {otroDispositivo
+                ? 'Cada celular factura con su propio punto de venta. Así, si dos personas facturan a la vez, los números no se pisan.'
+                : 'Tiene que ser nuevo, solo para la app: el que usás para facturar en el sitio de ARCA no sirve.'}
             </Texto>
             <Recorrido paradas={crearPuntoDeVenta(puntoDeVenta, condicion)} onCopiar={copiar} />
             <Texto variante="detalle">
@@ -279,7 +313,16 @@ export default function Alta() {
         }
         return (
           <>
-            <Recorrido paradas={pedirCertificado(config.ambiente)} onCopiar={copiar} />
+            {otroDispositivo && (
+              <Texto variante="cuerpo">
+                No hace falta volver a autorizar la factura electrónica: la autorización es del
+                alias y vale para todos tus celulares.
+              </Texto>
+            )}
+            <Recorrido
+              paradas={(otroDispositivo ? agregarCertificado : pedirCertificado)(config.ambiente)}
+              onCopiar={copiar}
+            />
             <Texto variante="cuerpo">{COMO_CARGARLO[config.ambiente]}</Texto>
             <BotonesDeCarga carga={carga} ambiente={config.ambiente} hayCertificado={false} />
           </>
@@ -353,12 +396,21 @@ export default function Alta() {
           </>
         )}
         <AbrirElSitioDeArca />
-        {vigenteHasta === undefined && <QueLoHagaTuContador configuracion={configuracion} />}
+        {vigenteHasta === undefined && (
+          <QueLoHagaTuContador configuracion={configuracion} otroDispositivo={otroDispositivo} />
+        )}
+        {/* Antes de empezar, la pregunta ya está a la vista arriba. */}
+        {!sinEmpezar && (
+          <CambiarDispositivo
+            otroDispositivo={otroDispositivo}
+            onCambiar={(otro) => void indicarOtroDispositivo(configuracion, otro)}
+          />
+        )}
         {enArca.map(({ paso, listo }, indice) => (
           <ParteDeLaVisita
             key={paso}
             letra={LETRAS[indice] ?? ''}
-            titulo={TITULOS_EN_ARCA[paso]}
+            titulo={(otroDispositivo ? TITULOS_EN_OTRO_DISPOSITIVO : TITULOS_EN_ARCA)[paso]}
             hecho={listo}
           >
             {enElSitio(configuracion, paso, listo)}
@@ -379,7 +431,15 @@ export default function Alta() {
             Todo listo: ARCA confirmó que podés facturar desde la app.
           </Aviso>
         ) : sinEmpezar ? (
-          <AntesDeEmpezar />
+          <AntesDeEmpezar
+            otroDispositivo={otroDispositivo}
+            onCambiarDispositivo={
+              configuracion &&
+              ((otro: boolean) => {
+                void indicarOtroDispositivo(configuracion, otro);
+              })
+            }
+          />
         ) : (
           <>
             <Texto variante="cuerpo">
@@ -432,11 +492,38 @@ export default function Alta() {
 
 const LETRAS = ['a', 'b', 'c'] as const;
 
+/** La respuesta de "Antes de empezar" se puede corregir aunque ya se haya avanzado. */
+function CambiarDispositivo({
+  otroDispositivo,
+  onCambiar,
+}: {
+  readonly otroDispositivo: boolean;
+  readonly onCambiar: (otro: boolean) => void;
+}) {
+  return (
+    <Boton
+      variante="texto"
+      icon="cellphone-link"
+      onPress={() => {
+        onCambiar(!otroDispositivo);
+      }}
+    >
+      {otroDispositivo ? 'Es mi primer celular con la app' : 'Ya uso la app en otro celular'}
+    </Boton>
+  );
+}
+
 /**
  * Quien ya administra la clave fiscal puede hacer la visita a ARCA: recibe los pasos en un mensaje
  * y el pedido aparte, y devuelve el certificado. La clave sigue sin salir del teléfono.
  */
-function QueLoHagaTuContador({ configuracion }: { readonly configuracion: Configuracion }) {
+function QueLoHagaTuContador({
+  configuracion,
+  otroDispositivo,
+}: {
+  readonly configuracion: Configuracion;
+  readonly otroDispositivo: boolean;
+}) {
   const { espacio } = useTema();
   const [noSeCompartio, setNoSeCompartio] = useState(false);
 
@@ -453,6 +540,7 @@ function QueLoHagaTuContador({ configuracion }: { readonly configuracion: Config
           condicion,
           puntoDeVenta,
           alias: ALIAS,
+          otroDispositivo,
         }),
       });
     } catch (error) {

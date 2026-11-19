@@ -62,6 +62,11 @@ export interface ProgresoDeAlta {
   readonly puntoDeVenta: boolean;
   /** El punto de venta con el que la verificación salió bien. */
   readonly verificadoCon?: number;
+  /**
+   * La app ya se usa en otro dispositivo con este CUIT: el certificado de este se agrega al mismo
+   * alias, que ya tiene la autorización, así que ese paso no hace falta.
+   */
+  readonly otroDispositivo?: boolean;
 }
 
 export const PROGRESO_INICIAL: ProgresoDeAlta = { autorizacion: false, puntoDeVenta: false };
@@ -105,7 +110,9 @@ export function estadoDeAlta({
     punto_de_venta: progreso.puntoDeVenta || verificada,
     verificacion: verificada,
   };
-  const pasos = PASOS[ambiente].map((paso) => ({ paso, hecho: hechos[paso] }));
+  const pasos = PASOS[ambiente]
+    .filter((paso) => !(progreso.otroDispositivo && paso === 'autorizacion'))
+    .map((paso) => ({ paso, hecho: hechos[paso] }));
   const actual = pasos.find(({ hecho }) => !hecho)?.paso;
   return actual ? { pasos, actual } : { pasos };
 }
@@ -123,6 +130,7 @@ export interface RegistroDeAlta {
   leer(titular: TitularDelAlta): Promise<ProgresoDeAlta>;
   marcar(titular: TitularDelAlta, paso: PasoEnArca, hecho: boolean): Promise<void>;
   registrarVerificacion(titular: TitularDelAlta, puntoDeVenta: number): Promise<void>;
+  indicarOtroDispositivo(titular: TitularDelAlta, otroDispositivo: boolean): Promise<void>;
   /** Al cambiar el certificado, la verificación hecha con el anterior ya no vale. */
   olvidarVerificacion(titular: TitularDelAlta): Promise<void>;
 }
@@ -162,8 +170,14 @@ export function crearRegistroDeAlta(almacen: AlmacenLocal): RegistroDeAlta {
       ),
     registrarVerificacion: (titular, puntoDeVenta) =>
       actualizar(titular, (progreso) => ({ ...progreso, verificadoCon: puntoDeVenta })),
+    indicarOtroDispositivo: (titular, otroDispositivo) =>
+      actualizar(titular, (progreso) => ({ ...progreso, otroDispositivo })),
     olvidarVerificacion: (titular) =>
-      actualizar(titular, ({ autorizacion, puntoDeVenta }) => ({ autorizacion, puntoDeVenta })),
+      actualizar(titular, ({ autorizacion, puntoDeVenta, otroDispositivo }) => ({
+        autorizacion,
+        puntoDeVenta,
+        ...(otroDispositivo && { otroDispositivo }),
+      })),
   };
 }
 
@@ -172,10 +186,14 @@ function interpretar(texto: string): ProgresoDeAlta {
   try {
     const guardado: unknown = JSON.parse(texto);
     if (typeof guardado !== 'object' || guardado === null) return PROGRESO_INICIAL;
-    const { autorizacion, puntoDeVenta, verificadoCon } = guardado as Record<string, unknown>;
+    const { autorizacion, puntoDeVenta, verificadoCon, otroDispositivo } = guardado as Record<
+      string,
+      unknown
+    >;
     return {
       autorizacion: autorizacion === true,
       puntoDeVenta: puntoDeVenta === true,
+      ...(otroDispositivo === true && { otroDispositivo: true }),
       ...(Number.isInteger(verificadoCon) && { verificadoCon: verificadoCon as number }),
     };
   } catch {

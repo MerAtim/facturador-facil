@@ -116,6 +116,21 @@ describe('tramosDeAlta', () => {
       hecho,
     }));
 
+  it('en otro dispositivo la visita a ARCA no incluye la autorización', () => {
+    const otro = situacion({ progreso: { ...PROGRESO_INICIAL, otroDispositivo: true } });
+
+    expect(tramos(otro)[1]?.pasos).toEqual(['punto_de_venta', 'certificado']);
+  });
+
+  it('en otro dispositivo la visita está hecha con el punto de venta y el certificado', () => {
+    const otro = situacion({
+      progreso: { autorizacion: false, puntoDeVenta: true, otroDispositivo: true },
+    });
+
+    expect(tramos(otro)[1]?.hecho).toBe(true);
+    expect(estadoDeAlta(otro).actual).toBe('verificacion');
+  });
+
   it('junta en una sola visita a ARCA todo lo que se hace ahí', () => {
     expect(tramos(situacion())).toEqual([
       { tramo: 'datos', pasos: ['datos'], hecho: true },
@@ -185,6 +200,23 @@ describe('RegistroDeAlta', () => {
 
     await registro.olvidarVerificacion(titular);
     expect(await registro.leer(titular)).toEqual({ autorizacion: true, puntoDeVenta: false });
+  });
+
+  it('recuerda si se usa en otro dispositivo y lo conserva al olvidar la verificación', async () => {
+    const almacen = new AlmacenEnMemoria();
+    const registro = crearRegistroDeAlta(almacen);
+    await registro.indicarOtroDispositivo(titular, true);
+    await registro.registrarVerificacion(titular, 3);
+    await registro.olvidarVerificacion(titular);
+
+    expect(await crearRegistroDeAlta(almacen).leer(titular)).toEqual({
+      autorizacion: false,
+      puntoDeVenta: false,
+      otroDispositivo: true,
+    });
+
+    await registro.indicarOtroDispositivo(titular, false);
+    expect((await registro.leer(titular)).otroDispositivo).toBeUndefined();
   });
 
   it('cada ambiente lleva su propio avance', async () => {
