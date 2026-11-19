@@ -78,6 +78,27 @@ export const MIGRACIONES: readonly string[] = [
   );
   CREATE INDEX productos_por_uso ON productos (usos DESC, ultimo_uso DESC);
   `,
+  // 6: los comprobantes que ARCA tiene de otros dispositivos del mismo CUIT. ARCA no guarda los
+  // ítems, así que van aparte de los propios: alcanzan para la lista y los totales, no para el PDF.
+  `
+  CREATE TABLE comprobantes_de_otros_dispositivos (
+    ambiente TEXT NOT NULL CHECK (ambiente IN ('homologacion', 'produccion')),
+    cuit_emisor TEXT NOT NULL,
+    tipo INTEGER NOT NULL,
+    punto_de_venta INTEGER NOT NULL,
+    numero INTEGER NOT NULL,
+    fecha TEXT NOT NULL,
+    total_en_centavos INTEGER NOT NULL,
+    neto_en_centavos INTEGER NOT NULL,
+    iva_en_centavos INTEGER NOT NULL,
+    documento_del_receptor TEXT NOT NULL,
+    cae TEXT NOT NULL,
+    vencimiento_del_cae TEXT NOT NULL,
+    PRIMARY KEY (ambiente, cuit_emisor, tipo, punto_de_venta, numero)
+  );
+  CREATE INDEX otros_dispositivos_por_fecha
+    ON comprobantes_de_otros_dispositivos (ambiente, cuit_emisor, fecha DESC);
+  `,
 ];
 
 export class BaseMasNueva extends Error {

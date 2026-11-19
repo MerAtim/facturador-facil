@@ -6,17 +6,22 @@ import {
   crearRegistroDeAlta,
   crearRepositorioDeClientes,
   crearRepositorioDeProductos,
+  crearRepositorioDeOtrosDispositivos,
   crearControlDeVersion,
+  traerDeOtrosDispositivos,
   importarClientesFrecuentes,
   salidaDeConsola,
   type Configuracion,
   type Emision,
+  type FuenteDeEmitidos,
 } from '@facturador/aplicacion';
 import {
   aliasDeClave,
   consultarPadron,
   crearAlmacenDeCertificados,
   crearAutorizadorWsfe,
+  crearConsultaDeEmitidos,
+  crearParametrosWsfe,
   crearProveedorDeTickets,
   firmadorDeClave,
   transporteFetch,
@@ -31,7 +36,7 @@ import {
   type ProveedorDeTickets,
   type Transporte,
 } from '@facturador/arca';
-import type { Cuit, Resultado } from '@facturador/dominio';
+import { TipoComprobante, type Cuit, type Resultado } from '@facturador/dominio';
 import Constants from 'expo-constants';
 
 import { almacenDeClavesDelDispositivo } from './arca/almacenDeClavesDelDispositivo';
@@ -67,6 +72,7 @@ export const productos = crearRepositorioDeProductos(baseDeDatosDelDispositivo);
 export const almacenDeCertificados = crearAlmacenDeCertificados(almacenSeguroDelDispositivo);
 export const registroDeAlta = crearRegistroDeAlta(almacenLocalDelDispositivo);
 export const comprobantesEmitidos = crearRepositorioDeComprobantes(baseDeDatosDelDispositivo);
+export const deOtrosDispositivos = crearRepositorioDeOtrosDispositivos(baseDeDatosDelDispositivo);
 export const controlDeVersion = crearControlDeVersion({
   instalada: Constants.expoConfig?.version ?? '',
   publicada: versionPublicada,
@@ -160,6 +166,63 @@ export async function consultarPadronDe(
   const tickets = await ticketsPara(ambiente, cuit, SERVICIO_DEL_PADRON);
   if (!tickets) return undefined;
   return consultarPadron({ ambiente, cuit, tickets, transporte }, consultado);
+}
+
+/** Una falla de ARCA corta la pasada: lo ya guardado queda y la próxima sigue desde ahí. */
+function exigir<T>(resultado: Resultado<T, { readonly tipo: string }>): T {
+  if (!resultado.ok) throw new Error(`ARCA no respondió: ${resultado.error.tipo}`);
+  return resultado.valor;
+}
+
+/**
+ * Trae de ARCA lo que se facturó desde otros dispositivos con el mismo CUIT. Sin certificado,
+ * devuelve undefined. Devuelve cuántos comprobantes nuevos trajo.
+ */
+export async function traerDeOtrosDispositivosDe({
+  emisor,
+  ambiente,
+}: Configuracion): Promise<number | undefined> {
+  const { cuit } = emisor.datos;
+  const tickets = await ticketsPara(ambiente, cuit);
+  if (!tickets) return undefined;
+
+  const consulta = crearConsultaDeEmitidos({ ambiente, cuit, tickets, transporte });
+  const parametros = crearParametrosWsfe({
+    ambiente,
+    cuit,
+    tickets,
+    transporte,
+    almacen: almacenLocalDelDispositivo,
+  });
+  const fuente: FuenteDeEmitidos = {
+    async puntosDeVenta() {
+      const activos = exigir(await parametros.puntosDeVenta()).filter(
+        (punto) => !punto.bloqueado && punto.fechaDeBaja === undefined,
+      );
+      return activos.map((punto) => punto.numero);
+    },
+    async ultimo(puntoDeVenta, tipo) {
+      return exigir(await consulta.ultimo(puntoDeVenta, tipo));
+    },
+    async leer(puntoDeVenta, tipo, numero) {
+      const enArca = exigir(await consulta.leer(puntoDeVenta, tipo, numero));
+      const tipoLeido = TipoComprobante.TODOS.find((t) => t.codigoArca === enArca?.codigoDeTipo);
+      if (!enArca || !tipoLeido) return undefined;
+      return {
+        tipo: tipoLeido,
+        puntoDeVenta: enArca.puntoDeVenta,
+        numero: enArca.numero,
+        fechaDeEmision: enArca.fechaDeEmision,
+        totalEnCentavos: enArca.totalEnCentavos,
+        netoEnCentavos: enArca.netoEnCentavos,
+        ivaEnCentavos: enArca.ivaEnCentavos,
+        documentoDelReceptor: enArca.numeroDeDocumento,
+        cae: enArca.cae,
+        vencimientoDelCae: enArca.vencimiento,
+      };
+    },
+  };
+  return traerDeOtrosDispositivos({ fuente, repositorio: deOtrosDispositivos, ambiente, emisor });
 }
 
 /** Al cambiar el certificado, lo armado con el anterior ya no sirve. */

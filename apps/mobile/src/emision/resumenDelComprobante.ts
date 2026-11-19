@@ -1,6 +1,10 @@
-import type { ComprobanteEmitido } from '@facturador/aplicacion';
+import {
+  formatearConSigno,
+  type ComprobanteEmitido,
+  type EmitidoEnOtroDispositivo,
+} from '@facturador/aplicacion';
 import { numeroCompleto } from '@facturador/arca';
-import type { Receptor, TipoComprobante } from '@facturador/dominio';
+import { Cuit, type Receptor, type TipoComprobante } from '@facturador/dominio';
 
 /** Cómo se identifica al receptor en una línea: su nombre, su documento o su condición. */
 export function nombreDelReceptor({ nombre, identificacion, condicion }: Receptor): string {
@@ -28,6 +32,31 @@ export function resumenDelComprobante({
     numero: numeroCompleto(puntoDeVenta, numero),
     total: comprobante.totales.total.formatear(),
     receptor: nombreDelReceptor(receptor),
+    fecha: fechaDeEmision.formatear(),
+  };
+}
+
+/** ARCA guarda solo el documento del receptor: `0` es un consumidor final sin identificar. */
+export function receptorSegunArca(documento: string): string {
+  if (documento === '' || /^0+$/.test(documento)) return 'Consumidor Final';
+  const cuit = documento.length === 11 ? Cuit.crear(documento) : undefined;
+  return cuit?.ok ? `CUIT ${cuit.valor.formateado()}` : `DNI ${documento}`;
+}
+
+/** Los textos de la tarjeta de un comprobante emitido desde otro dispositivo. */
+export function resumenDeOtroDispositivo({
+  tipo,
+  puntoDeVenta,
+  numero,
+  totalEnCentavos,
+  documentoDelReceptor,
+  fechaDeEmision,
+}: EmitidoEnOtroDispositivo) {
+  return {
+    titulo: tipo.descripcion,
+    numero: numeroCompleto(puntoDeVenta, numero),
+    total: formatearConSigno(totalEnCentavos),
+    receptor: `${receptorSegunArca(documentoDelReceptor)} · Otro celular`,
     fecha: fechaDeEmision.formatear(),
   };
 }

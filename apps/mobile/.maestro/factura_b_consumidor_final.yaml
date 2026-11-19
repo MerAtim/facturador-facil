@@ -46,4 +46,6 @@ appId: com.facturadorfacil.app.pruebas
     element: Volver al inicio
 - tapOn: Volver al inicio
 - tapOn: Comprobantes
-- assertVisible: '.*facturaste \$.121,00 en 1 comprobante\. Neto \$.100,00 · IVA \$.21,00\.'
+# Suma la factura de este celular y la de otro celular del mismo CUIT, que se trae de ARCA.
+- assertVisible: '.*Otro celular.*'
+- assertVisible: '.*facturaste \$.363,00 en 2 comprobantes\. Neto \$.300,00 · IVA \$.63,00\.'
