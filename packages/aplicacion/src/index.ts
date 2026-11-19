@@ -6,6 +6,7 @@ export * from './persistencia/migraciones';
 export * from './comprobantes/comprobantesEmitidos';
 export * from './comprobantes/busquedaDeComprobantes';
 export * from './comprobantes/totalesDelPeriodo';
+export * from './comprobantes/otrosDispositivos';
 export * from './preferencias/preferencias';
 export * from './clientes/clientes';
 export * from './catalogo/productos';

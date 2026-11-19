@@ -11,6 +11,7 @@ export * from './wsaa/proveedorDeTickets';
 export * from './wsaa/wsaa';
 export * from './wsfe/autorizadorWsfe';
 export * from './wsfe/cae';
+export * from './wsfe/consultaDeEmitidos';
 export * from './wsfe/parametrosWsfe';
 export * from './wsfe/wsfe';
 export * from './certificados/almacenDeCertificados';

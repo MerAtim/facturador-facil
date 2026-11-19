@@ -27,9 +27,20 @@ interface Autorizado {
  *
  * Nunca forma parte de un build que se publica: ver apps/mobile/src/composicion.ts.
  */
-export function crearDobleDeArca({ ahora = () => new Date() } = {}): Transporte {
+export function crearDobleDeArca({
+  ahora = () => new Date(),
+  conOtroDispositivo = false,
+}: {
+  readonly ahora?: () => Date;
+  /**
+   * Simula otro celular del mismo CUIT: el punto de venta 2 informado, con una factura B de ayer
+   * por $ 242 ya autorizada. El de este dispositivo es el 1.
+   */
+  readonly conOtroDispositivo?: boolean;
+} = {}): Transporte {
   const autorizados: Autorizado[] = [];
   const { wsaa, wsfe, padron } = URLS.homologacion;
+  if (conOtroDispositivo) autorizados.push(facturaDeOtroDispositivo(ahora()));
 
   const ultimo = (puntoDeVenta: number, tipo: number) =>
     autorizados
@@ -38,8 +49,19 @@ export function crearDobleDeArca({ ahora = () => new Date() } = {}): Transporte 
 
   const wsfePorMetodo: Readonly<Record<string, (pedido: ElementoXml) => string>> = {
     FEDummy: () => '<AppServer>OK</AppServer><DbServer>OK</DbServer><AuthServer>OK</AuthServer>',
-    // Homologación no suele informar puntos de venta.
-    FEParamGetPtosVenta: () => sinResultados('FEParamGetPtosVenta'),
+    // Homologación no suele informar puntos de venta; con otro dispositivo se informan los dos.
+    FEParamGetPtosVenta: () =>
+      conOtroDispositivo
+        ? '<ResultGet>' +
+          [1, 2]
+            .map(
+              (numero) =>
+                `<PtoVenta>${campo('Nro', numero)}${campo('EmisionTipo', 'CAE - Ventanilla')}` +
+                `${campo('Bloqueado', 'N')}${campo('FchBaja', 'NULL')}</PtoVenta>`,
+            )
+            .join('') +
+          '</ResultGet>'
+        : sinResultados('FEParamGetPtosVenta'),
     FECompUltimoAutorizado(pedido) {
       const puntoDeVenta = entero(pedido, 'PtoVta');
       const tipo = entero(pedido, 'CbteTipo');
@@ -111,7 +133,19 @@ export function crearDobleDeArca({ ahora = () => new Date() } = {}): Transporte 
         '<ResultGet>' +
         campo('PtoVta', encontrado.puntoDeVenta) +
         campo('CbteTipo', encontrado.tipo) +
-        ['Concepto', 'DocTipo', 'DocNro', 'CbteDesde', 'CbteHasta', 'CbteFch', 'ImpTotal']
+        [
+          'Concepto',
+          'DocTipo',
+          'DocNro',
+          'CbteDesde',
+          'CbteHasta',
+          'CbteFch',
+          'ImpTotal',
+          'ImpTotConc',
+          'ImpNeto',
+          'ImpOpEx',
+          'ImpIVA',
+        ]
           .map(copiar)
           .join('') +
         campo('Resultado', 'A') +
@@ -188,4 +222,33 @@ const sinResultados = (metodo: string) =>
 
 function entero(elemento: ElementoXml, nombre: string): number {
   return Number(buscar(elemento, nombre)?.texto ?? Number.NaN);
+}
+
+/** La factura B que "emitió" el otro celular: ayer, a consumidor final, $ 200 más IVA. */
+function facturaDeOtroDispositivo(ahora: Date): Autorizado {
+  const hoy = FechaCalendario.enArgentina(ahora);
+  const detalle = leerXml(
+    '<FECAEDetRequest>' +
+      campo('Concepto', 1) +
+      campo('DocTipo', 99) +
+      campo('DocNro', 0) +
+      campo('CbteDesde', 1) +
+      campo('CbteHasta', 1) +
+      campo('CbteFch', hoy.sumarDias(-1).aTextoArca()) +
+      campo('ImpTotal', '242.00') +
+      campo('ImpTotConc', '0.00') +
+      campo('ImpNeto', '200.00') +
+      campo('ImpOpEx', '0.00') +
+      campo('ImpIVA', '42.00') +
+      '</FECAEDetRequest>',
+  );
+  if (!detalle.ok) throw new Error('El detalle de prueba no se pudo armar');
+  return {
+    puntoDeVenta: 2,
+    tipo: 6,
+    numero: 1,
+    detalle: detalle.valor,
+    cae: '70000000009999',
+    vencimiento: hoy.sumarDias(DIAS_DE_VIGENCIA_DEL_CAE).aTextoArca(),
+  };
 }

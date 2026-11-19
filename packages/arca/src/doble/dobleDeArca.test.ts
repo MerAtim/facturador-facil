@@ -19,6 +19,8 @@ import { crearProveedorDeTickets, type ProveedorDeTickets } from '../wsaa/provee
 import { crearAutorizadorWsfe } from '../wsfe/autorizadorWsfe';
 import { consultarPadron } from '../padron/padron';
 import { consultarComprobante } from '../wsfe/cae';
+import { crearConsultaDeEmitidos } from '../wsfe/consultaDeEmitidos';
+import { crearParametrosWsfe } from '../wsfe/parametrosWsfe';
 import { verificarAlta } from '../wsfe/verificacionDelAlta';
 import { crearDobleDeArca } from './dobleDeArca';
 
@@ -58,8 +60,8 @@ beforeAll(async () => {
   certificado = await crearCertificadoDePrueba(firmador);
 });
 
-function preparar() {
-  const transporte = crearDobleDeArca({ ahora: () => ahora });
+function preparar({ conOtroDispositivo = false } = {}) {
+  const transporte = crearDobleDeArca({ ahora: () => ahora, conOtroDispositivo });
   const tickets: ProveedorDeTickets = crearProveedorDeTickets({
     ambiente: 'homologacion',
     cuit,
@@ -152,5 +154,36 @@ describe('crearDobleDeArca', () => {
     });
 
     expect(respuesta.estado).toBe(404);
+  });
+});
+
+describe('crearDobleDeArca con otro dispositivo', () => {
+  it('informa dos puntos de venta y la factura que emitió el otro', async () => {
+    const { tickets, transporte } = preparar({ conOtroDispositivo: true });
+    const config = { ambiente: 'homologacion' as const, cuit, tickets, transporte };
+    const parametros = crearParametrosWsfe({ ...config, almacen: new AlmacenEnMemoria() });
+    const consulta = crearConsultaDeEmitidos(config);
+
+    expect(valor(await parametros.puntosDeVenta()).map((p) => p.numero)).toEqual([1, 2]);
+    expect(valor(await consulta.ultimo(2, TipoComprobante.FACTURA_B))).toBe(1);
+    expect(valor(await consulta.leer(2, TipoComprobante.FACTURA_B, 1))).toMatchObject({
+      totalEnCentavos: 24_200,
+      netoEnCentavos: 20_000,
+      ivaEnCentavos: 4_200,
+      cae: '70000000009999',
+    });
+  });
+
+  it('sin la opción no informa puntos de venta', async () => {
+    const { tickets, transporte } = preparar();
+    const parametros = crearParametrosWsfe({
+      ambiente: 'homologacion',
+      cuit,
+      tickets,
+      transporte,
+      almacen: new AlmacenEnMemoria(),
+    });
+
+    expect(valor(await parametros.puntosDeVenta())).toEqual([]);
   });
 });

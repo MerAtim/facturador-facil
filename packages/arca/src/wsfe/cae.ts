@@ -256,6 +256,9 @@ export interface ComprobanteEnArca {
   readonly numero: number;
   readonly fechaDeEmision: FechaCalendario;
   readonly totalEnCentavos: number;
+  /** Lo que ARCA registró como neto gravado más no gravado y exento, y el IVA. */
+  readonly netoEnCentavos: number;
+  readonly ivaEnCentavos: number;
   readonly codigoDeDocumento: number;
   readonly numeroDeDocumento: string;
   readonly cae: string;
@@ -313,6 +316,11 @@ function leerComprobanteEnArca(elemento: ElementoXml): ComprobanteEnArca | undef
   const fechaDeEmision = FechaCalendario.desdeTextoArca(texto(elemento, 'CbteFch'));
   const vencimiento = FechaCalendario.desdeTextoArca(texto(elemento, 'FchVto'));
   const totalEnCentavos = centavos(texto(elemento, 'ImpTotal'));
+  const netoEnCentavos =
+    (centavos(texto(elemento, 'ImpNeto')) ?? 0) +
+    (centavos(texto(elemento, 'ImpTotConc')) ?? 0) +
+    (centavos(texto(elemento, 'ImpOpEx')) ?? 0);
+  const ivaEnCentavos = centavos(texto(elemento, 'ImpIVA')) ?? 0;
   const cae = texto(elemento, 'CodAutorizacion');
 
   if (
@@ -334,6 +342,8 @@ function leerComprobanteEnArca(elemento: ElementoXml): ComprobanteEnArca | undef
     numero,
     fechaDeEmision: fechaDeEmision.valor,
     totalEnCentavos,
+    netoEnCentavos,
+    ivaEnCentavos,
     codigoDeDocumento,
     numeroDeDocumento: texto(elemento, 'DocNro'),
     cae,

@@ -1,6 +1,7 @@
 import {
   formatearConSigno,
   type ComprobanteEmitido,
+  type EmitidoEnOtroDispositivo,
   type TotalesDelPeriodo,
 } from '@facturador/aplicacion';
 import { clasesQuePuedeEmitir, FechaCalendario, type ClaseComprobante } from '@facturador/dominio';
@@ -19,10 +20,39 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
-import { comprobantesEmitidos, registro } from '../composicion';
+import {
+  comprobantesEmitidos,
+  deOtrosDispositivos,
+  registro,
+  traerDeOtrosDispositivosDe,
+} from '../composicion';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { parametrosDe } from '../emision/claveDelComprobante';
-import { resumenDelComprobante } from '../emision/resumenDelComprobante';
+import { resumenDeOtroDispositivo, resumenDelComprobante } from '../emision/resumenDelComprobante';
+
+/** En la lista conviven los propios, completos, y los que se trajeron de ARCA de otros dispositivos. */
+type EnLaLista =
+  | { readonly origen: 'propio'; readonly comprobante: ComprobanteEmitido }
+  | { readonly origen: 'otro'; readonly comprobante: EmitidoEnOtroDispositivo };
+
+const fechaDe = (item: EnLaLista) =>
+  item.origen === 'propio'
+    ? item.comprobante.comprobante.datos.fechaDeEmision
+    : item.comprobante.fechaDeEmision;
+
+const claveDe = (item: EnLaLista) => {
+  const { puntoDeVenta, numero } = item.comprobante;
+  const tipo =
+    item.origen === 'propio' ? item.comprobante.comprobante.datos.tipo : item.comprobante.tipo;
+  return `${String(tipo.codigoArca)}.${String(puntoDeVenta)}.${String(numero)}`;
+};
+
+const sumar = (a: TotalesDelPeriodo, b: TotalesDelPeriodo): TotalesDelPeriodo => ({
+  cantidad: a.cantidad + b.cantidad,
+  totalEnCentavos: a.totalEnCentavos + b.totalEnCentavos,
+  netoEnCentavos: a.netoEnCentavos + b.netoEnCentavos,
+  ivaEnCentavos: a.ivaEnCentavos + b.ivaEnCentavos,
+});
 
 type Periodo = 'todo' | 'este_mes' | 'mes_anterior' | 'este_anio';
 
@@ -121,19 +151,69 @@ export default function Comprobantes() {
     };
   }, [configurada, busqueda, periodo, clase, limite]);
 
+  // Lo facturado desde otros dispositivos lo tiene ARCA: al abrir se traen los nuevos. Sin
+  // conexión o sin certificado se muestra lo que ya se tenía.
+  const [traidos, setTraidos] = useState(0);
+  useEffect(() => {
+    if (!configurada) return;
+    let vigente = true;
+    traerDeOtrosDispositivosDe(configurada).then(
+      (cantidad) => {
+        if (vigente && cantidad) setTraidos((anteriores) => anteriores + cantidad);
+      },
+      (error: unknown) => {
+        registro.error('no se pudieron traer los comprobantes de otros dispositivos', error);
+      },
+    );
+    return () => {
+      vigente = false;
+    };
+  }, [configurada]);
+
+  const buscando = busqueda.trim() !== '';
+  // La búsqueda mira los propios, que tienen el nombre del receptor y los ítems.
+  const [deOtros, setDeOtros] = useState<readonly EmitidoEnOtroDispositivo[]>([]);
+  useEffect(() => {
+    if (!configurada || buscando) {
+      setDeOtros([]);
+      return;
+    }
+    let vigente = true;
+    const hoy = FechaCalendario.enArgentina(new Date());
+    deOtrosDispositivos
+      .listar({
+        ambiente: configurada.ambiente,
+        emisor: configurada.emisor,
+        ...fechasDe(periodo, hoy),
+        ...(clase !== 'todas' && { clase }),
+      })
+      .then(
+        (lista) => {
+          if (vigente) setDeOtros(lista);
+        },
+        (error: unknown) => {
+          registro.error('no se pudieron leer los comprobantes de otros dispositivos', error);
+        },
+      );
+    return () => {
+      vigente = false;
+    };
+  }, [configurada, buscando, periodo, clase, traidos]);
+
   // Los totales no dependen de la búsqueda ni del tope de la lista: son del período y la clase.
   const [totales, setTotales] = useState<TotalesDelPeriodo>();
   useEffect(() => {
     if (!configurada) return;
     let vigente = true;
     const hoy = FechaCalendario.enArgentina(new Date());
-    comprobantesEmitidos
-      .totales({
-        ambiente: configurada.ambiente,
-        emisor: configurada.emisor,
-        ...fechasDe(periodo, hoy),
-        ...(clase !== 'todas' && { clase }),
-      })
+    const filtro = {
+      ambiente: configurada.ambiente,
+      emisor: configurada.emisor,
+      ...fechasDe(periodo, hoy),
+      ...(clase !== 'todas' && { clase }),
+    };
+    Promise.all([comprobantesEmitidos.totales(filtro), deOtrosDispositivos.totales(filtro)])
+      .then(([propios, otros]) => sumar(propios, otros))
       .then(
         (leidos) => {
           if (vigente) setTotales(leidos);
@@ -146,9 +226,20 @@ export default function Comprobantes() {
     return () => {
       vigente = false;
     };
-  }, [configurada, periodo, clase]);
+  }, [configurada, periodo, clase, traidos]);
 
-  const buscando = busqueda.trim() !== '';
+  const propios = estado.paso === 'listo' ? estado.lista : [];
+  // Los de otros dispositivos se intercalan por fecha, hasta donde llega la tanda de los propios.
+  const masViejo = propios.length === limite ? propios.at(-1) : undefined;
+  const enLaLista: readonly EnLaLista[] = [
+    ...propios.map((comprobante) => ({ origen: 'propio' as const, comprobante })),
+    ...deOtros
+      .filter(
+        (otro) =>
+          !masViejo || !otro.fechaDeEmision.esAnteriorA(masViejo.comprobante.datos.fechaDeEmision),
+      )
+      .map((comprobante) => ({ origen: 'otro' as const, comprobante })),
+  ].sort((a, b) => fechaDe(b).diasHasta(fechaDe(a)));
   const filtrando = buscando || periodo !== 'todo' || clase !== 'todas';
   const conIva = configurada?.emisor.datos.condicion === 'responsable_inscripto';
   const nombreDelFiltro = [
@@ -162,10 +253,8 @@ export default function Comprobantes() {
     <Pantalla conEncabezado>
       <Stack.Screen options={{ title: 'Comprobantes' }} />
       <FlatList
-        data={estado.paso === 'listo' ? estado.lista : []}
-        keyExtractor={({ comprobante, puntoDeVenta, numero }) =>
-          `${String(comprobante.datos.tipo.codigoArca)}.${String(puntoDeVenta)}.${String(numero)}`
-        }
+        data={enLaLista}
+        keyExtractor={claveDe}
         contentContainerStyle={{ padding: espacio.normal, gap: espacio.medio }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
@@ -212,17 +301,31 @@ export default function Comprobantes() {
             )}
           </View>
         }
-        renderItem={({ item }) => (
-          <TarjetaDeComprobante
-            {...resumenDelComprobante(item)}
-            onPress={() => {
-              router.push({
-                pathname: '/comprobante',
-                params: parametrosDe(item.comprobante.datos.tipo, item.puntoDeVenta, item.numero),
-              });
-            }}
-          />
-        )}
+        renderItem={({ item }) =>
+          item.origen === 'propio' ? (
+            <TarjetaDeComprobante
+              {...resumenDelComprobante(item.comprobante)}
+              onPress={() => {
+                const { comprobante, puntoDeVenta, numero } = item.comprobante;
+                router.push({
+                  pathname: '/comprobante',
+                  params: parametrosDe(comprobante.datos.tipo, puntoDeVenta, numero),
+                });
+              }}
+            />
+          ) : (
+            <TarjetaDeComprobante
+              {...resumenDeOtroDispositivo(item.comprobante)}
+              onPress={() => {
+                const { tipo, puntoDeVenta, numero } = item.comprobante;
+                router.push({
+                  pathname: '/comprobante-de-otro-dispositivo',
+                  params: parametrosDe(tipo, puntoDeVenta, numero),
+                });
+              }}
+            />
+          )
+        }
         ListEmptyComponent={
           estado.paso === 'listo' ? (
             <Texto variante="cuerpo">

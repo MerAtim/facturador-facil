@@ -12,7 +12,8 @@ import { Cuit, Emisor, FechaCalendario } from '@facturador/dominio';
  * Solo existe en el build de las pruebas de punta a punta (ver composicion.ts): ARCA simulado y un
  * emisor listo para facturar, así los flujos no dependen de ARCA ni de cargar un certificado.
  */
-export const transporteDePrueba = crearDobleDeArca();
+// Con otro celular del mismo CUIT, para probar que sus facturas se traen de ARCA.
+export const transporteDePrueba = crearDobleDeArca({ conOtroDispositivo: true });
 
 const AMBIENTE = 'homologacion';
 const UN_DIA_MS = 24 * 60 * 60 * 1000;

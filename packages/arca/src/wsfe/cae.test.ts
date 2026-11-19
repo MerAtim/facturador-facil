@@ -457,6 +457,8 @@ describe('consultarComprobante', () => {
       codigoDeTipo: 6,
       numero: 1,
       totalEnCentavos: 297_250,
+      netoEnCentavos: 250_000,
+      ivaEnCentavos: 47_250,
       codigoDeDocumento: 96,
       numeroDeDocumento: '30123456',
       cae: '86431024057719',

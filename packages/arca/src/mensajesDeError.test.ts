@@ -194,6 +194,8 @@ describe('explicarError', () => {
         numero: 5,
         fechaDeEmision: fecha(2026, 10, 27),
         totalEnCentavos: 100_000,
+        netoEnCentavos: 100_000,
+        ivaEnCentavos: 0,
         codigoDeDocumento: 99,
         numeroDeDocumento: '0',
         cae: '86431024113634',
