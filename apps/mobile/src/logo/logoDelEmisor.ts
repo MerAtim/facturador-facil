@@ -47,7 +47,7 @@ export async function guardarLogo(
     // Se guardan los bytes que se acaban de validar, no el archivo intermedio.
     const destino = archivo();
     if (destino.exists) destino.delete();
-    destino.write(bytes);
+    await destino.write(bytes);
     return exito(base64);
   } finally {
     if (generado?.exists) generado.delete();

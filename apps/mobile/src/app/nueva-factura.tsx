@@ -1,6 +1,8 @@
 import {
+  ajustarAlRango,
   itemVacio,
   prepararFactura,
+  rangoDeFechaDeEmision,
   totalesDelBorrador,
   type ProblemaDeLaFactura,
   type BorradorDeItem,
@@ -32,12 +34,13 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CatalogoEnLaFactura } from '../catalogo/CatalogoEnLaFactura';
-import { preferencias, productos } from '../composicion';
+import { comprobantesEmitidos, preferencias, productos } from '../composicion';
 import { AvisoDeAmbiente } from '../configuracion/AvisoDeAmbiente';
 import { useConfiguracion } from '../configuracion/configuracion';
 import { EditorDeItem } from '../emision/EditorDeItem';
 import { EleccionDeReceptor } from '../emision/EleccionDeReceptor';
 import { facturaEnCurso } from '../emision/facturaEnCurso';
+import { explicarRango, FechaDeEmision } from '../emision/FechaDeEmision';
 import { explicarProblema, lineasDelResumen } from '../emision/resumen';
 
 const MODOS: readonly Opcion<ModoDePrecio>[] = [
@@ -84,6 +87,45 @@ export default function NuevaFactura() {
     claseParaEmitir(condicionDelEmisor, receptor.condicion),
     'factura',
   );
+  // La fecha: sin elegir, la de hoy. El rango depende del último comprobante de este tipo.
+  const hoy = FechaCalendario.enArgentina(new Date());
+  const [elegida, setElegida] = useState<FechaCalendario>();
+  const [ajuste, setAjuste] = useState<string>();
+  const [ultimaFecha, setUltimaFecha] = useState<FechaCalendario>();
+  const puntoDeVenta = configurada?.emisor.datos.puntoDeVenta ?? 0;
+  useEffect(() => {
+    if (!configurada) return;
+    let vigente = true;
+    void comprobantesEmitidos
+      .ultimaFecha({
+        ambiente: configurada.ambiente,
+        emisor: configurada.emisor,
+        tipo,
+        puntoDeVenta: configurada.emisor.datos.puntoDeVenta,
+      })
+      // Sin poder leerla, ARCA igual valida el orden al emitir.
+      .catch(() => undefined)
+      .then((leida) => {
+        if (vigente) setUltimaFecha(leida);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [configurada, tipo.codigoArca]);
+  const rango = rangoDeFechaDeEmision({ hoy, concepto: 'productos', ultimaFecha });
+  const fechaDeEmision = elegida ?? hoy;
+
+  // Al cambiar el tipo, la fecha elegida puede quedar antes de la última de ese tipo.
+  useEffect(() => {
+    if (!elegida) return;
+    const ajustada = ajustarAlRango(elegida, rango);
+    if (ajustada.esIgualA(elegida)) return;
+    setElegida(ajustada.esIgualA(hoy) ? undefined : ajustada);
+    setAjuste(
+      `La última ${tipo.descripcion} es del ${ajustada.formatear()}: cambiamos la fecha a esa.`,
+    );
+  }, [ultimaFecha]);
+
   const totales = totalesDelBorrador(
     tipo,
     modoDePrecio,
@@ -140,7 +182,9 @@ export default function NuevaFactura() {
       receptor,
       modoDePrecio,
       items: items.map((item) => item.borrador),
-      hoy: FechaCalendario.enArgentina(new Date()),
+      hoy,
+      fechaDeEmision,
+      ultimaFecha,
     });
     if (!preparada.ok) {
       setProblemas(preparada.error);
@@ -173,6 +217,17 @@ export default function NuevaFactura() {
               <Texto variante="subtitulo">Factura {tipo.clase}</Texto>
               <Texto variante="detalle">{EXPLICACION_DE_LA_CLASE[tipo.clase]}</Texto>
             </View>
+            <FechaDeEmision
+              fecha={fechaDeEmision}
+              hoy={hoy}
+              rango={rango}
+              explicacion={explicarRango(rango, hoy, tipo, puntoDeVenta)}
+              ajuste={ajuste}
+              onCambiar={(nueva) => {
+                setElegida(nueva.esIgualA(hoy) ? undefined : nueva);
+                setAjuste(undefined);
+              }}
+            />
           </View>
 
           <View style={{ gap: espacio.medio }}>

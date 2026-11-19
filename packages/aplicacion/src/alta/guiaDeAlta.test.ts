@@ -7,6 +7,7 @@ import {
   crearRegistroDeAlta,
   estadoDeAlta,
   PROGRESO_INICIAL,
+  tramosDeAlta,
   type SituacionDeAlta,
   type TitularDelAlta,
 } from './guiaDeAlta';
@@ -43,12 +44,12 @@ describe('estadoDeAlta', () => {
     expect(sinDatos.actual).toBe('datos');
   });
 
-  it('en producción hay que dar de alta el punto de venta', () => {
+  it('en producción hay que dar de alta el punto de venta, antes que nada en ARCA', () => {
     expect(estadoDeAlta(situacion()).pasos.map(({ paso }) => paso)).toEqual([
       'datos',
+      'punto_de_venta',
       'certificado',
       'autorizacion',
-      'punto_de_venta',
       'verificacion',
     ]);
   });
@@ -81,9 +82,9 @@ describe('estadoDeAlta', () => {
     expect(estadoDeAlta(verificada).actual).toBeUndefined();
     expect(hechos(verificada)).toEqual([
       'datos',
+      'punto_de_venta',
       'certificado',
       'autorizacion',
-      'punto_de_venta',
       'verificacion',
     ]);
   });
@@ -104,6 +105,38 @@ describe('estadoDeAlta', () => {
     });
 
     expect(hechos(sinCertificado)).toEqual(['datos']);
+  });
+});
+
+describe('tramosDeAlta', () => {
+  const tramos = (s: SituacionDeAlta) =>
+    tramosDeAlta(estadoDeAlta(s)).map(({ tramo, pasos, hecho }) => ({
+      tramo,
+      pasos: pasos.map(({ paso }) => paso),
+      hecho,
+    }));
+
+  it('junta en una sola visita a ARCA todo lo que se hace ahí', () => {
+    expect(tramos(situacion())).toEqual([
+      { tramo: 'datos', pasos: ['datos'], hecho: true },
+      { tramo: 'arca', pasos: ['punto_de_venta', 'certificado', 'autorizacion'], hecho: false },
+      { tramo: 'verificacion', pasos: ['verificacion'], hecho: false },
+    ]);
+  });
+
+  it('en homologación la visita a ARCA no incluye el punto de venta', () => {
+    expect(tramos(situacion({ ambiente: 'homologacion' }))[1]?.pasos).toEqual([
+      'certificado',
+      'autorizacion',
+    ]);
+  });
+
+  it('la visita a ARCA está hecha cuando lo están todos sus pasos', () => {
+    const conTodo = situacion({ progreso: { autorizacion: true, puntoDeVenta: true } });
+    const sinAutorizar = situacion({ progreso: { autorizacion: false, puntoDeVenta: true } });
+
+    expect(tramos(conTodo)[1]?.hecho).toBe(true);
+    expect(tramos(sinAutorizar)[1]?.hecho).toBe(false);
   });
 });
 

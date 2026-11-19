@@ -22,12 +22,10 @@ export const almacenLocalDelDispositivo: AlmacenLocal = {
     const destino = archivo(clave);
     return destino.exists ? await destino.text() : undefined;
   },
-  guardar(clave, valor) {
-    return enPromesa(() => {
-      const destino = archivo(clave);
-      carpeta.create({ intermediates: true, idempotent: true });
-      destino.write(valor);
-    });
+  async guardar(clave, valor) {
+    const destino = archivo(clave);
+    carpeta.create({ intermediates: true, idempotent: true });
+    await destino.write(valor);
   },
   borrar(clave) {
     return enPromesa(() => {

@@ -1,5 +1,5 @@
 import { numeroCompleto } from '@facturador/arca';
-import type { Receptor } from '@facturador/dominio';
+import { FechaCalendario, type Receptor } from '@facturador/dominio';
 import {
   Aviso,
   Boton,
@@ -106,6 +106,12 @@ export default function ConfirmarFactura() {
               Punto de venta {String(configurada.emisor.datos.puntoDeVenta)} · Fecha{' '}
               {fechaDeEmision.formatear()}
             </Texto>
+            {/* Una fecha que no es la de hoy se destaca, para que no se escape por error. */}
+            {!fechaDeEmision.esIgualA(FechaCalendario.enArgentina(new Date())) && (
+              <Aviso icono="calendar-alert">
+                {`Fecha de emisión: ${fechaDeEmision.formatear()}. No es la de hoy.`}
+              </Aviso>
+            )}
             {asociado && (
               <Texto variante="detalle">
                 Ajusta la {enUnaFrase(asociado.tipo)}{' '}

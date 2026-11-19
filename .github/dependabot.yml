@@ -20,6 +20,8 @@ updates:
       - dependency-name: 'react-native'
       - dependency-name: 'react-native-*'
       - dependency-name: '@types/react'
+      - dependency-name: '@react-native-community/datetimepicker'
+      - dependency-name: '@expo/vector-icons'
     groups:
       dependencias:
         patterns: ['*']

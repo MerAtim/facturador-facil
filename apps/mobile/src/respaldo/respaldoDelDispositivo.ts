@@ -15,7 +15,7 @@ async function guardarLogoDelRespaldo(base64: string): Promise<void> {
   const temporal = new File(Paths.cache, 'logo-del-respaldo.png');
   try {
     if (temporal.exists) temporal.delete();
-    temporal.write(desdeBase64(base64));
+    await temporal.write(desdeBase64(base64));
     const guardado = await guardarLogo(temporal.uri);
     if (!guardado.ok) throw new Error(`Logo del respaldo rechazado: ${guardado.error}`);
   } finally {
@@ -47,7 +47,7 @@ export async function compartirRespaldo(archivo: Uint8Array, fecha: string): Pro
   compartidos.create({ intermediates: true, idempotent: true });
   const destino = new File(compartidos, `respaldo-facturador-${fecha}.ffresp`);
   if (destino.exists) destino.delete();
-  destino.write(archivo);
+  await destino.write(archivo);
   await CompartirArchivo.compartir(
     destino.uri,
     'application/octet-stream',

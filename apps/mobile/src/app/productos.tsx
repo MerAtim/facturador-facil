@@ -106,7 +106,7 @@ export default function Productos() {
                 ? 'Todavía no hay productos. Cargá los que facturás seguido para agregarlos con un toque.'
                 : 'No hay productos que coincidan.'}
             </Texto>
-          ) : null
+          ) : undefined
         }
       />
     </Pantalla>

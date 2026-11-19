@@ -105,7 +105,7 @@ export default function Clientes() {
                 ? 'Todavía no hay clientes. Se agregan solos al facturarles con CUIT, o cargalos acá.'
                 : 'No hay clientes que coincidan.'}
             </Texto>
-          ) : null
+          ) : undefined
         }
       />
     </Pantalla>

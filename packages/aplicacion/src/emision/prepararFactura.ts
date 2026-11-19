@@ -29,6 +29,10 @@ export interface BorradorDeFactura {
   readonly modoDePrecio: ModoDePrecio;
   readonly items: readonly BorradorDeItem[];
   readonly hoy: FechaCalendario;
+  /** Sin elegir, es la de hoy. */
+  readonly fechaDeEmision?: FechaCalendario;
+  /** La del último comprobante del mismo tipo y punto de venta, si se conoce. */
+  readonly ultimaFecha?: FechaCalendario | undefined;
 }
 
 /** Lo que impide emitir, para mostrarlo junto a donde se corrige. Los ítems se numeran desde 1. */
@@ -65,7 +69,7 @@ export function prepararFactura(
     identificacionReceptor: borrador.receptor.identificacion,
     modoDePrecio: borrador.modoDePrecio,
     items: borrador.items.map(itemDelBorrador),
-    fechaDeEmision: borrador.hoy,
+    fechaDeEmision: borrador.fechaDeEmision ?? borrador.hoy,
     concepto: 'productos',
   });
   if (!comprobante.ok) return fallo([{ tipo: 'comprobante', motivo: comprobante.error.motivo }]);
@@ -73,6 +77,7 @@ export function prepararFactura(
   const problemasDeEnvio = validarParaEnvio(comprobante.valor, {
     hoy: borrador.hoy,
     montoParaIdentificarConsumidorFinal: MONTO_PARA_IDENTIFICAR_CONSUMIDOR_FINAL,
+    ...(borrador.ultimaFecha && { ultimaFecha: borrador.ultimaFecha }),
   });
   if (problemasDeEnvio.length > 0) {
     return fallo(problemasDeEnvio.map((problema) => ({ tipo: 'envio' as const, problema })));

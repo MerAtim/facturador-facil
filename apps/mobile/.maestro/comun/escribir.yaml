@@ -11,3 +11,4 @@ appId: com.facturadorfacil.app.pruebas
 - eraseText
 - inputText: ${TEXTO}
 - waitForAnimationToEnd
+- runFlow: cerrar_teclado.yaml

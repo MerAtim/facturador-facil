@@ -476,6 +476,38 @@ describe('RepositorioDeComprobantes', () => {
       expect(await numeros({ clase: 'C' })).toEqual([]);
     });
 
+    it('totaliza el período y la clase, sin el tope de la lista', async () => {
+      const totales = (filtro: Partial<FiltroDeComprobantes> = {}) =>
+        repositorio.totales({ ambiente: 'homologacion', emisor, ...filtro });
+
+      expect(await totales()).toMatchObject({ cantidad: 3, totalEnCentavos: 3 * 352_625 });
+      expect(
+        await totales({ clase: 'B', desde: fecha(2026, 10, 1), hasta: fecha(2026, 10, 31) }),
+      ).toMatchObject({ cantidad: 2, totalEnCentavos: 2 * 352_625 });
+      expect(await totales({ clase: 'C' })).toMatchObject({ cantidad: 0, totalEnCentavos: 0 });
+    });
+
+    it('da la fecha del último comprobante de cada tipo y punto de venta', async () => {
+      const serie = { ambiente: 'homologacion' as const, emisor, puntoDeVenta: 3 };
+
+      expect(
+        (await repositorio.ultimaFecha({ ...serie, tipo: TipoComprobante.FACTURA_B }))?.formatear(),
+      ).toBe('20/10/2026');
+      expect(
+        (await repositorio.ultimaFecha({ ...serie, tipo: TipoComprobante.FACTURA_A }))?.formatear(),
+      ).toBe('15/09/2026');
+      expect(
+        await repositorio.ultimaFecha({ ...serie, tipo: TipoComprobante.NOTA_DE_CREDITO_B }),
+      ).toBeUndefined();
+      expect(
+        await repositorio.ultimaFecha({
+          ...serie,
+          puntoDeVenta: 4,
+          tipo: TipoComprobante.FACTURA_B,
+        }),
+      ).toBeUndefined();
+    });
+
     it('combina búsqueda y filtros', async () => {
       expect(
         await numeros({ busqueda: '3.526,25', clase: 'B', desde: fecha(2026, 10, 10) }),

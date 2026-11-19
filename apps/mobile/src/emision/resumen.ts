@@ -48,6 +48,8 @@ function explicarProblemaDeEnvio(problema: ProblemaDeEnvio): string {
     case 'falta_identificar_consumidor_final':
       return 'Desde $ 10.000.000 hay que identificar al consumidor final. Cargá su CUIT con "Otro CUIT".';
     case 'fecha_de_emision_fuera_de_rango':
-      return 'La fecha de emisión está fuera del rango que acepta ARCA.';
+      return 'La fecha está fuera del rango que acepta ARCA. Elegí otra en el calendario.';
+    case 'fecha_anterior_al_ultimo_comprobante':
+      return 'La fecha es anterior a la de tu última factura de este tipo, y ARCA no la acepta. Elegí otra en el calendario.';
   }
 }

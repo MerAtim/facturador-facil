@@ -9,14 +9,19 @@ import { FormularioDeCliente } from '../clientes/FormularioDeCliente';
 import { clientes } from '../composicion';
 
 const CONSUMIDOR_FINAL = 'consumidor_final';
-const BUSCAR = 'buscar';
-const OTRO_CUIT = 'otro_cuit';
+const BUSCAR = 'buscar' as const;
+const OTRO_CUIT = 'otro_cuit' as const;
 
 /** Los que entran cómodos como fichas; el resto se encuentra buscando. */
 const FRECUENTES_A_LA_VISTA = 8;
 const RESULTADOS_DE_LA_BUSQUEDA = 5;
 
 type Modo = 'fichas' | typeof BUSCAR | typeof OTRO_CUIT;
+
+const ACCIONES: readonly Ficha<typeof BUSCAR | typeof OTRO_CUIT>[] = [
+  { valor: BUSCAR, etiqueta: 'Buscar', icono: 'magnify' },
+  { valor: OTRO_CUIT, etiqueta: 'Otro CUIT', icono: 'plus' },
+];
 
 const comoReceptor = ({ cuit, condicion, nombre, domicilio }: Cliente): Receptor => ({
   identificacion: { tipo: 'cuit', cuit },
@@ -57,8 +62,6 @@ export function EleccionDeReceptor({
   const fichas: readonly Ficha<string>[] = [
     { valor: CONSUMIDOR_FINAL, etiqueta: 'Consumidor final', icono: 'account' },
     ...visibles.map((c) => ({ valor: c.cuit.valor, etiqueta: c.nombre ?? c.cuit.formateado() })),
-    { valor: BUSCAR, etiqueta: 'Buscar', icono: 'magnify' },
-    { valor: OTRO_CUIT, etiqueta: 'Otro CUIT', icono: 'plus' },
   ];
 
   const usar = (cliente: Cliente) => {
@@ -82,8 +85,15 @@ export function EleccionDeReceptor({
       <Texto variante="subtitulo">Receptor</Texto>
       <Fichas
         opciones={fichas}
-        valor={modo === 'fichas' ? (cuitElegido?.valor ?? CONSUMIDOR_FINAL) : modo}
+        valor={modo === 'fichas' ? (cuitElegido?.valor ?? CONSUMIDOR_FINAL) : ''}
         onCambiar={elegir}
+      />
+      {/* Las acciones no se desplazan: con varios frecuentes quedaban escondidas al final (#180). */}
+      <Fichas
+        opciones={ACCIONES}
+        valor={modo === 'fichas' ? '' : modo}
+        onCambiar={elegir}
+        desplazable={false}
       />
       {modo === BUSCAR && <BuscadorDeClientes onElegir={usar} />}
       {/* Un CUIT nuevo queda como cliente recién cuando ARCA autoriza una factura para él. */}

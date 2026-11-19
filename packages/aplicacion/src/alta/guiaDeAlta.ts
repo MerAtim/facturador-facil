@@ -10,11 +10,49 @@ import type { AlmacenLocal } from '../puertos/almacenLocal';
 export type PasoDeAlta =
   'datos' | 'certificado' | 'autorizacion' | 'punto_de_venta' | 'verificacion';
 
-/** Homologación no valida el punto de venta: se puede facturar con cualquier número. */
+/**
+ * Homologación no valida el punto de venta: se puede facturar con cualquier número. En ARCA, el
+ * punto de venta va primero porque no depende de nada, y la autorización al final porque necesita
+ * el alias del certificado.
+ */
 const PASOS: Readonly<Record<Ambiente, readonly PasoDeAlta[]>> = {
   homologacion: ['datos', 'certificado', 'autorizacion', 'verificacion'],
-  produccion: ['datos', 'certificado', 'autorizacion', 'punto_de_venta', 'verificacion'],
+  produccion: ['datos', 'punto_de_venta', 'certificado', 'autorizacion', 'verificacion'],
 };
+
+/**
+ * La guía se muestra en tres tramos: los datos, una sola visita al sitio de ARCA con todo lo que
+ * se hace ahí, y la verificación. Ir y volver tres veces a ARCA es lo que hace abandonar.
+ */
+export type TramoDeAlta = 'datos' | 'arca' | 'verificacion';
+
+export const tramoDelPaso = (paso: PasoDeAlta): TramoDeAlta =>
+  paso === 'datos' || paso === 'verificacion' ? paso : 'arca';
+
+export interface EstadoDeTramo {
+  readonly tramo: TramoDeAlta;
+  readonly pasos: readonly EstadoDePaso[];
+  readonly hecho: boolean;
+}
+
+/** Agrupa los pasos por tramo, en orden. */
+export function tramosDeAlta({ pasos }: EstadoDeAlta): readonly EstadoDeTramo[] {
+  const tramos: EstadoDeTramo[] = [];
+  for (const estado of pasos) {
+    const tramo = tramoDelPaso(estado.paso);
+    const ultimo = tramos.at(-1);
+    if (ultimo?.tramo === tramo) {
+      tramos[tramos.length - 1] = {
+        tramo,
+        pasos: [...ultimo.pasos, estado],
+        hecho: ultimo.hecho && estado.hecho,
+      };
+    } else {
+      tramos.push({ tramo, pasos: [estado], hecho: estado.hecho });
+    }
+  }
+  return tramos;
+}
 
 /** Los pasos que el usuario marca como hechos en ARCA, que la app no puede ver por su cuenta. */
 export type PasoEnArca = Extract<PasoDeAlta, 'autorizacion' | 'punto_de_venta'>;

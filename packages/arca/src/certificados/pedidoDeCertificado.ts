@@ -24,8 +24,11 @@ export interface Titular {
   readonly razonSocial: string;
 }
 
-/** Nombre con el que el certificado aparece en ARCA, en "Administración de certificados digitales". */
-const NOMBRE_DEL_CERTIFICADO = 'facturadorfacil';
+/**
+ * Nombre del certificado dentro del pedido. La guía lo sugiere también como alias en ARCA, así el
+ * mismo nombre aparece en todos lados.
+ */
+export const NOMBRE_DEL_CERTIFICADO = 'facturadorfacil';
 
 export const aliasDeClave = ({ ambiente, cuit }: Pick<Titular, 'ambiente' | 'cuit'>) =>
   `facturador.${ambiente}.${cuit.valor}`;

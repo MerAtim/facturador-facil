@@ -1,9 +1,9 @@
 import {
+  FechaCalendario,
   TipoComprobante,
   type ClaseComprobante,
   type Comprobante,
   type Emisor,
-  type FechaCalendario,
   type IdentificacionReceptor,
   type Receptor,
 } from '@facturador/dominio';
@@ -11,6 +11,7 @@ import {
 import type { Ambiente } from '../configuracion/configuracion';
 import type { BaseDeDatos, FilaSql, ValorSql } from '../puertos/baseDeDatos';
 import { interpretarBusqueda } from './busquedaDeComprobantes';
+import { totalesDelPeriodo, type TotalesDelPeriodo } from './totalesDelPeriodo';
 import { aTextoGuardado, desdeTextoGuardado } from './formatoGuardado';
 
 /** Un comprobante que ARCA autorizó, con lo necesario para mostrarlo o rehacer su PDF. */
@@ -56,7 +57,11 @@ export interface RepositorioDeComprobantes {
   guardar(emitido: ComprobanteEmitido): Promise<void>;
   /** Los más recientes primero. */
   listar(filtro: FiltroDeComprobantes): Promise<readonly ComprobanteEmitido[]>;
+  /** Lo facturado con ese período y clase, de todos los comprobantes, sin el tope de la lista. */
+  totales(filtro: Omit<FiltroDeComprobantes, 'limite' | 'busqueda'>): Promise<TotalesDelPeriodo>;
   leer(clave: ClaveDeComprobante): Promise<ComprobanteEmitido | undefined>;
+  /** La fecha del último comprobante de ese tipo y punto de venta, para respetar el orden de ARCA. */
+  ultimaFecha(serie: Omit<ClaveDeComprobante, 'numero'>): Promise<FechaCalendario | undefined>;
   /** Las notas de crédito que ajustan esa factura, de la más vieja a la más nueva. */
   notasDeCreditoDe(factura: ClaveDeComprobante): Promise<readonly ComprobanteEmitido[]>;
   /** Todos los del emisor, de los dos ambientes, en el orden en que se guardaron. Para el respaldo. */
@@ -97,6 +102,12 @@ const LEER = `
   SELECT punto_de_venta, numero, datos
   FROM comprobantes
   WHERE ambiente = ? AND cuit_emisor = ? AND tipo = ? AND punto_de_venta = ? AND numero = ?
+`;
+
+const ULTIMA_FECHA = `
+  SELECT MAX(fecha) AS fecha
+  FROM comprobantes
+  WHERE ambiente = ? AND cuit_emisor = ? AND tipo = ? AND punto_de_venta = ?
 `;
 
 const NOTAS_DE_CREDITO = TipoComprobante.TODOS.filter(
@@ -163,6 +174,13 @@ export function crearRepositorioDeComprobantes(
       return rearmar(await base.consultar(LISTAR, parametrosDeListar(filtro)), ambiente, emisor);
     },
 
+    async totales(filtro) {
+      const { ambiente, emisor } = filtro;
+      // En SQLite, un límite negativo es sin límite.
+      const filas = await base.consultar(LISTAR, parametrosDeListar({ ...filtro, limite: -1 }));
+      return totalesDelPeriodo(rearmar(filas, ambiente, emisor));
+    },
+
     async leer({ ambiente, emisor, tipo, puntoDeVenta, numero }) {
       const filas = await base.consultar(LEER, [
         ambiente,
@@ -172,6 +190,19 @@ export function crearRepositorioDeComprobantes(
         numero,
       ]);
       return rearmar(filas, ambiente, emisor)[0];
+    },
+
+    async ultimaFecha({ ambiente, emisor, tipo, puntoDeVenta }) {
+      const [fila] = await base.consultar(ULTIMA_FECHA, [
+        ambiente,
+        emisor.datos.cuit.valor,
+        tipo.codigoArca,
+        puntoDeVenta,
+      ]);
+      const texto = fila?.['fecha'];
+      if (typeof texto !== 'string') return undefined;
+      const fecha = FechaCalendario.desdeTextoArca(texto);
+      return fecha.ok ? fecha.valor : undefined;
     },
 
     async notasDeCreditoDe({ ambiente, emisor, tipo, puntoDeVenta, numero }) {
